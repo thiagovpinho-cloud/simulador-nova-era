@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Nova Era — Simulador de Precificação</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #F6F8F4;
+    --surface: #FFFFFF;
+    --surface-2: #F1F4EE;
+    --border: #E3E8DE;
+    --ink: #1C231D;
+    --ink-dim: #667066;
+    --ink-faint: #97A092;
+    --brand: #3E9C31;
+    --brand-dark: #2E7A25;
+    --brand-soft: #E9F6E4;
+    --green: #2E9E44;
+    --green-soft: #E7F6E9;
+    --red: #D2483E;
+    --red-soft: #FCEBE9;
+    --blue: #3B6FD1;
+    --blue-soft: #EBF1FC;
+    --radius: 16px;
+    --shadow: 0 1px 2px rgba(28,35,29,.04), 0 6px 20px rgba(28,35,29,.05);
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+    --disp: 'Space Grotesk', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 60px;
+  }
+  ::selection{ background: var(--brand); color:#fff; }
+
+  input[type=number]{ -moz-appearance: textfield; }
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+
+  /* ---------- header ---------- */
+  header{
+    position: sticky; top:0; z-index:20;
+    background: rgba(246,248,244,.92);
+    backdrop-filter: blur(8px);
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .brand-mark{
+    width:36px; height:36px; border-radius:10px;
+    overflow:hidden; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    background: #63b649; box-shadow: var(--shadow);
+  }
+  .brand-mark img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .brand-text{ flex:1; min-width:0; }
+  .brand-text h1{ font-family: var(--disp); font-size:16.5px; margin:0; letter-spacing:.1px; font-weight:700; color:var(--ink); }
+  .brand-text p{ margin:0; font-size:11px; color: var(--ink-faint); font-family: var(--mono); letter-spacing:.3px; }
+  .name-logo{
+    width:17px; height:17px; border-radius:5px; object-fit:cover;
+    display:inline-block; vertical-align:middle; margin-left:6px; flex-shrink:0;
+  }
+
+  .insumos-btn{
+    flex-shrink:0; display:flex; align-items:center; gap:6px;
+    background: var(--blue-soft); border:1px solid rgba(59,111,209,.25); color: var(--blue);
+    font-family: var(--sans); font-size:11.5px; font-weight:600; padding:8px 12px; border-radius:10px;
+    cursor:pointer;
+  }
+  .insumos-btn svg{ width:14px; height:14px; flex-shrink:0; }
+
+  .controls-row{ display:flex; gap:8px; flex-wrap: wrap; }
+  .ctrl{ flex:1; min-width:110px; background: var(--surface); border:1px solid var(--border); border-radius:11px; padding:6px 10px; }
+  .ctrl label{ display:block; font-size:9.5px; text-transform:uppercase; letter-spacing:.6px; color: var(--ink-faint); margin-bottom:2px; font-weight:600; }
+  .ctrl select, .ctrl input{ width:100%; background:transparent; border:none; color:var(--ink); font-family: var(--mono); font-size:14px; font-weight:600; padding:0; outline:none; }
+  .ctrl select{ appearance:none; cursor:pointer; }
+  .ctrl.readonly input{ color: var(--ink-dim); }
+
+  /* ---------- resumo do pedido (hero) ---------- */
+  .summary{
+    margin: 14px 16px 6px; background: var(--surface); border:1px solid var(--border); border-radius: var(--radius);
+    padding:18px; box-shadow: var(--shadow);
+  }
+  .summary-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; }
+  .summary-head h2{ font-family:var(--disp); font-size:13px; font-weight:700; margin:0; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.5px; }
+  .status{
+    display:inline-flex; align-items:center; gap:5px; font-family: var(--disp); font-weight:700; font-size:11.5px;
+    letter-spacing:.3px; padding:4px 10px; border-radius:20px;
+  }
+  .status.ok{ background: var(--green-soft); color: var(--green); }
+  .status.no{ background: var(--red-soft); color: var(--red); }
+
+  .totals-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:14px; }
+  .total-box{ background: var(--surface-2); border-radius:12px; padding:12px 14px; }
+  .total-box.highlight{ background: var(--brand-soft); }
+  .total-box .label{ display:block; font-size:10.5px; color: var(--ink-dim); margin-bottom:4px; line-height:1.3; }
+  .total-box .value{ font-family: var(--disp); font-size:21px; font-weight:700; color: var(--ink); }
+  .total-box.highlight .value{ color: var(--brand-dark); }
+
+  .margin-line{ font-size:11.5px; color: var(--ink-dim); line-height:1.6; margin-bottom:14px; }
+  .margin-line b{ color:var(--ink); font-family:var(--mono); font-weight:600; }
+
+  .whatsapp-btn{
+    width:100%; display:flex; align-items:center; justify-content:center; gap:8px;
+    background: #25D366; color:#fff; border:none; border-radius:12px; padding:12px;
+    font-family: var(--sans); font-size:13.5px; font-weight:600; cursor:pointer;
+  }
+  .whatsapp-btn:active{ background:#1EBE59; }
+  .whatsapp-btn svg{ width:18px; height:18px; flex-shrink:0; }
+
+  /* ---------- product list ---------- */
+  .list{ padding: 4px 16px 0; display:flex; flex-direction:column; gap:8px; }
+  .card{ background: var(--surface); border:1px solid var(--border); border-radius: var(--radius); overflow:hidden; box-shadow: var(--shadow); }
+  .card-head{ display:flex; align-items:center; gap:10px; padding:13px 14px; cursor:pointer; user-select:none; }
+  .idx{ font-family:var(--mono); font-size:10px; color:var(--ink-faint); width:20px; flex-shrink:0; }
+  .card-head .name{ flex:1; min-width:0; font-size:13.5px; font-weight:600; color:var(--ink); }
+  .card-head .name small{ display:block; font-weight:400; font-size:10.5px; color:var(--ink-faint); font-family:var(--mono); margin-top:1px; }
+  .pill{ font-family: var(--mono); font-size:12px; font-weight:600; padding:4px 9px; border-radius:8px; flex-shrink:0; white-space:nowrap; }
+  .pill.ok{ background: var(--green-soft); color: var(--green); }
+  .pill.no{ background: var(--red-soft); color: var(--red); }
+  .chevron{ width:9px; height:9px; border-right:2px solid var(--ink-faint); border-bottom:2px solid var(--ink-faint); transform: rotate(45deg); transition: transform .2s; flex-shrink:0; margin-right:2px; }
+  .card.open .chevron{ transform: rotate(-135deg); }
+  .card-body{ max-height:0; overflow:hidden; transition: max-height .25s ease; }
+  .card.open .card-body{ max-height: 4000px; }
+  .card-body-inner{ padding: 2px 14px 16px; border-top:1px solid var(--border); }
+
+  .section-label{ font-size:10px; text-transform:uppercase; letter-spacing:.6px; color:var(--brand-dark); font-weight:700; margin: 14px 0 8px; display:flex; align-items:center; gap:6px; }
+  .section-label::after{ content:''; flex:1; height:1px; background:var(--border); }
+
+  .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+  .field{ background: var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:7px 10px; }
+  .field.disabled{ opacity:.55; }
+  .field.disabled input{ color: var(--ink-faint); }
+  .field label{ display:block; font-size:9.5px; color:var(--ink-faint); margin-bottom:2px; letter-spacing:.2px; }
+  .field input{ width:100%; background:transparent; border:none; color: var(--ink); font-family:var(--mono); font-size:14px; font-weight:600; outline:none; padding:0; }
+  .field input:focus{ color: var(--brand-dark); }
+  .field .unit{ font-size:9px; color:var(--ink-faint); }
+
+  .ref-note{
+    font-size:10.5px; color:var(--ink-dim); margin-top:6px; padding:9px 10px;
+    background: var(--blue-soft); border:1px dashed rgba(59,111,209,.3); border-radius:9px; line-height:1.5;
+  }
+  .ref-note b{ color: var(--blue); font-family: var(--mono); }
+
+  table.mp{ width:100%; border-collapse:collapse; font-size:11.5px; }
+  table.mp th{ text-align:left; font-size:9px; text-transform:uppercase; color:var(--ink-faint); padding:4px 4px; letter-spacing:.3px; font-weight:600; border-bottom:1px solid var(--border); }
+  table.mp td{ padding:5px 4px; border-bottom:1px solid var(--border); vertical-align:middle; }
+  table.mp td.desc{ color:var(--ink-dim); font-size:10.5px; line-height:1.3; }
+  table.mp input{ width:100%; background: var(--surface-2); border:1px solid var(--border); border-radius:6px; color:var(--ink); font-family:var(--mono); font-size:11px; padding:4px 5px; outline:none; text-align:right; }
+  table.mp input:focus{ border-color: var(--brand); color:var(--brand-dark); }
+  table.mp td.right{ text-align:right; font-family:var(--mono); color:var(--ink-dim); }
+  table.mp td.price-linked{ text-align:right; font-family:var(--mono); color:var(--blue); font-size:11px; }
+  table.mp td.price-linked .lock{ font-size:8px; color:var(--ink-faint); display:block; margin-top:1px; }
+  .mp-wrap{ overflow-x:auto; margin: 0 -4px; }
+
+  .results{ margin-top:14px; background: var(--surface-2); border-radius:12px; padding:10px 12px; display:grid; grid-template-columns: 1fr 1fr; gap:10px 14px; }
+  .res-item{ display:flex; flex-direction:column; }
+  .res-item .k{ font-size:9.5px; color:var(--ink-faint); margin-bottom:2px; }
+  .res-item .v{ font-family:var(--mono); font-size:13.5px; font-weight:600; color:var(--ink); }
+  .res-item .v.pos{ color: var(--green); }
+  .res-item .v.neg{ color: var(--red); }
+  .res-item.wide{ grid-column: 1 / -1; height:1px; background:var(--border); margin:2px 0; }
+
+  .margin-badges{ display:flex; gap:8px; margin-top:12px; }
+  .mb{ flex:1; border-radius:12px; padding:10px; text-align:center; border:1px solid var(--border); }
+  .mb .k{ font-size:9.5px; color:var(--ink-faint); margin-bottom:4px; }
+  .mb .v{ font-family:var(--disp); font-size:20px; font-weight:700; }
+  .mb.ok{ background: var(--green-soft); border-color: rgba(46,158,68,.25); }
+  .mb.ok .v{ color: var(--green); }
+  .mb.no{ background: var(--red-soft); border-color: rgba(210,72,62,.25); }
+  .mb.no .v{ color: var(--red); }
+
+  footer{ margin: 20px 16px 0; display:flex; justify-content:space-between; align-items:center; font-size:10.5px; color: var(--ink-faint); }
+  .reset-btn{ background: transparent; border:1px solid var(--border); color: var(--ink-dim); font-family: var(--sans); font-size:11px; padding:8px 14px; border-radius:9px; cursor:pointer; }
+  .reset-btn:active{ background: var(--surface-2); }
+  .save-indicator{ font-family: var(--mono); }
+  .save-indicator.on{ color: var(--brand-dark); }
+
+  /* ---------- Base de Insumos overlay ---------- */
+  .overlay{
+    position:fixed; inset:0; background: var(--bg); z-index:100;
+    display:none; flex-direction:column;
+  }
+  .overlay.open{ display:flex; }
+  .overlay-head{
+    position:sticky; top:0; padding:14px 16px; border-bottom:1px solid var(--border);
+    background: var(--surface); display:flex; align-items:center; gap:12px; z-index:2;
+  }
+  .overlay-head h2{ font-family: var(--disp); font-size:16px; margin:0; flex:1; color:var(--ink); }
+  .overlay-head p{ margin:2px 0 0; font-size:11px; color:var(--ink-faint); }
+  .close-btn{
+    width:32px; height:32px; border-radius:9px; background: var(--surface-2); border:1px solid var(--border);
+    color: var(--ink-dim); font-size:16px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+    flex-shrink:0;
+  }
+  .overlay-body{ flex:1; overflow-y:auto; padding: 6px 16px 40px; max-width:720px; margin:0 auto; width:100%; }
+  .insumo-group-label{
+    font-size:10px; text-transform:uppercase; letter-spacing:.6px; color:var(--brand-dark); font-weight:700;
+    margin: 18px 0 8px; display:flex; align-items:center; gap:6px;
+  }
+  .insumo-group-label::after{ content:''; flex:1; height:1px; background:var(--border); }
+  .insumo-row{
+    display:flex; align-items:center; gap:10px; background: var(--surface); border:1px solid var(--border);
+    border-radius:12px; padding:10px 12px; margin-bottom:7px; box-shadow: var(--shadow);
+  }
+  .insumo-info{ flex:1; min-width:0; }
+  .insumo-info .n{ font-size:12.5px; font-weight:600; color:var(--ink); }
+  .insumo-info .m{ font-size:10px; color:var(--ink-faint); font-family:var(--mono); margin-top:2px; }
+  .insumo-price{
+    width:110px; flex-shrink:0; background: var(--surface-2); border:1px solid var(--border); border-radius:9px;
+    display:flex; align-items:center; padding:6px 8px;
+  }
+  .insumo-price span.rs{ font-size:11px; color:var(--ink-faint); margin-right:3px; }
+  .insumo-price input{ width:100%; background:transparent; border:none; color:var(--brand-dark); font-family:var(--mono); font-size:14px; font-weight:600; outline:none; text-align:right; }
+
+  @media (min-width: 720px){
+    .list{ max-width: 720px; margin: 0 auto; }
+    header .brand, header .controls-row, .summary{ max-width:720px; margin-left:auto; margin-right:auto; }
+    header{ padding-left: calc(50% - 360px); padding-right: calc(50% - 360px); }
+    footer{ max-width: 720px; margin-left:auto; margin-right:auto; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark"><img id="brandLogo" alt="Nova Era"></div>
+    <div class="brand-text">
+      <h1>Simulador de Precificação</h1>
+      <p>NOVA ERA · 2026</p>
+    </div>
+    <div class="insumos-btn" id="openInsumos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Base de Insumos
+    </div>
+  </div>
+  <div class="controls-row">
+    <div class="ctrl">
+      <label>Estado (UF)</label>
+      <select id="estadoSel"></select>
+    </div>
+    <div class="ctrl readonly">
+      <label>ICMS</label>
+      <input id="icmsView" readonly>
+    </div>
+    <div class="ctrl">
+      <label>Comissão %</label>
+      <input id="comissaoInput" type="text" inputmode="decimal">
+    </div>
+  </div>
+</header>
+
+<div class="summary">
+  <div class="summary-head">
+    <h2>Resumo do pedido</h2>
+    <div id="statusPill" class="status ok">● Aprovado</div>
+  </div>
+  <div class="totals-grid">
+    <div class="total-box">
+      <span class="label">Total sem impostos</span>
+      <span class="value" id="totalSem">R$ 0,00</span>
+    </div>
+    <div class="total-box highlight">
+      <span class="label">Total com impostos</span>
+      <span class="value" id="totalCom">R$ 0,00</span>
+    </div>
+  </div>
+  <div class="margin-line">
+    Margem ponderada sem IPI/ST: <b id="sumSemIpi">0%</b> · com IPI/ST: <b id="sumComIpi">0%</b> · meta mínima <b>6,0%</b>
+  </div>
+  <button class="whatsapp-btn" id="shareWhatsapp" type="button">
+    <svg viewBox="0 0 32 32" fill="currentColor"><path d="M16.04 3C9.4 3 4 8.36 4 15.02c0 2.36.65 4.56 1.78 6.44L4 29l7.72-1.72a11.9 11.9 0 0 0 4.32.81c6.64 0 12.04-5.36 12.04-12.02C28.08 8.36 22.68 3 16.04 3zm7.05 17.2c-.3.83-1.62 1.55-2.24 1.63-.6.08-1.31.35-4.35-.9-3.65-1.5-6-5.2-6.18-5.44-.18-.24-1.47-1.96-1.47-3.74 0-1.78.94-2.65 1.27-3.02.33-.36.72-.45.96-.45.24 0 .48 0 .69.01.22.01.52-.08.82.62.3.72 1.03 2.5 1.12 2.68.1.18.16.4.03.64-.13.24-.2.4-.4.6-.2.22-.42.5-.6.67-.2.19-.4.4-.18.79.23.4 1.02 1.68 2.2 2.72 1.51 1.35 2.78 1.77 3.19 1.97.4.2.64.17.87-.1.24-.28.99-1.15 1.26-1.55.26-.4.53-.33.87-.2.35.13 2.2 1.04 2.58 1.23.38.2.63.28.72.44.1.16.1.9-.2 1.74z"/></svg>
+    Compartilhar no WhatsApp
+  </button>
+</div>
+
+<div class="list" id="productList"></div>
+
+<footer>
+  <button class="reset-btn" id="resetBtn">Restaurar valores originais</button>
+  <span class="save-indicator" id="saveIndicator">salvo</span>
+</footer>
+
+<!-- ===================== BASE DE INSUMOS OVERLAY ===================== -->
+<div class="overlay" id="insumosOverlay">
+  <div class="overlay-head">
+    <div style="flex:1">
+      <h2>Base de Insumos</h2>
+      <p>Atualize o preço aqui e o custo é recalculado em todos os produtos que usam esse insumo.</p>
+    </div>
+    <div class="close-btn" id="closeInsumos">✕</div>
+  </div>
+  <div class="overlay-body" id="insumosBody"></div>
+</div>
+
+<script>
+/* ============================================================
+   COMPATIBILIDADE DE ARMAZENAMENTO
+   Dentro do Claude, window.storage já existe (salva na nuvem).
+   Fora do Claude (Netlify, GitHub Pages, etc.), esse objeto não
+   existe — então criamos aqui uma versão equivalente usando
+   localStorage do navegador, para o "salvar automaticamente"
+   continuar funcionando normalmente nos dois ambientes.
+   ============================================================ */
+if (!window.storage) {
+  window.storage = {
+    async get(key){
+      try{
+        const raw = localStorage.getItem(key);
+        if(raw === null) return null;
+        return { key, value: raw, shared:false };
+      }catch(e){ return null; }
+    },
+    async set(key, value){
+      localStorage.setItem(key, value);
+      return { key, value, shared:false };
+    },
+    async delete(key){
+      localStorage.removeItem(key);
+      return { key, deleted:true, shared:false };
+    },
+    async list(prefix){
+      const keys = Object.keys(localStorage).filter(k => !prefix || k.startsWith(prefix));
+      return { keys, prefix, shared:false };
+    }
+  };
+}
+
+/* ============================================================
+   DADOS BASE — extraídos das fórmulas reais da planilha
+   ============================================================ */
+
+const LOGO_DATA_URI = 'data:image/jpeg;base64,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';
+
+const ESTADOS = [
+  {code:'DF', name:'Distrito Federal'},
+  {code:'ES', name:'Espírito Santo'},
+  {code:'GO', name:'Goiás'},
+  {code:'MG', name:'Minas Gerais'},
+  {code:'PR', name:'Paraná'},
+  {code:'RJ', name:'Rio de Janeiro'},
+  {code:'RS', name:'Rio Grande do Sul'},
+  {code:'SC', name:'Santa Catarina'},
+  {code:'SP', name:'São Paulo'},
+];
+
+// [icms, mva, aliquotaInterna] por estado + NCM
+const IMPOSTOS = {
+  DF:{'22072019':[.07,.3852,.20],'38089429':[.07,0,.20],'34029090':[.07,.3026,.20],'22071090':[.07,0,.20]},
+  ES:{'22072019':[.07,.31,.17],'38089429':[.07,0,.17],'34029090':[.07,.4088,.17],'22071090':[.07,0,.17]},
+  GO:{'22072019':[.07,0,.19],'38089429':[.07,0,.19],'34029090':[.07,0,.19],'22071090':[.07,0,.19]},
+  MG:{'22072019':[.12,.35,.18],'38089429':[.12,0,.18],'34029090':[.12,.4088,.18],'22071090':[.12,0,.18]},
+  PR:{'22072019':[.12,0,.195],'38089429':[.12,0,.195],'34029090':[.12,0,.195],'22071090':[.12,0,.195]},
+  RJ:{'22072019':[.12,.3886,.12],'38089429':[.12,0,.12],'34029090':[.12,.2987,.12],'22071090':[.12,0,.12]},
+  RS:{'22072019':[.12,0,.22],'38089429':[.12,0,.22],'34029090':[.12,0,.22],'22071090':[.12,0,.22]},
+  SC:{'22072019':[.12,0,.17],'38089429':[.12,0,.17],'34029090':[.12,0,.17],'22071090':[.12,0,.17]},
+  SP:{'22072019':[.18,.6156,.18],'38089429':[.18,0,.18],'34029090':[.18,.4863,.18],'22071090':[.18,0,.18]},
+};
+
+const PIS_COFINS = 0.0925;
+
+/* --- Base de Insumos: fonte única de preços (equivalente à aba BASE INSUMOS) --- */
+const INSUMOS_MASTER = [
+  {code:'51640',  desc:'Álcool Anidro Granel',                unit:'L',   preco:2.88,   group:'Matéria-prima'},
+  {code:'00000',  desc:'Água',                                 unit:'L',   preco:0,      group:'Matéria-prima'},
+  {code:'60227',  desc:'Carbopol',                              unit:'KG',  preco:41.09,  group:'Matéria-prima'},
+  {code:'136451', desc:'Bactericida',                           unit:'UND', preco:31.53,  group:'Matéria-prima'},
+  {code:'59900',  desc:'Caixa de Papelão 12x1L PEAD',           unit:'UND', preco:1.95,   group:'Embalagem'},
+  {code:'46887',  desc:'Caixa de Papelão 3x5L',                 unit:'UND', preco:1.44,   group:'Embalagem'},
+  {code:'46875',  desc:'Caixa de Papelão 12x440g',              unit:'UND', preco:1.9,    group:'Embalagem'},
+  {code:'60150',  desc:'Tampa Lacre PCO 28mm Verde',            unit:'UND', preco:0.083,  group:'Embalagem'},
+  {code:'60124',  desc:'Tampa Lacre PCO 28mm Azul',             unit:'UND', preco:0.078,  group:'Embalagem'},
+  {code:'111960', desc:'Frasco PEAD 1L Álcool + Bicarbonato',   unit:'UND', preco:1.2,    group:'Embalagem'},
+  {code:'60100',  desc:'Frasco PEAD 1L Álcool 46°/70° INPM',    unit:'UND', preco:1.2,    group:'Embalagem'},
+  {code:'60082',  desc:'Frasco PET 500ml/440g Álcool Gel',      unit:'UND', preco:0.4075, group:'Embalagem'},
+  {code:'60148',  desc:'Válvula Pump',                          unit:'UND', preco:0.54,   group:'Embalagem'},
+  {code:'107852', desc:'Barrica 10kg / Acendedor Churrasqueira',unit:'UND', preco:7.5,    group:'Embalagem'},
+  {code:'93609',  desc:'Rótulo Galão 3x5L PEAD',                unit:'UND', preco:0.18,   group:'Rótulo'},
+  {code:'93646',  desc:'Rótulo Álcool Gel 70° 4,3kg',           unit:'UND', preco:0.2548, group:'Rótulo'},
+  {code:'46735',  desc:'Rótulo Álcool Gel 70° INPM 440g',       unit:'UND', preco:0.14,   group:'Rótulo'},
+  {code:'127255', desc:'Pallet PBR 1,00x1,20',                  unit:'UND', preco:31.5,   group:'Logística'},
+  {code:'68597',  desc:'Filme Stretch',                         unit:'KG',  preco:12,     group:'Logística'},
+
+  // Processo / mão de obra — Base de Insumos, linhas 44 a 56 ("SERVIÇO QUE A SENIR REALIZA NO PROCESSO")
+  {code:'125830', desc:'Processo Mist. e Envase — Álcool 46° INPM 12x1L',              unit:'UND', preco:4.09/12,  group:'Processo'},
+  {code:'187860', desc:'Processo Mist. e Envase — Álcool 46° Bactericida INPM 12x1L',  unit:'UND', preco:4.51/12,  group:'Processo'},
+  {code:'125842', desc:'Processo Mist. e Envase — Álcool 70° INPM 12x1L PET',          unit:'UND', preco:4.09/12,  group:'Processo'},
+  {code:'125854', desc:'Processo Mist. e Envase — Álcool 70° INPM 3x5L',               unit:'UND', preco:24.66/3,  group:'Processo'},
+  {code:'125866', desc:'Processo Mist. e Envase — Álcool + Bicarbonato 12x1L',         unit:'UND', preco:6.17/12,  group:'Processo'},
+  {code:'125878', desc:'Processo Mist. e Envase — Álcool Gel 70° INPM 12x440g Pump',   unit:'UND', preco:4.41/12,  group:'Processo'},
+  {code:'125880', desc:'Processo Mist. e Envase — Álcool Gel 70° INPM 3x4,3kg',        unit:'UND', preco:22.85/3,  group:'Processo'},
+  {code:'125891', desc:'Processo Mist. e Envase — Álcool Gel 80° Acendedor Barrica 10kg', unit:'UND', preco:4.09, group:'Processo'},
+  {code:'125908', desc:'Processo de Sopro do Frasco PET 1L/440g',                      unit:'UND', preco:0.119,    group:'Processo'},
+  {code:'125910', desc:'Processo de Sopro e Rotulagem do Frasco PEAD 5L/4,3kg',        unit:'UND', preco:2.1,      group:'Processo'},
+  {code:'125921', desc:'Processo Aplicação de Rótulo',                                 unit:'UND', preco:0.049,    group:'Processo'},
+  {code:'125933', desc:'Processo Tampagem V3 Branca',                                  unit:'UND', preco:0.11,     group:'Processo'},
+];
+const INSUMOS_BY_CODE = Object.fromEntries(INSUMOS_MASTER.map(i => [i.code, i]));
+const INSUMO_GROUPS = ['Matéria-prima','Embalagem','Rótulo','Logística','Processo'];
+
+function link(insumo, qty, perda){ return {insumo, qty, perda}; }
+
+const PRODUCT_DEFS = [
+  {
+    id:'bicarbonato', name:'Álcool + Bicarbonato 12x1L', ncm:'34029090', unitsPerCaixa:12,
+    pricing:{ipi:0.0325, icmsst:0, vendaCX:34, qtdCaixas:1, frete:3, contrato:0},
+    materials:[
+      link('51640',0.083291,0.03), link('00000',0,0), link('59900',1/12,0.03),
+      link('60150',1,0.03), link('111960',1,0.03), link('127255',(1/84)/12,0), link('68597',(0.3/84)/12,0),
+    ],
+    processo:{insumo:'125866', qty:1, perda:0}
+  },
+  {
+    id:'inpm46', name:'Álcool 46° INPM 12x1L', ncm:'22072019', unitsPerCaixa:12,
+    pricing:{ipi:0.052, icmsst:0, vendaCX:34, qtdCaixas:1, frete:3, contrato:0},
+    materials:[
+      link('51640',0.56,0.03), link('00000',0,0), link('59900',1/12,0.03),
+      link('60124',1,0.03), link('60100',1,0.03), link('127255',(1/84)/12,0), link('68597',(0.3/84)/12,0),
+    ],
+    processo:{insumo:'125830', qty:1, perda:0}
+  },
+  {
+    id:'inpm46bact', name:'Álcool 46° INPM Bactericida 12x1L', ncm:'38089429', unitsPerCaixa:12,
+    pricing:{ipi:0.0325, icmsst:0, vendaCX:34, qtdCaixas:1, frete:3, contrato:0},
+    materials:[
+      link('51640',0.56,0.03), link('00000',0,0), link('136451',0.003,0.03), link('59900',1/12,0.03),
+      link('60124',1,0.03), link('60100',1,0.03), link('127255',(1/84)/12,0), link('68597',(0.3/84)/12,0),
+    ],
+    processo:{insumo:'187860', qty:1, perda:0}
+  },
+  {
+    id:'inpm70', name:'Álcool 70° INPM 12x1L', ncm:'38089429', unitsPerCaixa:12,
+    pricing:{ipi:0.0325, icmsst:0, vendaCX:34, qtdCaixas:1, frete:3, contrato:0},
+    materials:[
+      link('51640',0.77,0.03), link('00000',0.27155,0), link('59900',1/12,0.03),
+      link('60150',1,0.03), link('111960',1,0.03), link('127255',(1/84)/12,0), link('68597',(0.3/84)/12,0),
+    ],
+    processo:{insumo:'125842', qty:1, perda:0}
+  },
+  {
+    id:'inpm70_3x5', name:'Álcool 70° INPM 3x5L', ncm:'38089429', unitsPerCaixa:3,
+    pricing:{ipi:0.0325, icmsst:0, vendaCX:34, qtdCaixas:1, frete:3, contrato:0},
+    materials:[
+      link('51640',3.85,0.03), link('00000',0.27155,0), link('93609',1,0.03),
+      link('46887',1/3,0.03), link('127255',(1/60)/3,0), link('68597',(0.3/60)/3,0),
+    ],
+    processo:{insumo:'125854', qty:1, perda:0}
+  },
+  {
+    id:'gel70_440', name:'Álcool Gel 70° INPM 12x440g Pump', ncm:'38089429', unitsPerCaixa:12,
+    pricing:{ipi:0.0325, icmsst:0, vendaCX:34, qtdCaixas:1, frete:3, contrato:0},
+    materials:[
+      link('51640',0.441772,0.03), link('00000',0.125145,0), link('60227',0.002,0.03), link('46735',1,0.03),
+      link('60082',1,0.03), link('60148',1,0.03), link('46875',1/12,0.03), link('127255',(1/84)/12,0), link('68597',(0.3/84)/12,0),
+    ],
+    processo:{insumo:'125878', qty:1, perda:0}
+  },
+  {
+    id:'gel70_43kg', name:'Álcool Gel 70° INPM 3x4,3kg', ncm:'38089429', unitsPerCaixa:3,
+    pricing:{ipi:0.0325, icmsst:0, vendaCX:34, qtdCaixas:1, frete:3, contrato:0},
+    materials:[
+      link('51640',3.85,0.03), link('00000',0,0), link('60227',0.002,0.03), link('93646',1,0.03),
+      link('46887',1/3,0.03), link('127255',(1/60)/3,0.03), link('68597',(0.3/60)/3,0.03),
+    ],
+    processo:{insumo:'125880', qty:1, perda:0}
+  },
+  {
+    id:'gel80_barrica', name:'Álcool Gel 80° Acendedor Barrica 10kg', ncm:'22071090', unitsPerCaixa:1,
+    pricing:{ipi:0, icmsst:0, vendaCX:34, qtdCaixas:1, frete:3, contrato:0},
+    materials:[
+      link('51640',8.8,0.03), link('00000',0,0), link('60227',0.06,0.03), link('107852',1,0.03),
+      link('127255',1/48,0), link('68597',0.3/48,0),
+    ],
+    processo:{insumo:'125891', qty:1, perda:0}
+  },
+];
+
+const DEFAULT_GLOBAL = { estado:'SP', comissao:0.04 };
+const SCHEMA_VERSION = 4;
+
+/* ============================================================
+   ESTADO (state management)
+   ============================================================ */
+
+function freshState(){
+  return {
+    v: SCHEMA_VERSION,
+    global: JSON.parse(JSON.stringify(DEFAULT_GLOBAL)),
+    insumos: Object.fromEntries(INSUMOS_MASTER.map(i => [i.code, {preco:i.preco}])),
+    products: PRODUCT_DEFS.map(p => ({
+      id:p.id,
+      pricing: JSON.parse(JSON.stringify(p.pricing)),
+      materials: p.materials.map(m => ({qty:m.qty, perda:m.perda})),
+      processo: {qty:p.processo.qty, perda:p.processo.perda},
+      open:false,
+    }))
+  };
+}
+
+let STATE = freshState();
+let saveTimer = null;
+
+function scheduleSave(){
+  const ind = document.getElementById('saveIndicator');
+  ind.textContent = 'salvando…';
+  ind.className = 'save-indicator';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try{
+      await window.storage.set('nova-era-simulador-state', JSON.stringify(STATE), false);
+      ind.textContent = 'salvo';
+      ind.className = 'save-indicator on';
+    }catch(e){
+      ind.textContent = 'erro ao salvar';
+      console.error(e);
+    }
+  }, 500);
+}
+
+async function loadState(){
+  try{
+    const res = await window.storage.get('nova-era-simulador-state', false);
+    if(res && res.value){
+      const parsed = JSON.parse(res.value);
+      if(parsed && parsed.v === SCHEMA_VERSION && parsed.global && parsed.insumos && parsed.products){
+        STATE = parsed;
+      }
+    }
+  }catch(e){
+    // no saved state yet — use defaults
+  }
+}
+
+/* ============================================================
+   CÁLCULOS — replica exata das fórmulas do SIMULADOR
+   ============================================================ */
+
+function computeMaterials(def, st){
+  let cicUnit = 0;
+  const rows = def.materials.map((m, i) => {
+    const ins = INSUMOS_BY_CODE[m.insumo];
+    const s = st.materials[i];
+    const preco = STATE.insumos[m.insumo].preco;
+    const custoUnit = preco * s.qty;
+    const perdaValor = custoUnit * s.perda;
+    const cic = custoUnit + perdaValor;
+    cicUnit += cic;
+    return { code:ins.code, desc:ins.desc, unit:ins.unit, qty:s.qty, perda:s.perda, preco, cic, linked:true };
+  });
+  // processo/mão de obra — agora também vinculado à Base de Insumos (linhas 44–56)
+  const ps = st.processo;
+  const procIns = INSUMOS_BY_CODE[def.processo.insumo];
+  const procPreco = STATE.insumos[def.processo.insumo].preco;
+  const procCustoUnit = procPreco * ps.qty;
+  const procCic = procCustoUnit + procCustoUnit * ps.perda;
+  cicUnit += procCic;
+  rows.push({ code:procIns.code, desc:procIns.desc, unit:procIns.unit, qty:ps.qty, perda:ps.perda, preco:procPreco, cic:procCic, linked:true });
+
+  return { rows, cicUnit, cicCaixa: cicUnit * def.unitsPerCaixa };
+}
+
+function computeProduct(def, st, global){
+  const { rows, cicUnit, cicCaixa } = computeMaterials(def, st);
+  const p = st.pricing;
+  const C = def.unitsPerCaixa;
+  const G = p.vendaCX;
+  const E = p.qtdCaixas;
+  const ICMS = global.icms;
+  const F = G / C;
+  const H = G * ICMS;
+  const I = G * PIS_COFINS;
+  const K = G * p.ipi;
+  const stZerado = global.estado === 'SP';
+  const M = G * (stZerado ? 0 : p.icmsst);
+  const O = G + K + M;
+  const N = O / C;
+  const P = O * E;
+  const Z = p.frete;
+  const contratoPct = p.contrato;
+  const S = (G - (H + I + K + M + Z + (O * contratoPct))) * global.comissao;
+  const T = S * E;
+  const V = P * contratoPct;
+  const AB = cicCaixa;
+  const AC = AB * E;
+  const AE = AB + Z + S + (O * contratoPct);
+  const AF = AE * E;
+  const AH = G;
+  const AI = AH * E;
+  const AK = AH - AE;
+  const AL = AK * E;
+  const AM = AH !== 0 ? AK / AH : 0;
+  const AO = O;
+  const AP = P;
+  const AR = AO - AE;
+  const AS = AP - AF;
+  const AT = AO !== 0 ? AR / AO : 0;
+
+  return {
+    rows, cicUnit, cicCaixa,
+    F,H,I,K,M,O,N,P,Z,S,T,V,AB,AC,AE,AF,AH,AI,AK,AL,AM,AO,AP,AR,AS,AT,
+    icms: IMPOSTOS[global.estado][def.ncm],
+  };
+}
+
+function computeAll(){
+  const results = PRODUCT_DEFS.map((def, i) => {
+    const st = STATE.products[i];
+    const g = { comissao: STATE.global.comissao, icms: IMPOSTOS[STATE.global.estado][def.ncm][0], estado: STATE.global.estado };
+    return computeProduct(def, st, g);
+  });
+  let sumWeightSemNum=0, sumWeightComNum=0, sumQtd=0, totalSem=0, totalCom=0;
+  results.forEach((r,i) => {
+    const qtd = STATE.products[i].pricing.qtdCaixas;
+    sumWeightSemNum += r.AM * qtd;
+    sumWeightComNum += r.AT * qtd;
+    sumQtd += qtd;
+    totalSem += r.AI; // valor total venda sem IPI/ST (já multiplicado pela qtd de caixas)
+    totalCom += r.AP; // valor total venda com IPI/ST (já multiplicado pela qtd de caixas)
+  });
+  const avgSem = sumQtd !== 0 ? sumWeightSemNum / sumQtd : 0;
+  const avgCom = sumQtd !== 0 ? sumWeightComNum / sumQtd : 0;
+  return { results, avgSem, avgCom, totalSem, totalCom, icmsGlobal: IMPOSTOS[STATE.global.estado][PRODUCT_DEFS[0].ncm][0] };
+}
+
+/* ============================================================
+   FORMATTERS
+   ============================================================ */
+const fmtMoney = (v) => 'R$ ' + (v||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+const fmtMoney4 = (v) => (v||0).toLocaleString('pt-BR', {minimumFractionDigits:4, maximumFractionDigits:6});
+const fmtPct = (v) => ((v||0)*100).toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1}) + '%';
+const fmtPct2 = (v) => ((v||0)*100).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
+
+/* ============================================================
+   RENDER — tela principal
+   ============================================================ */
+
+function renderEstadoOptions(){
+  const sel = document.getElementById('estadoSel');
+  sel.innerHTML = ESTADOS.map(e => `<option value="${e.code}" ${e.code===STATE.global.estado?'selected':''}>${e.code} — ${e.name}</option>`).join('');
+}
+
+function renderTopBar(){
+  const all = computeAll();
+  document.getElementById('icmsView').value = (all.icmsGlobal*100).toLocaleString('pt-BR',{minimumFractionDigits:0}) + '%';
+  if(document.activeElement !== document.getElementById('comissaoInput')){
+    document.getElementById('comissaoInput').value = (STATE.global.comissao*100).toString().replace('.',',');
+  }
+
+  const pct = all.avgSem;
+  const approved = pct >= 0.06;
+  const statusEl = document.getElementById('statusPill');
+  statusEl.className = 'status ' + (approved ? 'ok' : 'no');
+  statusEl.textContent = approved ? '● Aprovado' : '● Negado';
+
+  document.getElementById('sumSemIpi').textContent = fmtPct2(all.avgSem);
+  document.getElementById('sumComIpi').textContent = fmtPct2(all.avgCom);
+  document.getElementById('totalSem').textContent = fmtMoney(all.totalSem);
+  document.getElementById('totalCom').textContent = fmtMoney(all.totalCom);
+
+  return all;
+}
+
+function fieldHtml(label, unit, value, path, step, disabled){
+  return `<div class="field${disabled?' disabled':''}">
+    <label>${label}</label>
+    <input type="text" inputmode="decimal" value="${value}" data-path="${path}" ${disabled?'disabled':''}>
+    ${unit ? `<span class="unit">${unit}</span>` : ''}
+  </div>`;
+}
+
+function renderProducts(all){
+  const list = document.getElementById('productList');
+  list.innerHTML = PRODUCT_DEFS.map((def, i) => {
+    const st = STATE.products[i];
+    const r = all.results[i];
+    const approved = r.AM >= 0.06;
+    const [icms, mva, aliq] = r.icms;
+    const stZerado = STATE.global.estado === 'SP';
+
+    const numMaterials = def.materials.length; // last row in r.rows is always "processo"
+    const matRows = r.rows.map((row, mi) => {
+      const isProcesso = mi === numMaterials;
+      const qtyPath = isProcesso ? `products.${i}.processo.qty` : `products.${i}.materials.${mi}.qty`;
+      const perdaPath = isProcesso ? `products.${i}.processo.perda` : `products.${i}.materials.${mi}.perda`;
+      const qtyVal = isProcesso ? st.processo.qty : st.materials[mi].qty;
+      const perdaVal = isProcesso ? st.processo.perda : st.materials[mi].perda;
+      return `
+        <tr>
+          <td class="desc">${row.desc}<br><span style="color:var(--ink-faint)">${row.code} · ${row.unit}</span></td>
+          <td><input type="text" inputmode="decimal" value="${qtyVal}" data-path="${qtyPath}"></td>
+          <td class="price-linked">${fmtMoney4(row.preco)}<span class="lock">Base de Insumos</span></td>
+          <td><input type="text" inputmode="decimal" value="${(perdaVal*100).toFixed(2)}" data-path="${perdaPath}" data-pct="1"></td>
+          <td class="right">${fmtMoney4(row.cic)}</td>
+        </tr>`;
+    }).join('');
+
+    return `
+    <div class="card ${st.open ? 'open':''}" data-idx="${i}">
+      <div class="card-head" data-toggle="${i}">
+        <div class="idx">${String(i+1).padStart(2,'0')}</div>
+        <div class="name">${def.name}<img class="name-logo" src="${LOGO_DATA_URI}" alt="Nova Era"><small>NCM ${def.ncm} · ${fmtMoney(st.pricing.vendaCX)}/cx</small></div>
+        <div class="pill ${approved?'ok':'no'}">${fmtPct2(r.AM)}</div>
+        <div class="chevron"></div>
+      </div>
+      <div class="card-body">
+        <div class="card-body-inner">
+
+          <div class="section-label">Preço &amp; condições</div>
+          <div class="grid2">
+            ${fieldHtml('Venda / caixa (sem IPI-ST)', 'R$', st.pricing.vendaCX, `products.${i}.pricing.vendaCX`)}
+            ${fieldHtml('Qtd. de caixas no pedido', 'cx', st.pricing.qtdCaixas, `products.${i}.pricing.qtdCaixas`)}
+            ${fieldHtml('Frete por caixa', 'R$', st.pricing.frete, `products.${i}.pricing.frete`)}
+            ${fieldHtml('Contrato', '%', (st.pricing.contrato*100).toFixed(2), `products.${i}.pricing.contrato`)}
+            ${fieldHtml('IPI', '%', (st.pricing.ipi*100).toFixed(2), `products.${i}.pricing.ipi`)}
+            ${fieldHtml('ICMS-ST', '%', stZerado ? '0,00 (zerado p/ SP)' : (st.pricing.icmsst*100).toFixed(2), `products.${i}.pricing.icmsst`, null, stZerado)}
+          </div>
+          <div class="ref-note">
+            ${stZerado
+              ? `<b>Substituição Tributária zerada para SP.</b> O ICMS-ST não é cobrado (0%) para pedidos nesse estado — o valor cadastrado no produto (${fmtPct(st.pricing.icmsst)}) fica guardado e volta a valer se você trocar para outro estado.`
+              : `Referência ${STATE.global.estado} para NCM ${def.ncm}: MVA <b>${fmtPct(mva)}</b> · Alíquota interna <b>${fmtPct(aliq)}</b> · ICMS próprio <b>${fmtPct(icms)}</b>. Ajuste o ICMS-ST manualmente acima, como na planilha original.`}
+          </div>
+
+          <div class="section-label">Matéria-prima, embalagem &amp; processo</div>
+          <div class="mp-wrap">
+          <table class="mp">
+            <thead><tr><th>Insumo</th><th>Qtd</th><th style="text-align:right">Preço R$</th><th>Perda %</th><th style="text-align:right">CIC</th></tr></thead>
+            <tbody>${matRows}</tbody>
+          </table>
+          </div>
+
+          <div class="results">
+            <div class="res-item"><span class="k">CIC unitário</span><span class="v">${fmtMoney4(r.cicUnit)}</span></div>
+            <div class="res-item"><span class="k">CIC por caixa</span><span class="v">${fmtMoney(r.cicCaixa)}</span></div>
+            <div class="res-item wide"></div>
+            <div class="res-item"><span class="k">Custo total produção</span><span class="v">${fmtMoney(r.AC)}</span></div>
+            <div class="res-item"><span class="k">Custo + frete + comissão + contrato (cx)</span><span class="v">${fmtMoney(r.AE)}</span></div>
+            <div class="res-item"><span class="k">Valor caixa com IPI+ST</span><span class="v">${fmtMoney(r.O)}</span></div>
+            <div class="res-item"><span class="k">Total do pedido (com IPI+ST)</span><span class="v">${fmtMoney(r.AP)}</span></div>
+            <div class="res-item"><span class="k">Comissão total</span><span class="v">${fmtMoney(r.T)}</span></div>
+            <div class="res-item"><span class="k">Diferença unit. sem IPI/ST</span><span class="v ${r.AK>=0?'pos':'neg'}">${fmtMoney(r.AK)}</span></div>
+          </div>
+
+          <div class="margin-badges">
+            <div class="mb ${r.AM>=0.06?'ok':'no'}"><div class="k">Margem sem IPI/ST</div><div class="v">${fmtPct2(r.AM)}</div></div>
+            <div class="mb ${r.AT>=0.06?'ok':'no'}"><div class="k">Margem com IPI/ST</div><div class="v">${fmtPct2(r.AT)}</div></div>
+          </div>
+
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  attachProductListeners();
+}
+
+/* ============================================================
+   RENDER — Base de Insumos
+   ============================================================ */
+
+function usedByLabel(code){
+  const names = [];
+  PRODUCT_DEFS.forEach(def => {
+    const usesMaterial = def.materials.some(m => m.insumo === code);
+    const usesProcesso = def.processo.insumo === code;
+    if(usesMaterial || usesProcesso) names.push(def.name.split(' ').slice(0,2).join(' '));
+  });
+  return names.length ? names.join(', ') : 'não usado nos 8 produtos atuais';
+}
+
+function renderInsumos(){
+  const body = document.getElementById('insumosBody');
+  body.innerHTML = INSUMO_GROUPS.map(group => {
+    const items = INSUMOS_MASTER.filter(i => i.group === group);
+    const rows = items.map(i => `
+      <div class="insumo-row">
+        <div class="insumo-info">
+          <div class="n">${i.desc}</div>
+          <div class="m">${i.code} · ${i.unit} · usado em: ${usedByLabel(i.code)}</div>
+        </div>
+        <div class="insumo-price">
+          <span class="rs">R$</span>
+          <input type="text" inputmode="decimal" value="${STATE.insumos[i.code].preco}" data-insumo="${i.code}">
+        </div>
+      </div>`).join('');
+    return `<div class="insumo-group-label">${group}</div>${rows}`;
+  }).join('');
+
+  body.querySelectorAll('input[data-insumo]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      let val = parseFloat(inp.value.replace(',','.'));
+      if(isNaN(val)) val = 0;
+      STATE.insumos[inp.dataset.insumo].preco = val;
+      const all = renderTopBar();
+      renderProducts(all);
+      scheduleSave();
+    });
+  });
+}
+
+/* ============================================================
+   COMPARTILHAR NO WHATSAPP — resumo sem margens
+   ============================================================ */
+
+function buildWhatsAppText(all){
+  const dataStr = new Date().toLocaleDateString('pt-BR');
+  const lines = [];
+  lines.push('*Simulação de Preços — Nova Era*');
+  lines.push(`📅 ${dataStr}  ·  Estado: ${STATE.global.estado}`);
+  lines.push('');
+  PRODUCT_DEFS.forEach((def, i) => {
+    const r = all.results[i];
+    lines.push(`▪️ *${def.name}*`);
+    lines.push(`   Sem impostos: ${fmtMoney(r.AH)}/cx  |  Com impostos: ${fmtMoney(r.AO)}/cx`);
+  });
+  lines.push('');
+  lines.push(`*Total do pedido (sem impostos): ${fmtMoney(all.totalSem)}*`);
+  lines.push(`*Total do pedido (com impostos): ${fmtMoney(all.totalCom)}*`);
+  return lines.join('\n');
+}
+
+/* ============================================================
+   LISTENERS / PATH HELPERS
+   ============================================================ */
+
+function setByPath(obj, path, value){
+  const parts = path.split('.');
+  let cur = obj;
+  for(let i=0;i<parts.length-1;i++){
+    const key = isNaN(parts[i]) ? parts[i] : Number(parts[i]);
+    cur = cur[key];
+  }
+  const lastKey = isNaN(parts[parts.length-1]) ? parts[parts.length-1] : Number(parts[parts.length-1]);
+  cur[lastKey] = value;
+}
+
+function attachProductListeners(){
+  document.querySelectorAll('[data-toggle]').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = Number(el.dataset.toggle);
+      STATE.products[idx].open = !STATE.products[idx].open;
+      const card = document.querySelector(`.card[data-idx="${idx}"]`);
+      card.classList.toggle('open');
+    });
+  });
+
+  document.querySelectorAll('input[data-path]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      let val = parseFloat(inp.value.replace(',','.'));
+      if(isNaN(val)) val = 0;
+      const path = inp.dataset.path;
+      const isPct = inp.dataset.pct === '1' || path.includes('.contrato') || path.includes('.ipi') || path.includes('.icmsst');
+      const finalVal = isPct ? val/100 : val;
+      setByPath(STATE, path, finalVal);
+      const all = renderTopBar();
+      renderProducts(all);
+      const again = document.querySelector(`input[data-path="${path}"]`);
+      if(again){ again.focus(); const v = again.value; try{ again.setSelectionRange(v.length, v.length); }catch(_){} }
+      scheduleSave();
+    });
+  });
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+
+async function init(){
+  document.getElementById('brandLogo').src = LOGO_DATA_URI;
+  await loadState();
+  renderEstadoOptions();
+
+  document.getElementById('estadoSel').addEventListener('change', (e) => {
+    STATE.global.estado = e.target.value;
+    const all = renderTopBar();
+    renderProducts(all);
+    scheduleSave();
+  });
+
+  document.getElementById('comissaoInput').addEventListener('input', (e) => {
+    let val = parseFloat(e.target.value.replace(',','.'));
+    if(isNaN(val)) val = 0;
+    STATE.global.comissao = val/100;
+    const all = renderTopBar();
+    renderProducts(all);
+    scheduleSave();
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    if(confirm('Restaurar todos os valores (inclusive a Base de Insumos) para o padrão original da planilha? Isso vai apagar suas edições salvas.')){
+      STATE = freshState();
+      renderEstadoOptions();
+      const all = renderTopBar();
+      renderProducts(all);
+      scheduleSave();
+    }
+  });
+
+  document.getElementById('openInsumos').addEventListener('click', () => {
+    renderInsumos();
+    document.getElementById('insumosOverlay').classList.add('open');
+  });
+  document.getElementById('closeInsumos').addEventListener('click', () => {
+    document.getElementById('insumosOverlay').classList.remove('open');
+  });
+
+  document.getElementById('shareWhatsapp').addEventListener('click', () => {
+    const all = computeAll();
+    const text = buildWhatsAppText(all);
+    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+  });
+
+  const all = renderTopBar();
+  renderProducts(all);
+}
+
+init();
+</script>
+</body>
+</html>
