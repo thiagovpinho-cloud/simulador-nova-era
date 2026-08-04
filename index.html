@@ -73,6 +73,17 @@
     display:inline-block; vertical-align:middle; margin-left:6px; flex-shrink:0;
   }
 
+  .brand-actions{
+    display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;
+  }
+  .brand-actions .insumos-btn{ flex:1; min-width:140px; justify-content:center; }
+
+  @media (max-width: 380px){
+    .brand-text h1{ font-size:14.5px; }
+    .brand-mark{ width:32px; height:32px; }
+    .brand-actions .insumos-btn{ min-width:0; font-size:11px; padding:7px 8px; }
+  }
+
   .brand-switch{
     display:flex; gap:6px; margin-bottom:10px; background:var(--surface-2); border-radius:11px; padding:4px;
   }
@@ -205,6 +216,44 @@
   .whatsapp-btn:active{ background:#1EBE59; }
   .whatsapp-btn svg{ width:18px; height:18px; flex-shrink:0; }
 
+  .order-btn{
+    width:100%; display:flex; align-items:center; justify-content:center; gap:8px; margin-top:8px;
+    background: var(--ink); color:#fff; border:none; border-radius:12px; padding:12px;
+    font-family: var(--sans); font-size:13.5px; font-weight:600; cursor:pointer;
+  }
+  .order-btn:active{ background:#000; }
+  .order-btn svg{ width:18px; height:18px; flex-shrink:0; }
+
+  .order-section-label{
+    font-size:10px; text-transform:uppercase; letter-spacing:.6px; color:var(--brand-dark); font-weight:700;
+    margin: 18px 0 8px; display:flex; align-items:center; gap:6px;
+  }
+  .order-section-label:first-child{ margin-top:0; }
+  .order-section-label::after{ content:''; flex:1; height:1px; background:var(--border); }
+  .order-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+  .order-field{ background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:7px 10px; }
+  .order-field.wide{ grid-column: 1 / -1; }
+  .order-field label{ display:block; font-size:9.5px; color:var(--ink-faint); margin-bottom:2px; }
+  .order-field input[type=text], .order-field input[type=email], .order-field input[type=date]{
+    width:100%; background:transparent; border:none; color:var(--ink); font-family:var(--sans);
+    font-size:13px; outline:none; padding:0;
+  }
+  .order-field.checkbox-field{ display:flex; align-items:center; }
+  .order-field.checkbox-field label{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink); margin:0; }
+  .order-products-note{ font-size:11px; color:var(--ink-faint); margin:16px 0; line-height:1.5; padding:10px 12px; background:var(--blue-soft); border-radius:9px; }
+  .order-actions{ margin-top:6px; }
+  .order-generate-btn{
+    width:100%; background:var(--brand); color:#fff; border:none; border-radius:11px; padding:13px;
+    font-family:var(--sans); font-size:14px; font-weight:700; cursor:pointer; margin-bottom:10px;
+  }
+  .order-generate-btn:active{ background:var(--brand-dark); }
+  .order-actions-row{ display:flex; gap:8px; margin-bottom:10px; }
+  .order-secondary-btn{
+    flex:1; background:var(--surface-2); border:1px solid var(--border); color:var(--ink-dim);
+    border-radius:10px; padding:10px; font-family:var(--sans); font-size:12px; font-weight:600; cursor:pointer;
+  }
+  .order-hint{ font-size:10.5px; color:var(--ink-faint); line-height:1.5; }
+
   /* ---------- product list ---------- */
   .list{ padding: 4px 16px 0; display:flex; flex-direction:column; gap:8px; }
   .card{ background: var(--surface); border:1px solid var(--border); border-radius: var(--radius); overflow:hidden; box-shadow: var(--shadow); }
@@ -273,7 +322,7 @@
   .mb.no{ background: var(--red-soft); border-color: rgba(210,72,62,.25); }
   .mb.no .v{ color: var(--red); }
 
-  footer{ margin: 20px 16px 0; display:flex; justify-content:space-between; align-items:center; font-size:10.5px; color: var(--ink-faint); }
+  footer{ margin: 20px 16px 0; display:flex; justify-content:space-between; align-items:center; font-size:10.5px; color: var(--ink-faint); flex-wrap:wrap; gap:10px; }
   .reset-btn{ background: transparent; border:1px solid var(--border); color: var(--ink-dim); font-family: var(--sans); font-size:11px; padding:8px 14px; border-radius:9px; cursor:pointer; }
   .reset-btn:active{ background: var(--surface-2); }
   .save-indicator{ font-family: var(--mono); }
@@ -350,7 +399,12 @@
     font-family:var(--mono); font-size:9.5px; text-transform:uppercase; letter-spacing:.4px;
     padding:3px 8px; border-radius:6px; background:var(--surface-2); color:var(--ink-faint);
   }
-  .logout-link{ color:var(--ink-faint); font-size:11px; text-decoration:underline; }
+  .logout-link{
+    color:var(--ink-dim); font-size:13px; font-weight:600; text-decoration:none;
+    background:var(--surface-2); border:1px solid var(--border); border-radius:9px;
+    padding:8px 14px; display:inline-block;
+  }
+  .logout-link:active{ background:var(--red-soft); color:var(--red); }
 
   /* ---------- Papel "Usuário": esconde margens/custos e trava edição ---------- */
   body.role-user .admin-only{ display:none !important; }
@@ -393,6 +447,8 @@
       <h1>Simulador de Precificação</h1>
       <p id="brandSubtitle">NOVA ERA · 2026</p>
     </div>
+  </div>
+  <div class="brand-actions">
     <div class="insumos-btn admin-only" id="openInsumos">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       Base de Insumos
@@ -452,6 +508,10 @@
     <svg viewBox="0 0 32 32" fill="currentColor"><path d="M16.04 3C9.4 3 4 8.36 4 15.02c0 2.36.65 4.56 1.78 6.44L4 29l7.72-1.72a11.9 11.9 0 0 0 4.32.81c6.64 0 12.04-5.36 12.04-12.02C28.08 8.36 22.68 3 16.04 3zm7.05 17.2c-.3.83-1.62 1.55-2.24 1.63-.6.08-1.31.35-4.35-.9-3.65-1.5-6-5.2-6.18-5.44-.18-.24-1.47-1.96-1.47-3.74 0-1.78.94-2.65 1.27-3.02.33-.36.72-.45.96-.45.24 0 .48 0 .69.01.22.01.52-.08.82.62.3.72 1.03 2.5 1.12 2.68.1.18.16.4.03.64-.13.24-.2.4-.4.6-.2.22-.42.5-.6.67-.2.19-.4.4-.18.79.23.4 1.02 1.68 2.2 2.72 1.51 1.35 2.78 1.77 3.19 1.97.4.2.64.17.87-.1.24-.28.99-1.15 1.26-1.55.26-.4.53-.33.87-.2.35.13 2.2 1.04 2.58 1.23.38.2.63.28.72.44.1.16.1.9-.2 1.74z"/></svg>
     <span id="shareBtnLabel">Compartilhar no WhatsApp</span>
   </button>
+  <button class="order-btn admin-only" id="openOrderForm" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3v4a1 1 0 001 1h4"/><path d="M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"/><path d="M9 13h6M9 17h6M9 9h1"/></svg>
+    Gerar Pedido (PDF)
+  </button>
 </div>
 
 <div class="list" id="productList"></div>
@@ -509,7 +569,65 @@
   <div class="overlay-body" id="compareBody"></div>
 </div>
 
+<!-- ===================== GERAR PEDIDO OVERLAY ===================== -->
+<div class="overlay" id="orderOverlay">
+  <div class="overlay-head">
+    <div style="flex:1">
+      <h2>Gerar Pedido</h2>
+      <p>Preencha os dados do cliente/entrega. Os produtos e preços vêm da simulação atual (os marcados na lista, com quantidade preenchida).</p>
+    </div>
+    <div class="close-btn" id="closeOrderForm">✕</div>
+  </div>
+  <div class="overlay-body" id="orderFormBody">
+    <div class="order-section-label">Dados do cliente</div>
+    <div class="order-grid">
+      <div class="order-field"><label>CNPJ ou código cliente</label><input type="text" data-order="cnpjCliente"></div>
+      <div class="order-field"><label>Data do pedido</label><input type="date" data-order="dataPedido"></div>
+      <div class="order-field wide"><label>Razão social</label><input type="text" data-order="razaoSocial"></div>
+      <div class="order-field"><label>Comprador</label><input type="text" data-order="comprador"></div>
+      <div class="order-field"><label>Inscrição estadual</label><input type="text" data-order="inscricaoEstadual"></div>
+      <div class="order-field"><label>E-mail do cliente</label><input type="email" data-order="emailCliente"></div>
+      <div class="order-field"><label>Celular do cliente</label><input type="text" data-order="celularCliente"></div>
+    </div>
+
+    <div class="order-section-label">Entrega</div>
+    <div class="order-grid">
+      <div class="order-field wide"><label>Endereço de entrega</label><input type="text" data-order="enderecoEntrega"></div>
+      <div class="order-field"><label>Cidade</label><input type="text" data-order="cidade"></div>
+      <div class="order-field"><label>Tipo de frete</label><input type="text" data-order="tipoFrete" placeholder="Ex: CIF, FOB"></div>
+      <div class="order-field"><label>Tipo de carga</label><input type="text" data-order="tipoCarga"></div>
+      <div class="order-field"><label>Agendamento de entrega</label><input type="text" data-order="agendamentoEntrega"></div>
+      <div class="order-field"><label>Valor do frete (R$)</label><input type="text" inputmode="decimal" data-order="valorFrete"></div>
+      <div class="order-field checkbox-field">
+        <label><input type="checkbox" data-order="taxaDescarga" id="taxaDescargaChk"> Tem taxa para descarga?</label>
+      </div>
+      <div class="order-field" id="valorTaxaDescargaWrap"><label>Se sim, valor (R$)</label><input type="text" inputmode="decimal" data-order="valorTaxaDescarga"></div>
+    </div>
+
+    <div class="order-section-label">Pagamento e venda</div>
+    <div class="order-grid">
+      <div class="order-field"><label>Condição de pagamento</label><input type="text" data-order="condicaoPgto"></div>
+      <div class="order-field"><label>Forma de pagamento</label><input type="text" data-order="formaPgto"></div>
+      <div class="order-field"><label>Vendedor</label><input type="text" data-order="vendedor"></div>
+      <div class="order-field wide"><label>Observações</label><input type="text" data-order="observacoes"></div>
+    </div>
+
+    <p class="order-products-note" id="orderProductsNote"></p>
+
+    <div class="order-actions">
+      <button class="order-generate-btn" id="generateOrderPdf" type="button">Gerar PDF do pedido</button>
+      <div class="order-actions-row">
+        <button class="order-secondary-btn" id="orderShareWhatsapp" type="button">Enviar por WhatsApp</button>
+        <button class="order-secondary-btn" id="orderShareEmail" type="button">Enviar por e-mail</button>
+      </div>
+      <p class="order-hint">O PDF baixa no seu dispositivo. Os botões de WhatsApp/e-mail abrem a conversa/rascunho prontos — anexe o PDF baixado manualmente, já que o navegador não permite anexar automaticamente.</p>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
 <script>
 /* ============================================================
@@ -835,12 +953,27 @@ const BRANDS = {
     products: PRODUCTS_NOVAERA, insumos: INSUMOS_NOVAERA,
     insumosByCode: Object.fromEntries(INSUMOS_NOVAERA.map(i => [i.code, i])),
     defaultEstado:'SP', defaultComissao:0.04,
+    orderForm: {
+      company: {
+        nome: 'DESTILARIA NOVA ERA LTDA',
+        cnpj: '07.736.245/0001-20',
+        endereco: 'Rib. Bonito - Rod. Municipal, s/n - Km 10 - Fazenda Santa Helena, Ibaté - SP 14.819-899',
+        telefone: '(16) 99626-1021',
+        email: 'admvendas@novaera-energia.com.br',
+      },
+      // código do produto tal como aparece na planilha "PEDIDO DE VENDA" da empresa
+      productCodes: {
+        bicarbonato: '93968', inpm46: '59997', inpm46bact: '135379', inpm70: '59894',
+        inpm70_3x5: '92277', gel70_440: '59950', gel70_43kg: '88742', gel80_barrica: '89394',
+      },
+    },
   },
   newgreen: {
     id:'newgreen', label:'New Green', logo:LOGO_NEWGREEN_URI,
     products: PRODUCTS_NEWGREEN, insumos: INSUMOS_NEWGREEN,
     insumosByCode: Object.fromEntries(INSUMOS_NEWGREEN.map(i => [i.code, i])),
     defaultEstado:'SP', defaultComissao:0.04,
+    orderForm: null, // ainda não recebemos o modelo de pedido da New Green
   },
 };
 
@@ -849,6 +982,15 @@ const SCHEMA_VERSION = 5;
 /* ============================================================
    ESTADO (state management) — agora com suporte a múltiplas marcas
    ============================================================ */
+
+function freshOrderMeta(){
+  return {
+    cnpjCliente:'', dataPedido:'', razaoSocial:'', condicaoPgto:'', comprador:'', tipoFrete:'',
+    emailCliente:'', formaPgto:'', inscricaoEstadual:'', observacoes:'', celularCliente:'',
+    taxaDescarga:false, valorTaxaDescarga:'', enderecoEntrega:'', vendedor:'', cidade:'',
+    tipoCarga:'', agendamentoEntrega:'', valorFrete:0,
+  };
+}
 
 function freshBrandState(brand){
   return {
@@ -865,6 +1007,7 @@ function freshBrandState(brand){
       included:true,
     })),
     scenarios: [], // cenários nomeados salvos pelo usuário
+    orderMeta: freshOrderMeta(),
   };
 }
 
@@ -915,6 +1058,7 @@ async function loadState(){
         Object.values(STATE.brands).forEach(b => {
           b.products.forEach(p => { if(p.included === undefined) p.included = true; });
           if(!b.scenarios) b.scenarios = [];
+          if(!b.orderMeta) b.orderMeta = freshOrderMeta();
         });
         if(STATE.marginTarget === undefined) STATE.marginTarget = 0.06;
       }
@@ -1034,6 +1178,7 @@ function computeAll(){
 /* ============================================================
    FORMATTERS
    ============================================================ */
+const parseBRNum = (v) => { const n = parseFloat(String(v ?? '').replace(',','.')); return isNaN(n) ? 0 : n; };
 const fmtMoney = (v) => 'R$ ' + (v||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
 const fmtMoney4 = (v) => (v||0).toLocaleString('pt-BR', {minimumFractionDigits:4, maximumFractionDigits:6});
 const fmtPct = (v) => ((v||0)*100).toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1}) + '%';
@@ -1075,6 +1220,7 @@ function renderBrandHeader(){
     initEl.textContent = brand.label.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     markEl.style.background = '#0e9488';
   }
+  document.getElementById('openOrderForm').style.display = brand.orderForm ? '' : 'none';
 }
 
 function renderTopBar(){
@@ -1293,6 +1439,186 @@ function buildWhatsAppText(all){
   lines.push(`*Total do pedido (sem impostos): ${fmtMoney(subSem)}*`);
   lines.push(`*Total do pedido (com impostos): ${fmtMoney(subCom)}*`);
   return { text: lines.join('\n'), count };
+}
+
+/* ============================================================
+   GERAR PEDIDO (PDF) — usa a simulação atual como base
+   ============================================================ */
+
+function getOrderLines(){
+  const brand = curBrand();
+  const bstate = curState();
+  if(!brand.orderForm) return [];
+  const all = computeAll();
+  const lines = [];
+  brand.products.forEach((def, i) => {
+    const st = bstate.products[i];
+    const code = brand.orderForm.productCodes[def.id];
+    if(code === undefined) return; // produto sem código de pedido mapeado (ex: fora do escopo atual)
+    if(st.included && st.pricing.qtdCaixas > 0 && st.pricing.vendaCX > 0){
+      const r = all.results[i];
+      lines.push({ def, r, code, qty: st.pricing.qtdCaixas, price: st.pricing.vendaCX });
+    }else{
+      lines.push({ def, r:null, code, qty:null, price:null });
+    }
+  });
+  return lines;
+}
+
+function renderOrderForm(){
+  const brand = curBrand();
+  const bstate = curState();
+  if(!bstate.orderMeta.dataPedido){
+    bstate.orderMeta.dataPedido = new Date().toISOString().slice(0,10);
+  }
+  document.querySelectorAll('#orderFormBody [data-order]').forEach(el => {
+    const key = el.dataset.order;
+    if(el.type === 'checkbox'){ el.checked = !!bstate.orderMeta[key]; }
+    else{ el.value = bstate.orderMeta[key] ?? ''; }
+  });
+  document.getElementById('valorTaxaDescargaWrap').style.display = bstate.orderMeta.taxaDescarga ? '' : 'none';
+
+  const lines = getOrderLines();
+  const activeLines = lines.filter(l => l.qty !== null);
+  document.getElementById('orderProductsNote').textContent =
+    `${activeLines.length} de ${lines.length} produtos entram nesse pedido (marcados na lista, com quantidade e preço preenchidos). Pra mudar isso, ajuste a caixinha de seleção e os campos de cada produto antes de gerar.`;
+}
+
+function setupOrderFormListeners(){
+  document.querySelectorAll('#orderFormBody [data-order]').forEach(el => {
+    el.addEventListener('input', () => {
+      const bstate = curState();
+      const key = el.dataset.order;
+      if(el.type === 'checkbox'){
+        bstate.orderMeta[key] = el.checked;
+        document.getElementById('valorTaxaDescargaWrap').style.display = el.checked ? '' : 'none';
+      }else{
+        bstate.orderMeta[key] = el.value;
+      }
+      scheduleSave();
+    });
+    el.addEventListener('change', () => {
+      if(el.type === 'checkbox'){
+        curState().orderMeta[el.dataset.order] = el.checked;
+        document.getElementById('valorTaxaDescargaWrap').style.display = el.checked ? '' : 'none';
+        scheduleSave();
+      }
+    });
+  });
+}
+
+function buildOrderPdf(){
+  const brand = curBrand();
+  const bstate = curState();
+  const meta = bstate.orderMeta;
+  const lines = getOrderLines();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const c = brand.orderForm.company;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(15);
+  doc.text('PEDIDO DE VENDA', 14, 15);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+  doc.text(`${c.nome}  ${c.cnpj}`, pageW-14, 10, {align:'right'});
+  doc.text(c.endereco, pageW-14, 14, {align:'right'});
+  doc.text(`${c.telefone}   ${c.email}`, pageW-14, 18, {align:'right'});
+  doc.setDrawColor(200); doc.line(14, 21, pageW-14, 21);
+
+  const fmtDate = (iso) => { if(!iso) return ''; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; };
+  const infoRows = [
+    ['CNPJ/Código cliente', meta.cnpjCliente, 'Data do pedido', fmtDate(meta.dataPedido)],
+    ['Razão social', meta.razaoSocial, 'Comprador', meta.comprador],
+    ['E-mail cliente', meta.emailCliente, 'Celular cliente', meta.celularCliente],
+    ['Inscrição estadual', meta.inscricaoEstadual, 'Vendedor', meta.vendedor],
+    ['Endereço de entrega', meta.enderecoEntrega, 'Cidade', meta.cidade],
+    ['Tipo de frete', meta.tipoFrete, 'Tipo de carga', meta.tipoCarga],
+    ['Condição de pagamento', meta.condicaoPgto, 'Forma de pagamento', meta.formaPgto],
+    ['Agendamento de entrega', meta.agendamentoEntrega, 'Taxa de descarga', meta.taxaDescarga ? `Sim — ${fmtMoney(parseBRNum(meta.valorTaxaDescarga))}` : 'Não'],
+  ];
+  doc.autoTable({
+    startY: 25, theme:'plain', styles:{ fontSize:8.5, cellPadding:1.2 },
+    columnStyles:{ 0:{fontStyle:'bold', textColor:[90,90,90], cellWidth:38}, 2:{fontStyle:'bold', textColor:[90,90,90], cellWidth:38} },
+    body: infoRows,
+  });
+  if(meta.observacoes){
+    doc.setFontSize(8.5); doc.setFont('helvetica','bold'); doc.text('Observações:', 14, doc.lastAutoTable.finalY + 5);
+    doc.setFont('helvetica','normal');
+    const obsLines = doc.splitTextToSize(meta.observacoes, pageW - 28);
+    doc.text(obsLines, 14, doc.lastAutoTable.finalY + 9);
+  }
+
+  const tableStartY = doc.lastAutoTable.finalY + (meta.observacoes ? 16 : 8);
+  const head = [['Item','Cód','Descrição','Qtd','Preço/cx','Subtotal','ICMS%','IPI%','ST (R$)','Total c/ IPI+ST']];
+  let subtotal=0, totalIcms=0, totalIpi=0, totalGeral=0;
+  const body = lines.map((l, idx) => {
+    if(l.qty === null){
+      return [String(idx+1), l.code, l.def.name, '', '', '', '', '', '', ''];
+    }
+    const productIdx = brand.products.indexOf(l.def);
+    const ipiRate = bstate.products[productIdx].pricing.ipi;
+    const stTotal = l.r.M * l.qty;
+    const icmsTotal = l.r.H * l.qty;
+    const ipiTotal = l.r.K * l.qty;
+    subtotal += l.r.AI; totalIcms += icmsTotal; totalIpi += ipiTotal; totalGeral += l.r.AP;
+    return [
+      String(idx+1), l.code, l.def.name, String(l.qty), fmtMoney(l.price), fmtMoney(l.r.AI),
+      fmtPct(l.r.icms[0]), fmtPct(ipiRate), fmtMoney(stTotal), fmtMoney(l.r.AP),
+    ];
+  });
+
+  doc.autoTable({
+    startY: tableStartY, head, body, theme:'grid',
+    headStyles:{ fillColor:[62,156,49], fontSize:7.5 },
+    styles:{ fontSize:7.5, cellPadding:1.6 },
+    columnStyles:{ 2:{cellWidth:55} },
+  });
+
+  const freteTotal = parseBRNum(meta.valorFrete);
+  const taxaTotal = meta.taxaDescarga ? parseBRNum(meta.valorTaxaDescarga) : 0;
+  const totalComFrete = totalGeral + freteTotal + taxaTotal;
+
+  const totRows = [
+    ['Subtotal (c/ ICMS, PIS e COFINS)', fmtMoney(subtotal)],
+    ['Total ICMS', fmtMoney(totalIcms)],
+    ['Total IPI', fmtMoney(totalIpi)],
+    ['Frete', fmtMoney(freteTotal)],
+    ...(taxaTotal>0 ? [['Taxa de descarga', fmtMoney(taxaTotal)]] : []),
+    ['VALOR TOTAL COM IMPOSTO + FRETE', fmtMoney(totalComFrete)],
+  ];
+  doc.autoTable({
+    startY: doc.lastAutoTable.finalY + 4, theme:'plain', styles:{ fontSize:8.5, cellPadding:1.3 },
+    columnStyles:{ 0:{cellWidth:70}, 1:{halign:'right', cellWidth:35, fontStyle:'bold'} },
+    body: totRows,
+    margin:{ left: pageW - 14 - 105 },
+  });
+
+  doc.setFontSize(7); doc.setTextColor(140);
+  doc.text('Gerado pelo Simulador de Precificação — ' + brand.label, 14, doc.internal.pageSize.getHeight()-8);
+
+  return { doc, totalComFrete };
+}
+
+function generateOrderPdf(){
+  const { doc } = buildOrderPdf();
+  const meta = curState().orderMeta;
+  const nome = (meta.razaoSocial || 'cliente').replace(/[^a-zA-Z0-9]+/g,'_').slice(0,40);
+  doc.save(`Pedido_${curBrand().label.replace(' ','')}_${nome}.pdf`);
+}
+
+function buildOrderShareText(){
+  const brand = curBrand();
+  const meta = curState().orderMeta;
+  const lines = getOrderLines().filter(l => l.qty !== null);
+  const txt = [];
+  txt.push(`*Pedido de Venda — ${brand.label}*`);
+  if(meta.razaoSocial) txt.push(`Cliente: ${meta.razaoSocial}`);
+  if(meta.comprador) txt.push(`Comprador: ${meta.comprador}`);
+  txt.push('');
+  lines.forEach(l => txt.push(`▪️ ${l.def.name} — ${l.qty}cx x ${fmtMoney(l.price)}`));
+  txt.push('');
+  txt.push('_(PDF do pedido em anexo)_');
+  return txt.join('\n');
 }
 
 function updateShareCount(){
@@ -1579,6 +1905,7 @@ function switchBrand(brandId){
   document.getElementById('insumosOverlay').classList.remove('open');
   document.getElementById('scenariosOverlay').classList.remove('open');
   document.getElementById('compareOverlay').classList.remove('open');
+  document.getElementById('orderOverlay').classList.remove('open');
   renderBrandHeader();
   renderEstadoOptions();
   const all = renderTopBar();
@@ -1592,6 +1919,7 @@ async function bootApp(){
   renderBrandHeader();
   renderEstadoOptions();
   setupImportButton();
+  setupOrderFormListeners();
 
   document.querySelectorAll('.brand-tab').forEach(btn => {
     btn.addEventListener('click', () => switchBrand(btn.dataset.brand));
@@ -1653,6 +1981,33 @@ async function bootApp(){
   });
   document.getElementById('closeCompare').addEventListener('click', () => {
     document.getElementById('compareOverlay').classList.remove('open');
+  });
+
+  document.getElementById('openOrderForm').addEventListener('click', () => {
+    renderOrderForm();
+    document.getElementById('orderOverlay').classList.add('open');
+  });
+  document.getElementById('closeOrderForm').addEventListener('click', () => {
+    document.getElementById('orderOverlay').classList.remove('open');
+  });
+  document.getElementById('generateOrderPdf').addEventListener('click', () => {
+    const lines = getOrderLines().filter(l => l.qty !== null);
+    if(lines.length === 0){
+      alert('Nenhum produto está pronto para entrar no pedido. Marque a caixinha de seleção e preencha quantidade e preço de pelo menos um produto na lista.');
+      return;
+    }
+    generateOrderPdf();
+  });
+  document.getElementById('orderShareWhatsapp').addEventListener('click', () => {
+    const text = buildOrderShareText();
+    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+  });
+  document.getElementById('orderShareEmail').addEventListener('click', () => {
+    const meta = curState().orderMeta;
+    const subject = `Pedido de Venda — ${curBrand().label}${meta.razaoSocial ? ' — ' + meta.razaoSocial : ''}`;
+    const body = buildOrderShareText().replace(/\*/g,'').replace(/_/g,'');
+    const to = meta.emailCliente || '';
+    window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   });
 
   document.getElementById('shareWhatsapp').addEventListener('click', () => {
