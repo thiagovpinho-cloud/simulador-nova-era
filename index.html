@@ -108,6 +108,13 @@
   .margin-line{ font-size:11.5px; color: var(--ink-dim); line-height:1.6; margin-bottom:14px; }
   .margin-line b{ color:var(--ink); font-family:var(--mono); font-weight:600; }
 
+  .share-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    font-size:11px; color: var(--ink-faint); margin-bottom:10px;
+  }
+  .share-row a{ color: var(--blue); text-decoration:none; font-weight:600; }
+  .share-row a:active{ opacity:.7; }
+
   .whatsapp-btn{
     width:100%; display:flex; align-items:center; justify-content:center; gap:8px;
     background: #25D366; color:#fff; border:none; border-radius:12px; padding:12px;
@@ -121,6 +128,12 @@
   .card{ background: var(--surface); border:1px solid var(--border); border-radius: var(--radius); overflow:hidden; box-shadow: var(--shadow); }
   .card-head{ display:flex; align-items:center; gap:10px; padding:13px 14px; cursor:pointer; user-select:none; }
   .idx{ font-family:var(--mono); font-size:10px; color:var(--ink-faint); width:20px; flex-shrink:0; }
+  .incl-check{
+    width:19px; height:19px; flex-shrink:0; margin:0; cursor:pointer;
+    accent-color: var(--brand); border-radius:5px;
+  }
+  .card.excluded .card-head .name{ opacity:.4; }
+  .card.excluded .idx{ opacity:.4; }
   .card-head .name{ flex:1; min-width:0; font-size:13.5px; font-weight:600; color:var(--ink); }
   .card-head .name small{ display:block; font-weight:400; font-size:10.5px; color:var(--ink-faint); font-family:var(--mono); margin-top:1px; }
   .pill{ font-family: var(--mono); font-size:12px; font-weight:600; padding:4px 9px; border-radius:8px; flex-shrink:0; white-space:nowrap; }
@@ -277,9 +290,13 @@
   <div class="margin-line">
     Margem ponderada sem IPI/ST: <b id="sumSemIpi">0%</b> · com IPI/ST: <b id="sumComIpi">0%</b> · meta mínima <b>6,0%</b>
   </div>
+  <div class="share-row">
+    <span id="shareCount">8 de 8 produtos selecionados</span>
+    <a href="#" id="toggleAllIncl">marcar/desmarcar todos</a>
+  </div>
   <button class="whatsapp-btn" id="shareWhatsapp" type="button">
     <svg viewBox="0 0 32 32" fill="currentColor"><path d="M16.04 3C9.4 3 4 8.36 4 15.02c0 2.36.65 4.56 1.78 6.44L4 29l7.72-1.72a11.9 11.9 0 0 0 4.32.81c6.64 0 12.04-5.36 12.04-12.02C28.08 8.36 22.68 3 16.04 3zm7.05 17.2c-.3.83-1.62 1.55-2.24 1.63-.6.08-1.31.35-4.35-.9-3.65-1.5-6-5.2-6.18-5.44-.18-.24-1.47-1.96-1.47-3.74 0-1.78.94-2.65 1.27-3.02.33-.36.72-.45.96-.45.24 0 .48 0 .69.01.22.01.52-.08.82.62.3.72 1.03 2.5 1.12 2.68.1.18.16.4.03.64-.13.24-.2.4-.4.6-.2.22-.42.5-.6.67-.2.19-.4.4-.18.79.23.4 1.02 1.68 2.2 2.72 1.51 1.35 2.78 1.77 3.19 1.97.4.2.64.17.87-.1.24-.28.99-1.15 1.26-1.55.26-.4.53-.33.87-.2.35.13 2.2 1.04 2.58 1.23.38.2.63.28.72.44.1.16.1.9-.2 1.74z"/></svg>
-    Compartilhar no WhatsApp
+    <span id="shareBtnLabel">Compartilhar no WhatsApp</span>
   </button>
 </div>
 
@@ -502,6 +519,7 @@ function freshState(){
       materials: p.materials.map(m => ({qty:m.qty, perda:m.perda})),
       processo: {qty:p.processo.qty, perda:p.processo.perda},
       open:false,
+      included:true,
     }))
   };
 }
@@ -533,6 +551,8 @@ async function loadState(){
       const parsed = JSON.parse(res.value);
       if(parsed && parsed.v === SCHEMA_VERSION && parsed.global && parsed.insumos && parsed.products){
         STATE = parsed;
+        // compatibilidade: simulações salvas antes do "flag de envio" recebem included=true por padrão
+        STATE.products.forEach(p => { if(p.included === undefined) p.included = true; });
       }
     }
   }catch(e){
@@ -704,8 +724,9 @@ function renderProducts(all){
     }).join('');
 
     return `
-    <div class="card ${st.open ? 'open':''}" data-idx="${i}">
+    <div class="card ${st.open ? 'open':''}${st.included ? '' : ' excluded'}" data-idx="${i}">
       <div class="card-head" data-toggle="${i}">
+        <input type="checkbox" class="incl-check" data-incl="${i}" ${st.included ? 'checked' : ''} title="Incluir no envio via WhatsApp">
         <div class="idx">${String(i+1).padStart(2,'0')}</div>
         <div class="name">${def.name}<img class="name-logo" src="${LOGO_DATA_URI}" alt="Nova Era"><small>NCM ${def.ncm} · ${fmtMoney(st.pricing.vendaCX)}/cx</small></div>
         <div class="pill ${approved?'ok':'no'}">${fmtPct2(r.AM)}</div>
@@ -816,15 +837,31 @@ function buildWhatsAppText(all){
   lines.push('*Simulação de Preços — Nova Era*');
   lines.push(`📅 ${dataStr}  ·  Estado: ${STATE.global.estado}`);
   lines.push('');
+  let subSem = 0, subCom = 0, count = 0;
   PRODUCT_DEFS.forEach((def, i) => {
+    if(!STATE.products[i].included) return;
     const r = all.results[i];
     lines.push(`▪️ *${def.name}*`);
     lines.push(`   Sem impostos: ${fmtMoney(r.AH)}/cx  |  Com impostos: ${fmtMoney(r.AO)}/cx`);
+    subSem += r.AI;
+    subCom += r.AP;
+    count++;
   });
   lines.push('');
-  lines.push(`*Total do pedido (sem impostos): ${fmtMoney(all.totalSem)}*`);
-  lines.push(`*Total do pedido (com impostos): ${fmtMoney(all.totalCom)}*`);
-  return lines.join('\n');
+  lines.push(`*Total do pedido (sem impostos): ${fmtMoney(subSem)}*`);
+  lines.push(`*Total do pedido (com impostos): ${fmtMoney(subCom)}*`);
+  return { text: lines.join('\n'), count };
+}
+
+function updateShareCount(){
+  const total = STATE.products.length;
+  const selected = STATE.products.filter(p => p.included).length;
+  document.getElementById('shareCount').textContent = `${selected} de ${total} produtos selecionados`;
+  document.getElementById('shareBtnLabel').textContent = selected === 0
+    ? 'Selecione ao menos um produto'
+    : `Compartilhar no WhatsApp (${selected})`;
+  document.getElementById('shareWhatsapp').disabled = selected === 0;
+  document.getElementById('shareWhatsapp').style.opacity = selected === 0 ? '.5' : '1';
 }
 
 /* ============================================================
@@ -849,6 +886,19 @@ function attachProductListeners(){
       STATE.products[idx].open = !STATE.products[idx].open;
       const card = document.querySelector(`.card[data-idx="${idx}"]`);
       card.classList.toggle('open');
+    });
+  });
+
+  document.querySelectorAll('input[data-incl]').forEach(chk => {
+    chk.addEventListener('click', (e) => e.stopPropagation());
+    chk.addEventListener('change', (e) => {
+      e.stopPropagation();
+      const idx = Number(chk.dataset.incl);
+      STATE.products[idx].included = chk.checked;
+      const card = document.querySelector(`.card[data-idx="${idx}"]`);
+      card.classList.toggle('excluded', !chk.checked);
+      updateShareCount();
+      scheduleSave();
     });
   });
 
@@ -914,12 +964,24 @@ async function init(){
 
   document.getElementById('shareWhatsapp').addEventListener('click', () => {
     const all = computeAll();
-    const text = buildWhatsAppText(all);
+    const { text, count } = buildWhatsAppText(all);
+    if(count === 0) return;
     window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+  });
+
+  document.getElementById('toggleAllIncl').addEventListener('click', (e) => {
+    e.preventDefault();
+    const anyUnchecked = STATE.products.some(p => !p.included);
+    STATE.products.forEach(p => { p.included = anyUnchecked; });
+    const all = renderTopBar();
+    renderProducts(all);
+    updateShareCount();
+    scheduleSave();
   });
 
   const all = renderTopBar();
   renderProducts(all);
+  updateShareCount();
 }
 
 init();
