@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg: #F6F8F4;
+    --bg: radial-gradient(circle at 30% 15%, #0a5443 0%, #04352a 45%, #021f19 100%);
     --surface: #FFFFFF;
     --surface-2: #F1F4EE;
     --border: #E3E8DE;
@@ -48,10 +48,10 @@
   /* ---------- header ---------- */
   header{
     position: sticky; top:0; z-index:20;
-    background: rgba(246,248,244,.92);
+    background: rgba(4,53,42,.88);
     backdrop-filter: blur(8px);
     padding: 14px 16px 10px;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid rgba(255,255,255,.1);
   }
   .brand{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
   .brand-mark{
@@ -66,22 +66,32 @@
     color:#fff; font-family:var(--disp); font-weight:700; font-size:14px;
   }
   .brand-text{ flex:1; min-width:0; }
-  .brand-text h1{ font-family: var(--disp); font-size:16.5px; margin:0; letter-spacing:.1px; font-weight:700; color:var(--ink); }
-  .brand-text p{ margin:0; font-size:11px; color: var(--ink-faint); font-family: var(--mono); letter-spacing:.3px; }
+  .brand-text h1{ font-family: var(--disp); font-size:16.5px; margin:0; letter-spacing:.1px; font-weight:700; color:#fff; }
+  .brand-text p{ margin:0; font-size:11px; color: rgba(255,255,255,.6); font-family: var(--mono); letter-spacing:.3px; }
   .name-logo{
     width:20px; height:17px; border-radius:4px; object-fit:contain;
     display:inline-block; vertical-align:middle; margin-left:6px; flex-shrink:0;
   }
 
-  .brand-actions{
-    display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;
+  .menu-wrap{ position:relative; flex-shrink:0; }
+  .header-menu{
+    position:absolute; top:calc(100% + 8px); right:0; width:220px; z-index:30;
+    background:var(--surface); border:1px solid var(--border); border-radius:13px;
+    box-shadow:0 12px 30px rgba(0,0,0,.25); padding:6px; display:flex; flex-direction:column; gap:2px;
   }
-  .brand-actions .insumos-btn{ flex:1; min-width:140px; justify-content:center; }
+  .header-menu.hidden{ display:none; }
+  .header-menu-item{
+    display:flex; align-items:center; gap:10px; width:100%; background:none; border:none;
+    padding:10px 12px; border-radius:9px; font-family:var(--sans); font-size:12.5px; font-weight:600;
+    color:var(--ink); cursor:pointer; text-align:left;
+  }
+  .header-menu-item:active{ background:var(--surface-2); }
+  .header-menu-item svg{ width:16px; height:16px; flex-shrink:0; color:var(--ink-faint); }
+  .header-menu-divider.admin-only{ height:1px; background:var(--border); margin:4px 6px; }
 
   @media (max-width: 380px){
     .brand-text h1{ font-size:14.5px; }
     .brand-mark{ width:32px; height:32px; }
-    .brand-actions .insumos-btn{ min-width:0; font-size:11px; padding:7px 8px; }
   }
 
   .brand-switch{
@@ -153,6 +163,31 @@
   .scenario-load{ background:var(--brand-soft); color:var(--brand-dark); }
   .scenario-del{ background:var(--red-soft); color:var(--red); }
 
+  .oh-month{
+    background:var(--brand-soft); border:1px solid rgba(62,156,49,.25); border-radius:13px;
+    padding:12px 14px; margin-bottom:10px;
+  }
+  .oh-month-name{ font-family:var(--disp); font-size:13px; font-weight:700; color:var(--brand-dark); margin-bottom:4px; text-transform:capitalize; }
+  .oh-month-stats{ font-size:11.5px; color:var(--ink-dim); }
+  .oh-month-stats b{ font-family:var(--mono); color:var(--ink); }
+  .oh-empty{ font-size:12px; color:var(--ink-faint); text-align:center; padding:30px 0; }
+  .oh-order{
+    background:var(--surface); border:1px solid var(--border); border-radius:13px;
+    padding:12px 14px; margin-bottom:8px; box-shadow:var(--shadow); cursor:pointer;
+  }
+  .oh-order-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .oh-order-client{ font-size:13px; font-weight:600; color:var(--ink); }
+  .oh-order-meta{ font-size:10.5px; color:var(--ink-faint); font-family:var(--mono); margin-top:2px; }
+  .oh-order-total{ font-family:var(--disp); font-size:14.5px; font-weight:700; color:var(--brand-dark); white-space:nowrap; }
+  .oh-order-items{ max-height:0; overflow:hidden; transition:max-height .2s ease; }
+  .oh-order.open .oh-order-items{ max-height:600px; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); }
+  .oh-item-row{ display:flex; justify-content:space-between; font-size:11.5px; color:var(--ink-dim); padding:3px 0; }
+  .oh-item-row span:last-child{ font-family:var(--mono); color:var(--ink); flex-shrink:0; margin-left:8px; }
+  .oh-del{
+    display:block; margin-top:10px; background:var(--red-soft); color:var(--red); border:none;
+    border-radius:8px; padding:7px 10px; font-size:11px; font-weight:600; cursor:pointer;
+  }
+
   .insumos-btn{
     flex-shrink:0; display:flex; align-items:center; gap:6px;
     background: var(--blue-soft); border:1px solid rgba(59,111,209,.25); color: var(--blue);
@@ -161,7 +196,7 @@
   }
   .insumos-btn svg{ width:14px; height:14px; flex-shrink:0; }
 
-  .controls-row{ display:flex; gap:8px; flex-wrap: wrap; }
+  .controls-row{ display:flex; gap:8px; flex-wrap: wrap; margin-top:8px; }
   .ctrl{ flex:1; min-width:110px; background: var(--surface); border:1px solid var(--border); border-radius:11px; padding:6px 10px; }
   .ctrl label{ display:block; font-size:9.5px; text-transform:uppercase; letter-spacing:.6px; color: var(--ink-faint); margin-bottom:2px; font-weight:600; }
   .ctrl select, .ctrl input{ width:100%; background:transparent; border:none; color:var(--ink); font-family: var(--mono); font-size:14px; font-weight:600; padding:0; outline:none; }
@@ -232,10 +267,13 @@
   .status.no{ background: var(--red-soft); color: var(--red); }
 
   .totals-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:14px; }
-  .total-box{ background: var(--surface-2); border-radius:12px; padding:12px 14px; }
+  .total-box{ background: var(--surface-2); border-radius:12px; padding:12px 14px; min-width:0; }
   .total-box.highlight{ background: var(--brand-soft); }
   .total-box .label{ display:block; font-size:10.5px; color: var(--ink-dim); margin-bottom:4px; line-height:1.3; }
-  .total-box .value{ font-family: var(--disp); font-size:21px; font-weight:700; color: var(--ink); }
+  .total-box .value{
+    font-family: var(--disp); font-size: clamp(14px, 5.5vw, 21px); font-weight:700; color: var(--ink);
+    display:block; line-height:1.15; overflow-wrap:break-word;
+  }
   .total-box.highlight .value{ color: var(--brand-dark); }
 
   .margin-line{ font-size:11.5px; color: var(--ink-dim); line-height:1.6; margin-bottom:4px; }
@@ -283,6 +321,11 @@
   .order-field.checkbox-field label{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink); margin:0; }
   .order-products-note{ font-size:11px; color:var(--ink-faint); margin:16px 0; line-height:1.5; padding:10px 12px; background:var(--blue-soft); border-radius:9px; }
   .order-actions{ margin-top:6px; }
+  .order-save-btn{
+    width:100%; background:rgba(255,255,255,.08); color:#fff; border:1.5px dashed rgba(255,255,255,.4);
+    border-radius:11px; padding:12px; font-family:var(--sans); font-size:13px; font-weight:700; cursor:pointer; margin-bottom:10px;
+  }
+  .order-save-btn:active{ background:rgba(255,255,255,.18); }
   .order-generate-btn{
     width:100%; background:var(--brand); color:#fff; border:none; border-radius:11px; padding:13px;
     font-family:var(--sans); font-size:14px; font-weight:700; cursor:pointer; margin-bottom:10px;
@@ -294,6 +337,20 @@
     border-radius:10px; padding:10px; font-family:var(--sans); font-size:12px; font-weight:600; cursor:pointer;
   }
   .order-hint{ font-size:10.5px; color:var(--ink-faint); line-height:1.5; }
+
+  .draft-empty{ font-size:11.5px; color:rgba(255,255,255,.5); padding:10px 2px 16px; }
+  .draft-row{
+    display:flex; align-items:center; gap:8px; background:var(--surface); border-radius:12px;
+    padding:10px 12px; margin-bottom:8px; box-shadow:var(--shadow);
+  }
+  .draft-info{ flex:1; min-width:0; }
+  .draft-info .n{ font-size:12.5px; font-weight:600; color:var(--ink); }
+  .draft-info .m{ font-size:10px; color:var(--ink-faint); font-family:var(--mono); margin-top:2px; }
+  .draft-load, .draft-del{
+    border:none; border-radius:8px; padding:7px 10px; font-size:11px; font-weight:600; cursor:pointer; flex-shrink:0;
+  }
+  .draft-load{ background:var(--brand-soft); color:var(--brand-dark); }
+  .draft-del{ background:var(--red-soft); color:var(--red); }
 
   /* ---------- product list ---------- */
   .list{ padding: 4px 16px 0; display:flex; flex-direction:column; gap:8px; }
@@ -363,15 +420,15 @@
   .mb.no{ background: var(--red-soft); border-color: rgba(210,72,62,.25); }
   .mb.no .v{ color: var(--red); }
 
-  footer{ margin: 20px 16px 0; display:flex; justify-content:space-between; align-items:center; font-size:10.5px; color: var(--ink-faint); flex-wrap:wrap; gap:10px; }
-  .reset-btn{ background: transparent; border:1px solid var(--border); color: var(--ink-dim); font-family: var(--sans); font-size:11px; padding:8px 14px; border-radius:9px; cursor:pointer; }
+  footer{ margin: 20px 16px 0; display:flex; justify-content:space-between; align-items:center; font-size:10.5px; color: rgba(255,255,255,.55); flex-wrap:wrap; gap:10px; }
+  .reset-btn{ background: rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); color: rgba(255,255,255,.75); font-family: var(--sans); font-size:11px; padding:8px 14px; border-radius:9px; cursor:pointer; }
   .reset-btn:active{ background: var(--surface-2); }
   .save-indicator{ font-family: var(--mono); }
-  .save-indicator.on{ color: var(--brand-dark); }
+  .save-indicator.on{ color: #6be09a; }
 
   /* ---------- Base de Insumos overlay ---------- */
   .overlay{
-    position:fixed; inset:0; background: var(--bg); z-index:100;
+    position:fixed; inset:0; background: #F6F8F4; z-index:100;
     display:none; flex-direction:column;
   }
   .overlay.open{ display:flex; }
@@ -381,6 +438,62 @@
   #orderOverlay .order-section-label{ color:#8fe0b8; }
   #orderOverlay .order-section-label::after{ background: rgba(255,255,255,.18); }
   #orderOverlay .order-hint{ color: rgba(255,255,255,.6); }
+
+  .client-screen{
+    position:fixed; inset:0; z-index:900;
+    background: radial-gradient(circle at 30% 15%, #0a5443 0%, #04352a 45%, #021f19 100%);
+    display:flex; flex-direction:column; overflow-y:auto;
+  }
+  .client-screen.hidden{ display:none; }
+  .client-screen .overlay-body{ padding-bottom:60px; }
+  .client-screen .order-section-label{ color:#8fe0b8; }
+  .client-screen .order-section-label::after{ background: rgba(255,255,255,.18); }
+  .client-screen .order-hint{ color: rgba(255,255,255,.6); }
+  .repeat-row{
+    background:rgba(255,255,255,.06); border:1px dashed rgba(255,255,255,.2); border-radius:12px;
+    padding:10px; margin-bottom:8px;
+  }
+  .repeat-row-label{ font-size:10px; color:rgba(255,255,255,.5); text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px; font-weight:700; }
+
+  .catalog-card{
+    display:flex; align-items:center; gap:14px; background:var(--surface); border-radius:16px;
+    padding:16px; margin-bottom:14px; box-shadow:0 10px 30px rgba(0,0,0,.25);
+  }
+  .catalog-card-logo{
+    width:54px; height:54px; border-radius:12px; background:#fff; border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden;
+  }
+  .catalog-card-logo img{ width:80%; height:80%; object-fit:contain; }
+  .catalog-card-info{ flex:1; min-width:0; }
+  .catalog-card-title{ font-family:var(--disp); font-size:14px; font-weight:700; color:var(--ink); }
+  .catalog-card-sub{ font-size:11px; color:var(--ink-faint); margin-top:2px; }
+  .catalog-download-btn{
+    flex-shrink:0; background:var(--brand); color:#fff; border:none; border-radius:10px;
+    padding:10px 14px; font-family:var(--sans); font-size:12px; font-weight:700; cursor:pointer;
+    text-decoration:none; white-space:nowrap;
+  }
+  .catalog-download-btn:active{ background:var(--brand-dark); }
+
+  .photo-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:6px; }
+  .photo-slot{
+    position:relative; aspect-ratio:1; border-radius:14px; overflow:hidden; cursor:pointer;
+    background:var(--surface); border:1.5px dashed rgba(255,255,255,.35);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .photo-slot input.photo-input{ display:none; }
+  .photo-placeholder{
+    display:flex; flex-direction:column; align-items:center; gap:4px; font-size:22px; color:var(--ink-faint);
+  }
+  .photo-placeholder span{ font-size:9px; font-weight:600; text-align:center; padding:0 4px; }
+  .photo-preview{ display:none; width:100%; height:100%; object-fit:cover; }
+  .photo-remove{
+    display:none; position:absolute; top:5px; right:5px; width:22px; height:22px; border-radius:50%;
+    background:rgba(0,0,0,.6); color:#fff; border:none; font-size:12px; align-items:center; justify-content:center;
+    cursor:pointer; z-index:2;
+  }
+  .photo-slot.filled .photo-placeholder{ display:none; }
+  .photo-slot.filled .photo-preview{ display:block; }
+  .photo-slot.filled .photo-remove{ display:flex; }
   .overlay-head{
     position:sticky; top:0; padding:14px 16px; border-bottom:1px solid var(--border);
     background: var(--surface); display:flex; align-items:center; gap:12px; z-index:2;
@@ -443,6 +556,47 @@
   .login-error{ color:var(--red); font-size:11.5px; min-height:16px; margin:10px 0 0; }
   .login-hint{ font-size:10.5px; color:var(--ink-faint); line-height:1.5; margin:14px 0 0; }
 
+  /* ---------- Hub / Menu principal ---------- */
+  .hub-screen{
+    position:fixed; inset:0; z-index:998;
+    background: radial-gradient(circle at 30% 20%, #0a5443 0%, #04352a 45%, #021f19 100%);
+    display:flex; flex-direction:column; align-items:center;
+    padding:20px; overflow-y:auto;
+  }
+  .hub-screen.hidden{ display:none; }
+  .hub-top{
+    width:100%; max-width:420px; display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:10px;
+  }
+  .hub-top .role-badge{ background:rgba(255,255,255,.12); color:rgba(255,255,255,.85); }
+  .hub-top .logout-link{ background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.2); color:rgba(255,255,255,.85); }
+  .hub-logo-wrap{
+    margin: 24px 0 16px; background:#fff; border-radius:18px; padding:18px 24px;
+    box-shadow: 0 12px 34px rgba(0,0,0,.3);
+  }
+  .hub-logo-wrap img{ width:200px; max-width:60vw; height:auto; display:block; }
+  .hub-title{ color:rgba(255,255,255,.85); font-family:var(--sans); font-size:13.5px; margin:0 0 22px; }
+  .hub-grid{ width:100%; max-width:420px; display:flex; flex-direction:column; gap:12px; padding-bottom:20px; }
+  .hub-btn{
+    display:flex; align-items:center; gap:14px; width:100%; background:var(--surface); border:none;
+    border-radius:16px; padding:18px 18px; cursor:pointer; box-shadow:0 10px 30px rgba(0,0,0,.25);
+    text-align:left; position:relative;
+  }
+  .hub-btn.active:active{ background:#f2f7f0; }
+  .hub-btn-icon{ font-size:24px; flex-shrink:0; }
+  .hub-btn-label{ font-family:var(--disp); font-size:14.5px; font-weight:700; color:var(--ink); flex:1; }
+  .hub-btn-soon{
+    font-size:9px; text-transform:uppercase; letter-spacing:.4px; font-weight:700; color:var(--ink-faint);
+    background:var(--surface-2); padding:3px 7px; border-radius:6px; flex-shrink:0;
+  }
+  .hub-btn:disabled{ opacity:.55; cursor:not-allowed; }
+  .hub-btn:disabled .hub-btn-label{ color:var(--ink-faint); }
+
+  .hub-back-btn{
+    flex-shrink:0; width:34px; height:34px; border-radius:9px; background:var(--surface-2);
+    border:1px solid var(--border); color:var(--ink-dim); font-size:15px; cursor:pointer;
+  }
+
   .role-badge{
     font-family:var(--mono); font-size:9.5px; text-transform:uppercase; letter-spacing:.4px;
     padding:3px 8px; border-radius:6px; background:var(--surface-2); color:var(--ink-faint);
@@ -485,6 +639,158 @@
   </div>
 </div>
 
+<!-- ===================== TELA DE MENU (HUB) ===================== -->
+<div class="hub-screen hidden" id="hubScreen">
+  <div class="hub-top">
+    <span class="role-badge" id="hubRoleBadge"></span>
+    <a href="#" id="hubLogoutBtn" class="logout-link">sair</a>
+  </div>
+  <div class="hub-logo-wrap"><img id="hubLogo" alt="Focado"></div>
+  <p class="hub-title">O que você deseja acessar?</p>
+  <div class="hub-grid">
+    <button class="hub-btn active" id="hubGoSimulador" type="button">
+      <span class="hub-btn-icon">🧮</span>
+      <span class="hub-btn-label">Pedidos e Simulador</span>
+    </button>
+    <button class="hub-btn active" id="hubGoCadastro" type="button">
+      <span class="hub-btn-icon">👤</span>
+      <span class="hub-btn-label">Cadastro de Clientes</span>
+    </button>
+    <button class="hub-btn active" id="hubGoCatalogos" type="button">
+      <span class="hub-btn-icon">📚</span>
+      <span class="hub-btn-label">Download de Catálogos</span>
+    </button>
+    <button class="hub-btn" type="button" disabled>
+      <span class="hub-btn-icon">📄</span>
+      <span class="hub-btn-label">Fichas Técnicas</span>
+      <span class="hub-btn-soon">em breve</span>
+    </button>
+    <button class="hub-btn" type="button" disabled>
+      <span class="hub-btn-icon">🏢</span>
+      <span class="hub-btn-label">Dados da Empresa</span>
+      <span class="hub-btn-soon">em breve</span>
+    </button>
+  </div>
+</div>
+
+<!-- ===================== DOWNLOAD DE CATÁLOGOS ===================== -->
+<div class="client-screen hidden" id="catalogScreen">
+  <div class="overlay-head">
+    <button class="hub-back-btn" id="catalogBackBtn" type="button" title="Voltar ao menu">←</button>
+    <div style="flex:1">
+      <h2>Download de Catálogos</h2>
+      <p>Catálogos completos de produtos, em PDF.</p>
+    </div>
+  </div>
+  <div class="overlay-body">
+    <div class="catalog-card">
+      <div class="catalog-card-logo"><img id="catalogLogoNovaEra" alt="Nova Era"></div>
+      <div class="catalog-card-info">
+        <div class="catalog-card-title">Catálogo Nova Era</div>
+        <div class="catalog-card-sub">Linha completa de álcool líquido e gel</div>
+      </div>
+      <a class="catalog-download-btn" id="downloadNovaEra" href="Catalogo_Nova_Era.pdf" download="Catalogo_Nova_Era.pdf">⬇ Baixar PDF</a>
+    </div>
+    <div class="catalog-card">
+      <div class="catalog-card-logo"><img id="catalogLogoNewGreen" alt="New Green"></div>
+      <div class="catalog-card-info">
+        <div class="catalog-card-title">Catálogo New Green</div>
+        <div class="catalog-card-sub">Linha completa de álcool líquido e gel</div>
+      </div>
+      <a class="catalog-download-btn" id="downloadNewGreen" href="Catalogo_New_Green.pdf" download="Catalogo_New_Green.pdf">⬇ Baixar PDF</a>
+    </div>
+    <p class="order-hint" id="catalogHint">Toque em "Baixar PDF" para salvar o catálogo no seu dispositivo.</p>
+  </div>
+</div>
+
+<!-- ===================== CADASTRO DE CLIENTES ===================== -->
+<div class="client-screen hidden" id="clientScreen">
+  <div class="overlay-head">
+    <button class="hub-back-btn" id="clientBackBtn" type="button" title="Voltar ao menu">←</button>
+    <div style="flex:1">
+      <h2>Ficha Cadastral de Clientes</h2>
+      <p>Preencha os dados abaixo para cadastrar um novo cliente.</p>
+    </div>
+  </div>
+  <div class="overlay-body" id="clientFormBody">
+
+    <div class="order-section-label">Dados do cliente</div>
+    <div class="order-grid">
+      <div class="order-field wide"><label>Razão social</label><input type="text" data-client="razaoSocial"></div>
+      <div class="order-field"><label>Nome da rede</label><input type="text" data-client="nomeRede"></div>
+      <div class="order-field"><label>E-commerce / Site</label><input type="text" data-client="site"></div>
+      <div class="order-field wide"><label>Endereço</label><input type="text" data-client="endereco"></div>
+      <div class="order-field"><label>Bairro</label><input type="text" data-client="bairro"></div>
+      <div class="order-field"><label>Cidade</label><input type="text" data-client="cidade"></div>
+      <div class="order-field"><label>UF</label><input type="text" data-client="uf" maxlength="2" style="text-transform:uppercase"></div>
+      <div class="order-field"><label>CNPJ</label><input type="text" inputmode="numeric" placeholder="00.000.000/0000-00" maxlength="18" data-client="cnpj" data-mask="cnpj"></div>
+      <div class="order-field"><label>Inscrição estadual</label><input type="text" inputmode="numeric" placeholder="Somente números (ou ISENTO)" data-client="inscricaoEstadual"></div>
+      <div class="order-field"><label>Prazo</label><input type="text" data-client="prazo"></div>
+      <div class="order-field"><label>Telefone</label><input type="text" inputmode="numeric" placeholder="(00) 00000-0000" maxlength="15" data-client="telefone" data-mask="phone"></div>
+      <div class="order-field"><label>Contato</label><input type="text" data-client="contato"></div>
+      <div class="order-field"><label>E-mail</label><input type="email" data-client="email"></div>
+      <div class="order-field wide"><label>Observações</label><input type="text" data-client="obs"></div>
+    </div>
+
+    <div class="order-section-label">Referências comerciais</div>
+    <div id="referenciasWrap"></div>
+
+    <div class="order-section-label">Bancos que trabalha</div>
+    <div id="bancosWrap"></div>
+
+    <div class="order-section-label">Empresas que o representante já vende ao cliente</div>
+    <div id="representadasWrap"></div>
+
+    <div class="order-section-label">Observações complementares</div>
+    <div class="order-grid">
+      <div class="order-field wide"><label>Detalhes adicionais</label><input type="text" data-client="obsComplementares"></div>
+    </div>
+
+    <div class="order-section-label">Fotos da fachada (até 3)</div>
+    <div class="photo-grid">
+      <div class="photo-slot" data-photo-idx="0">
+        <input type="file" accept="image/*" class="photo-input" data-photo-idx="0">
+        <div class="photo-placeholder">📷<span>Adicionar foto</span></div>
+        <img class="photo-preview">
+        <button class="photo-remove" type="button">✕</button>
+      </div>
+      <div class="photo-slot" data-photo-idx="1">
+        <input type="file" accept="image/*" class="photo-input" data-photo-idx="1">
+        <div class="photo-placeholder">📷<span>Adicionar foto</span></div>
+        <img class="photo-preview">
+        <button class="photo-remove" type="button">✕</button>
+      </div>
+      <div class="photo-slot" data-photo-idx="2">
+        <input type="file" accept="image/*" class="photo-input" data-photo-idx="2">
+        <div class="photo-placeholder">📷<span>Adicionar foto</span></div>
+        <img class="photo-preview">
+        <button class="photo-remove" type="button">✕</button>
+      </div>
+    </div>
+    <p class="order-hint">Toque num quadrado pra tirar uma foto na hora ou escolher uma já salva no aparelho.</p>
+
+    <div class="order-section-label">Limites de crédito</div>
+    <div class="order-grid">
+      <div class="order-field"><label>Limite sugerido representante (R$)</label><input type="text" inputmode="decimal" data-client="limiteRepresentante"></div>
+      <div class="order-field"><label>Limite sug. gerência comercial (R$)</label><input type="text" inputmode="decimal" data-client="limiteGerencia"></div>
+      <div class="order-field wide"><label>Limite liberado pelo financeiro (R$)</label><input type="text" inputmode="decimal" data-client="limiteFinanceiro"></div>
+    </div>
+
+    <div class="order-section-label">Rascunhos salvos</div>
+    <div id="clientDraftsWrap"></div>
+
+    <div class="order-actions">
+      <button class="order-save-btn" id="saveClientDraft" type="button">💾 Salvar rascunho (sem gerar/enviar)</button>
+      <button class="order-generate-btn" id="generateClientPdf" type="button">Gerar PDF da ficha</button>
+      <div class="order-actions-row">
+        <button class="order-secondary-btn" id="clientShareWhatsapp" type="button">Enviar por WhatsApp</button>
+        <button class="order-secondary-btn" id="clientShareEmail" type="button">Enviar por e-mail</button>
+      </div>
+      <p class="order-hint">"Gerar PDF" baixa a ficha no seu dispositivo. No celular, "Enviar por WhatsApp" já manda o PDF junto com o texto pelo menu nativo de compartilhar; no computador, ele abre só com o texto e você anexa o PDF baixado manualmente.</p>
+    </div>
+  </div>
+</div>
+
 <header>
   <div class="brand">
     <div class="brand-mark"><img id="brandLogo" alt="logo" style="display:none"><div id="brandInitials" class="brand-initials" style="display:none"></div></div>
@@ -492,15 +798,23 @@
       <h1>Simulador de Precificação</h1>
       <p id="brandSubtitle">NOVA ERA · 2026</p>
     </div>
-  </div>
-  <div class="brand-actions">
-    <div class="insumos-btn admin-only" id="openInsumos">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-      Base de Insumos
-    </div>
-    <div class="insumos-btn admin-only" id="openScenarios">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5a2 2 0 012-2h9l5 5v11a2 2 0 01-2 2H6a2 2 0 01-2-2z"/><path d="M14 3v5h5"/></svg>
-      Cenários
+    <div class="menu-wrap">
+      <button class="hub-back-btn" id="headerMenuBtn" type="button" title="Menu">☰</button>
+      <div class="header-menu hidden" id="headerMenu">
+        <button class="header-menu-item admin-only" id="openInsumos" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Base de Insumos
+        </button>
+        <button class="header-menu-item admin-only" id="openScenarios" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5a2 2 0 012-2h9l5 5v11a2 2 0 01-2 2H6a2 2 0 01-2-2z"/><path d="M14 3v5h5"/></svg>
+          Cenários
+        </button>
+        <div class="header-menu-divider admin-only"></div>
+        <button class="header-menu-item" id="backToHub" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9"/><path d="M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10"/></svg>
+          Voltar ao menu principal
+        </button>
+      </div>
     </div>
   </div>
   <div class="brand-switch">
@@ -582,7 +896,10 @@
 <div class="list" id="productList"></div>
 
 <footer>
-  <button class="reset-btn admin-only" id="resetBtn">Restaurar valores originais</button>
+  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+    <button class="reset-btn admin-only" id="resetBtn">Restaurar valores originais</button>
+    <button class="reset-btn admin-only" id="openOrderHistory">📋 Pedidos enviados</button>
+  </div>
   <div style="display:flex; align-items:center; gap:10px;">
     <span class="role-badge" id="roleBadge"></span>
     <span class="save-indicator" id="saveIndicator">salvo</span>
@@ -646,13 +963,13 @@
   <div class="overlay-body" id="orderFormBody">
     <div class="order-section-label">Dados do cliente</div>
     <div class="order-grid">
-      <div class="order-field"><label>CNPJ ou código cliente</label><input type="text" data-order="cnpjCliente"></div>
+      <div class="order-field"><label>CNPJ ou código cliente</label><input type="text" inputmode="numeric" placeholder="00.000.000/0000-00" maxlength="18" data-order="cnpjCliente" data-mask="cnpj"></div>
       <div class="order-field"><label>Data do pedido</label><input type="date" data-order="dataPedido"></div>
       <div class="order-field wide"><label>Razão social</label><input type="text" data-order="razaoSocial"></div>
       <div class="order-field"><label>Comprador</label><input type="text" data-order="comprador"></div>
-      <div class="order-field"><label>Inscrição estadual</label><input type="text" data-order="inscricaoEstadual"></div>
+      <div class="order-field"><label>Inscrição estadual</label><input type="text" inputmode="numeric" placeholder="Somente números (ou ISENTO)" data-order="inscricaoEstadual"></div>
       <div class="order-field"><label>E-mail do cliente</label><input type="email" data-order="emailCliente"></div>
-      <div class="order-field"><label>Celular do cliente</label><input type="text" data-order="celularCliente"></div>
+      <div class="order-field"><label>Celular do cliente</label><input type="text" inputmode="numeric" placeholder="(00) 00000-0000" maxlength="15" data-order="celularCliente" data-mask="phone"></div>
     </div>
 
     <div class="order-section-label">Entrega</div>
@@ -677,9 +994,13 @@
       <div class="order-field wide"><label>Observações</label><input type="text" data-order="observacoes"></div>
     </div>
 
+    <div class="order-section-label">Rascunhos salvos</div>
+    <div id="orderDraftsWrap"></div>
+
     <p class="order-products-note" id="orderProductsNote"></p>
 
     <div class="order-actions">
+      <button class="order-save-btn" id="saveOrderDraft" type="button">💾 Salvar rascunho (sem gerar/enviar)</button>
       <button class="order-generate-btn" id="generateOrderPdf" type="button">Gerar PDF do pedido</button>
       <div class="order-actions-row">
         <button class="order-secondary-btn" id="orderShareWhatsapp" type="button">Enviar por WhatsApp</button>
@@ -688,6 +1009,18 @@
       <p class="order-hint">"Gerar PDF" baixa o arquivo no seu dispositivo. No celular, "Enviar por WhatsApp" já manda o PDF junto com o texto pelo menu nativo de compartilhar; no computador (ou se o app do WhatsApp não estiver instalado), ele abre só com o texto e você anexa o PDF baixado manualmente. O e-mail sempre abre como rascunho — anexe o PDF nele também.</p>
     </div>
   </div>
+</div>
+
+<!-- ===================== PEDIDOS ENVIADOS (HISTÓRICO) OVERLAY ===================== -->
+<div class="overlay" id="orderHistoryOverlay">
+  <div class="overlay-head">
+    <div style="flex:1">
+      <h2>Pedidos enviados</h2>
+      <p>Todo pedido gerado em PDF fica registrado aqui automaticamente.</p>
+    </div>
+    <div class="close-btn" id="closeOrderHistory">✕</div>
+  </div>
+  <div class="overlay-body" id="orderHistoryBody"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -1097,6 +1430,19 @@ function freshOrderMeta(){
   };
 }
 
+function freshClientForm(){
+  return {
+    razaoSocial:'', nomeRede:'', site:'', endereco:'', bairro:'', cidade:'', uf:'',
+    cnpj:'', inscricaoEstadual:'', prazo:'', telefone:'', contato:'', obs:'', email:'',
+    referencias: Array.from({length:5}, () => ({nome:'', telefone:'', contato:''})),
+    bancos: Array.from({length:2}, () => ({banco:'', telefone:'', contato:''})),
+    representadas: Array.from({length:5}, () => ({empresa:'', vendaMensal:'', pontualidade:''})),
+    obsComplementares:'',
+    limiteRepresentante:'', limiteGerencia:'', limiteFinanceiro:'',
+    fotos: [null, null, null], // fotos da fachada (data URL em base64)
+  };
+}
+
 function freshBrandState(brand){
   return {
     global: { estado: brand.defaultEstado, comissao: brand.defaultComissao, tipoFrete: 'CIF', freteManual: false },
@@ -1113,6 +1459,8 @@ function freshBrandState(brand){
     })),
     scenarios: [], // cenários nomeados salvos pelo usuário
     orderMeta: freshOrderMeta(),
+    orderHistory: [], // registro de pedidos gerados/enviados
+    orderDrafts: [], // pedidos salvos como rascunho, pra terminar/enviar depois
   };
 }
 
@@ -1121,6 +1469,8 @@ function freshState(){
     v: SCHEMA_VERSION,
     activeBrand: 'novaera',
     marginTarget: 0.06,
+    clientForm: freshClientForm(),
+    clientDrafts: [], // fichas de cliente salvas como rascunho, pra terminar/enviar depois
     brands: {
       novaera: freshBrandState(BRANDS.novaera),
       newgreen: freshBrandState(BRANDS.newgreen),
@@ -1130,6 +1480,30 @@ function freshState(){
 
 let STATE = freshState();
 let saveTimer = null;
+
+// Chamado a cada novo login: volta o simulador pro estado de uma simulação nova
+// (preços de venda, quantidades, frete, dados de cliente/pedido etc.), mas preserva
+// tudo que é parametrização fixa do sistema — Base de Insumos, histórico de pedidos
+// e cenários salvos — e mantém a meta mínima sempre em 6%.
+function resetSimulatorKeepingHistory(){
+  ['novaera','newgreen'].forEach(key => {
+    const keepHistory = STATE.brands[key].orderHistory;
+    const keepDrafts = STATE.brands[key].orderDrafts;
+    const keepScenarios = STATE.brands[key].scenarios;
+    const keepInsumos = STATE.brands[key].insumos; // Base de Insumos: parametrização fixa, nunca zera
+    STATE.brands[key] = freshBrandState(BRANDS[key]);
+    STATE.brands[key].orderHistory = keepHistory;
+    STATE.brands[key].orderDrafts = keepDrafts;
+    STATE.brands[key].scenarios = keepScenarios;
+    STATE.brands[key].insumos = keepInsumos;
+  });
+  const keepClientDrafts = STATE.clientDrafts;
+  STATE.activeBrand = 'novaera';
+  STATE.marginTarget = 0.06;
+  STATE.clientForm = freshClientForm();
+  STATE.clientDrafts = keepClientDrafts;
+  scheduleSave();
+}
 
 // atalhos para a marca ativa no momento
 function curBrand(){ return BRANDS[STATE.activeBrand]; }
@@ -1164,10 +1538,15 @@ async function loadState(){
           b.products.forEach(p => { if(p.included === undefined) p.included = true; });
           if(!b.scenarios) b.scenarios = [];
           if(!b.orderMeta) b.orderMeta = freshOrderMeta();
+          if(!b.orderHistory) b.orderHistory = [];
+          if(!b.orderDrafts) b.orderDrafts = [];
           if(!b.global.tipoFrete) b.global.tipoFrete = 'CIF';
           if(b.global.freteManual === undefined) b.global.freteManual = false;
         });
         if(STATE.marginTarget === undefined) STATE.marginTarget = 0.06;
+        if(!STATE.clientForm) STATE.clientForm = freshClientForm();
+        if(!STATE.clientForm.fotos) STATE.clientForm.fotos = [null, null, null];
+        if(!STATE.clientDrafts) STATE.clientDrafts = [];
       }
     }
   }catch(e){
@@ -1321,6 +1700,32 @@ function computeAll(){
    FORMATTERS
    ============================================================ */
 const parseBRNum = (v) => { const n = parseFloat(String(v ?? '').replace(',','.')); return isNaN(n) ? 0 : n; };
+
+/* ============================================================
+   MÁSCARAS DE CAMPO — CNPJ e telefone/celular com DDD
+   ============================================================ */
+function maskCNPJ(v){
+  v = v.replace(/\D/g,'').slice(0,14);
+  v = v.replace(/^(\d{2})(\d)/, '$1.$2');
+  v = v.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+  v = v.replace(/\.(\d{3})(\d)/, '.$1/$2');
+  v = v.replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+  return v;
+}
+function maskPhone(v){
+  v = v.replace(/\D/g,'').slice(0,11);
+  if(v.length > 10) v = v.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, '($1) $2-$3');
+  else if(v.length > 6) v = v.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+  else if(v.length > 2) v = v.replace(/^(\d{2})(\d{0,4}).*/, '($1) $2');
+  else if(v.length > 0) v = v.replace(/^(\d{0,2}).*/, '($1');
+  return v;
+}
+function applyMask(value, type){
+  if(type === 'cnpj') return maskCNPJ(value);
+  if(type === 'phone') return maskPhone(value);
+  return value;
+}
+
 const fmtMoney = (v) => 'R$ ' + (v||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
 const fmtMoney4 = (v) => (v||0).toLocaleString('pt-BR', {minimumFractionDigits:4, maximumFractionDigits:6});
 // pra campos editáveis: no mínimo 2 casas decimais, preservando mais casas quando o valor já tiver (até 4)
@@ -1370,6 +1775,7 @@ function renderBrandHeader(){
     markEl.style.background = '#0e9488';
   }
   document.getElementById('openOrderForm').style.display = brand.orderForm ? '' : 'none';
+  document.getElementById('openOrderHistory').style.display = brand.orderForm ? '' : 'none';
 }
 
 function setTipoFrete(tipo){
@@ -1684,6 +2090,81 @@ function renderOrderForm(){
   const activeLines = lines.filter(l => l.qty !== null);
   document.getElementById('orderProductsNote').textContent =
     `${activeLines.length} de ${lines.length} produtos entram nesse pedido (marcados na lista, com quantidade e preço preenchidos). Pra mudar isso, ajuste a caixinha de seleção e os campos de cada produto antes de gerar.`;
+  renderOrderDrafts();
+}
+
+/* ---------- Rascunhos de pedido ---------- */
+
+function saveOrderDraft(){
+  const bstate = curState();
+  const name = bstate.orderMeta.razaoSocial || 'Pedido sem nome';
+  bstate.orderDrafts.push({
+    id: 'odraft_' + Date.now(),
+    savedAt: Date.now(),
+    name,
+    orderMeta: JSON.parse(JSON.stringify(bstate.orderMeta)),
+    products: bstate.products.map(p => ({ pricing: JSON.parse(JSON.stringify(p.pricing)), included: p.included })),
+  });
+  scheduleSave();
+  renderOrderDrafts();
+}
+
+function loadOrderDraft(id){
+  const bstate = curState();
+  const d = bstate.orderDrafts.find(x => x.id === id);
+  if(!d) return;
+  bstate.orderMeta = JSON.parse(JSON.stringify(d.orderMeta));
+  d.products.forEach((p, i) => {
+    if(bstate.products[i]){
+      bstate.products[i].pricing = JSON.parse(JSON.stringify(p.pricing));
+      bstate.products[i].included = p.included;
+    }
+  });
+  renderOrderForm();
+  const all = renderTopBar();
+  renderProducts(all);
+  updateShareCount();
+  scheduleSave();
+}
+
+function deleteOrderDraft(id){
+  const bstate = curState();
+  bstate.orderDrafts = bstate.orderDrafts.filter(x => x.id !== id);
+  scheduleSave();
+}
+
+function renderOrderDrafts(){
+  const bstate = curState();
+  const wrap = document.getElementById('orderDraftsWrap');
+  const drafts = bstate.orderDrafts.slice().reverse();
+  if(drafts.length === 0){
+    wrap.innerHTML = `<p class="draft-empty">Nenhum rascunho salvo ainda para ${curBrand().label}.</p>`;
+    return;
+  }
+  wrap.innerHTML = drafts.map(d => `
+    <div class="draft-row">
+      <div class="draft-info">
+        <div class="n">${d.name}</div>
+        <div class="m">salvo em ${fmtDate(d.savedAt)}</div>
+      </div>
+      <button class="draft-load" data-load-draft="${d.id}" type="button">Carregar</button>
+      <button class="draft-del" data-del-draft="${d.id}" type="button">Excluir</button>
+    </div>`).join('');
+  wrap.querySelectorAll('[data-load-draft]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if(confirm('Carregar esse rascunho? Os dados atuais do formulário de pedido serão substituídos.')){
+        loadOrderDraft(btn.dataset.loadDraft);
+      }
+    });
+  });
+  wrap.querySelectorAll('[data-del-draft]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if(confirm('Excluir esse rascunho? Essa ação não pode ser desfeita.')){
+        deleteOrderDraft(btn.dataset.delDraft);
+        renderOrderDrafts();
+      }
+    });
+  });
 }
 
 function setupOrderFormListeners(){
@@ -1695,6 +2176,7 @@ function setupOrderFormListeners(){
         bstate.orderMeta[key] = el.checked;
         document.getElementById('valorTaxaDescargaWrap').style.display = el.checked ? '' : 'none';
       }else{
+        if(el.dataset.mask) el.value = applyMask(el.value, el.dataset.mask);
         bstate.orderMeta[key] = el.value;
       }
       scheduleSave();
@@ -1707,6 +2189,329 @@ function setupOrderFormListeners(){
       }
     });
   });
+}
+
+/* ============================================================
+   CADASTRO DE CLIENTES — formulário, PDF e envio
+   ============================================================ */
+
+function renderClientForm(){
+  const cf = STATE.clientForm;
+  document.querySelectorAll('#clientFormBody [data-client]').forEach(el => {
+    el.value = cf[el.dataset.client] ?? '';
+  });
+  renderRepeatList('referenciasWrap', 'referencias', cf.referencias, ['nome','telefone','contato'], ['Nome comercial','DDD/Telefone','Contato'], 'Referência');
+  renderRepeatList('bancosWrap', 'bancos', cf.bancos, ['banco','telefone','contato'], ['Banco','DDD/Telefone','Contato'], 'Banco');
+  renderRepeatList('representadasWrap', 'representadas', cf.representadas, ['empresa','vendaMensal','pontualidade'], ['Empresa/Representada','Venda mensal','Pontualidade'], 'Empresa');
+  renderAllPhotoSlots();
+  renderClientDrafts();
+}
+
+/* ---------- Rascunhos de cadastro de cliente ---------- */
+
+function saveClientDraft(){
+  const name = STATE.clientForm.razaoSocial || 'Cliente sem nome';
+  STATE.clientDrafts.push({
+    id: 'cdraft_' + Date.now(),
+    savedAt: Date.now(),
+    name,
+    form: JSON.parse(JSON.stringify(STATE.clientForm)),
+  });
+  scheduleSave();
+  renderClientDrafts();
+}
+
+function loadClientDraft(id){
+  const d = STATE.clientDrafts.find(x => x.id === id);
+  if(!d) return;
+  STATE.clientForm = JSON.parse(JSON.stringify(d.form));
+  renderClientForm();
+  scheduleSave();
+}
+
+function deleteClientDraft(id){
+  STATE.clientDrafts = STATE.clientDrafts.filter(x => x.id !== id);
+  scheduleSave();
+}
+
+function renderClientDrafts(){
+  const wrap = document.getElementById('clientDraftsWrap');
+  const drafts = STATE.clientDrafts.slice().reverse();
+  if(drafts.length === 0){
+    wrap.innerHTML = `<p class="draft-empty">Nenhum rascunho salvo ainda.</p>`;
+    return;
+  }
+  wrap.innerHTML = drafts.map(d => `
+    <div class="draft-row">
+      <div class="draft-info">
+        <div class="n">${d.name}</div>
+        <div class="m">salvo em ${fmtDate(d.savedAt)}</div>
+      </div>
+      <button class="draft-load" data-load-cdraft="${d.id}" type="button">Carregar</button>
+      <button class="draft-del" data-del-cdraft="${d.id}" type="button">Excluir</button>
+    </div>`).join('');
+  wrap.querySelectorAll('[data-load-cdraft]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if(confirm('Carregar esse rascunho? Os dados atuais da ficha serão substituídos.')){
+        loadClientDraft(btn.dataset.loadCdraft);
+      }
+    });
+  });
+  wrap.querySelectorAll('[data-del-cdraft]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if(confirm('Excluir esse rascunho? Essa ação não pode ser desfeita.')){
+        deleteClientDraft(btn.dataset.delCdraft);
+        renderClientDrafts();
+      }
+    });
+  });
+}
+
+/* ---------- Fotos da fachada ---------- */
+
+function resizeImageToDataUrl(file, maxDim, quality){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if(width > height && width > maxDim){ height = Math.round(height * (maxDim/width)); width = maxDim; }
+        else if(height >= width && height > maxDim){ width = Math.round(width * (maxDim/height)); height = maxDim; }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error('Não foi possível ler essa imagem.'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('Não foi possível ler esse arquivo.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderPhotoSlot(idx){
+  const slot = document.querySelector(`.photo-slot[data-photo-idx="${idx}"]`);
+  if(!slot) return;
+  const url = STATE.clientForm.fotos[idx];
+  slot.classList.toggle('filled', !!url);
+  if(url) slot.querySelector('.photo-preview').src = url;
+}
+
+function renderAllPhotoSlots(){
+  for(let i=0; i<3; i++) renderPhotoSlot(i);
+}
+
+function setupPhotoSlots(){
+  document.querySelectorAll('.photo-slot').forEach(slot => {
+    const idx = Number(slot.dataset.photoIdx);
+    const input = slot.querySelector('.photo-input');
+    slot.addEventListener('click', (e) => {
+      if(e.target.closest('.photo-remove')) return;
+      input.click();
+    });
+    input.addEventListener('change', async () => {
+      const file = input.files[0];
+      if(!file) return;
+      try{
+        const dataUrl = await resizeImageToDataUrl(file, 1000, 0.72);
+        STATE.clientForm.fotos[idx] = dataUrl;
+        renderPhotoSlot(idx);
+        scheduleSave();
+      }catch(err){
+        alert('Não consegui processar essa foto. Tente outra.');
+        console.error(err);
+      }
+      input.value = '';
+    });
+    slot.querySelector('.photo-remove').addEventListener('click', (e) => {
+      e.stopPropagation();
+      STATE.clientForm.fotos[idx] = null;
+      renderPhotoSlot(idx);
+      scheduleSave();
+    });
+  });
+}
+
+function renderRepeatList(wrapId, listKey, list, fields, labels, rowLabel){
+  const wrap = document.getElementById(wrapId);
+  wrap.innerHTML = list.map((item, idx) => `
+    <div class="repeat-row">
+      <div class="repeat-row-label">${rowLabel} ${idx+1}</div>
+      <div class="order-grid">
+        ${fields.map((f,i) => {
+          const isPhone = f === 'telefone';
+          return `<div class="order-field"><label>${labels[i]}</label><input type="text" ${isPhone?'inputmode="numeric" placeholder="(00) 00000-0000" maxlength="15" data-mask="phone"':''} value="${(item[f]||'').replace(/"/g,'&quot;')}" data-list-key="${listKey}" data-idx="${idx}" data-field="${f}"></div>`;
+        }).join('')}
+      </div>
+    </div>`).join('');
+  wrap.querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('input', () => {
+      if(inp.dataset.mask) inp.value = applyMask(inp.value, inp.dataset.mask);
+      STATE.clientForm[inp.dataset.listKey][Number(inp.dataset.idx)][inp.dataset.field] = inp.value;
+      scheduleSave();
+    });
+  });
+}
+
+function setupClientFormListeners(){
+  document.querySelectorAll('#clientFormBody [data-client]').forEach(el => {
+    el.addEventListener('input', () => {
+      if(el.dataset.mask) el.value = applyMask(el.value, el.dataset.mask);
+      STATE.clientForm[el.dataset.client] = el.value;
+      scheduleSave();
+    });
+  });
+}
+
+const fmtMoneyOrBlank = (v) => v ? fmtMoney(parseBRNum(v)) : '-';
+
+function buildClientPdf(){
+  const cf = STATE.clientForm;
+  const brand = curBrand();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(15);
+  doc.text('FICHA CADASTRAL DE CLIENTES', 14, 15);
+  if(brand.orderForm){
+    const c = brand.orderForm.company;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+    doc.text(`${c.nome}  ${c.cnpj}`, pageW-14, 10, {align:'right'});
+    doc.text(c.endereco, pageW-14, 14, {align:'right'});
+    doc.text(`${c.telefone}   ${c.email}`, pageW-14, 18, {align:'right'});
+  }
+  doc.setDrawColor(200); doc.line(14, 21, pageW-14, 21);
+
+  const infoRows = [
+    ['Razão social', cf.razaoSocial, 'Nome da rede', cf.nomeRede],
+    ['CNPJ', cf.cnpj, 'Inscrição estadual', cf.inscricaoEstadual],
+    ['Endereço', cf.endereco, 'Bairro', cf.bairro],
+    ['Cidade', cf.cidade, 'UF', cf.uf],
+    ['Telefone', cf.telefone, 'Contato', cf.contato],
+    ['E-mail', cf.email, 'Prazo', cf.prazo],
+    ['E-commerce/Site', cf.site, 'Observações', cf.obs],
+  ];
+  doc.autoTable({
+    startY:25, theme:'plain', styles:{fontSize:8.5, cellPadding:1.2},
+    columnStyles:{0:{fontStyle:'bold', textColor:[90,90,90], cellWidth:32}, 2:{fontStyle:'bold', textColor:[90,90,90], cellWidth:32}},
+    body: infoRows,
+  });
+
+  let y = doc.lastAutoTable.finalY + 6;
+
+  const refs = cf.referencias.filter(r => r.nome || r.telefone || r.contato);
+  if(refs.length){
+    doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.text('Referências Comerciais', 14, y);
+    doc.autoTable({
+      startY: y+3, head:[['Nome comercial','DDD/Telefone','Contato']],
+      body: refs.map(r => [r.nome,r.telefone,r.contato]),
+      theme:'grid', headStyles:{fillColor:[62,156,49], fontSize:8}, styles:{fontSize:8},
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
+
+  const bancos = cf.bancos.filter(r => r.banco || r.telefone || r.contato);
+  if(bancos.length){
+    doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.text('Bancos que Trabalha', 14, y);
+    doc.autoTable({
+      startY: y+3, head:[['Banco','DDD/Telefone','Contato']],
+      body: bancos.map(r => [r.banco,r.telefone,r.contato]),
+      theme:'grid', headStyles:{fillColor:[62,156,49], fontSize:8}, styles:{fontSize:8},
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
+
+  const reps = cf.representadas.filter(r => r.empresa || r.vendaMensal || r.pontualidade);
+  if(reps.length){
+    doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.text('Empresas que o Representante já Vende ao Cliente', 14, y);
+    doc.autoTable({
+      startY: y+3, head:[['Empresa','Venda mensal','Pontualidade']],
+      body: reps.map(r => [r.empresa,r.vendaMensal,r.pontualidade]),
+      theme:'grid', headStyles:{fillColor:[62,156,49], fontSize:8}, styles:{fontSize:8},
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
+
+  if(cf.obsComplementares){
+    doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.text('Observações Complementares', 14, y);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+    const lines = doc.splitTextToSize(cf.obsComplementares, pageW-28);
+    doc.text(lines, 14, y+5);
+    y += 5 + lines.length*4 + 6;
+  }
+
+  const fotos = cf.fotos.filter(Boolean);
+  if(fotos.length){
+    const pageH = doc.internal.pageSize.getHeight();
+    const imgSize = 55;
+    if(y + imgSize + 14 > pageH - 15){ doc.addPage(); y = 20; }
+    doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.text('Fotos da Fachada', 14, y);
+    y += 5;
+    fotos.forEach((f, i) => {
+      try{ doc.addImage(f, 'JPEG', 14 + i*(imgSize+6), y, imgSize, imgSize); }catch(err){ console.error('Falha ao inserir foto no PDF:', err); }
+    });
+    y += imgSize + 10;
+  }
+
+  doc.autoTable({
+    startY:y, theme:'plain', styles:{fontSize:8.5, cellPadding:1.3},
+    columnStyles:{0:{cellWidth:80}, 1:{halign:'right', cellWidth:35, fontStyle:'bold'}},
+    body: [
+      ['Limite sugerido representante', fmtMoneyOrBlank(cf.limiteRepresentante)],
+      ['Limite sug. gerência comercial', fmtMoneyOrBlank(cf.limiteGerencia)],
+      ['Limite liberado pelo financeiro', fmtMoneyOrBlank(cf.limiteFinanceiro)],
+    ],
+  });
+
+  doc.setFontSize(7); doc.setTextColor(140);
+  doc.text('Gerado pelo Simulador de Precificação — Cadastro de Clientes', 14, doc.internal.pageSize.getHeight()-8);
+
+  return doc;
+}
+
+function buildClientPdfFile(){
+  const doc = buildClientPdf();
+  const cf = STATE.clientForm;
+  const nome = (cf.razaoSocial || 'cliente').replace(/[^a-zA-Z0-9]+/g,'_').slice(0,40);
+  const filename = `Ficha_Cadastral_${nome}.pdf`;
+  return { doc, filename };
+}
+
+function generateClientPdf(){
+  const { doc, filename } = buildClientPdfFile();
+  doc.save(filename);
+}
+
+function buildClientShareText(){
+  const cf = STATE.clientForm;
+  const txt = ['*Ficha Cadastral de Cliente*'];
+  if(cf.razaoSocial) txt.push(`Cliente: ${cf.razaoSocial}`);
+  if(cf.cnpj) txt.push(`CNPJ: ${cf.cnpj}`);
+  if(cf.cidade || cf.uf) txt.push(`Cidade: ${cf.cidade}${cf.uf ? '/' + cf.uf : ''}`);
+  if(cf.telefone) txt.push(`Telefone: ${cf.telefone}`);
+  if(cf.email) txt.push(`E-mail: ${cf.email}`);
+  return txt.join('\n');
+}
+
+async function shareClientViaWhatsapp(){
+  const text = buildClientShareText();
+  const { doc, filename } = buildClientPdfFile();
+  try{
+    const blob = doc.output('blob');
+    const file = new File([blob], filename, { type:'application/pdf' });
+    if(navigator.canShare && navigator.canShare({ files:[file] })){
+      await navigator.share({ files:[file], text, title:'Ficha Cadastral' });
+      return;
+    }
+  }catch(err){
+    if(err && err.name === 'AbortError') return;
+    console.error('Falha ao compartilhar arquivo, caindo no modo alternativo:', err);
+  }
+  doc.save(filename);
+  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
 }
 
 function buildOrderPdf(){
@@ -1801,11 +2606,41 @@ function buildOrderPdf(){
   return { doc, totalComFrete };
 }
 
+function saveOrderToHistory(totalComFrete){
+  const bstate = curState();
+  const meta = bstate.orderMeta;
+  const lines = getOrderLines().filter(l => l.qty !== null);
+  if(lines.length === 0) return;
+
+  const itens = lines.map(l => ({ nome:l.def.name, qtd:l.qty, preco:l.price, totalComImpostos:l.r.AP }));
+  const signature = JSON.stringify({ cliente: meta.razaoSocial, itens: itens.map(i => [i.nome,i.qtd,i.preco]) });
+  const now = Date.now();
+  const last = bstate.orderHistory[bstate.orderHistory.length - 1];
+  // evita registrar duas vezes o mesmo pedido se a pessoa clicar em "Gerar PDF" e depois "Enviar por WhatsApp/E-mail" em seguida
+  if(last && last.signature === signature && (now - last.savedAt) < 5*60*1000) return;
+
+  bstate.orderHistory.push({
+    id: 'ord_' + now,
+    savedAt: now,
+    signature,
+    dataPedido: meta.dataPedido || new Date().toISOString().slice(0,10),
+    cliente: meta.razaoSocial || '(sem nome informado)',
+    comprador: meta.comprador || '',
+    cidade: meta.cidade || '',
+    estado: bstate.global.estado,
+    vendedor: meta.vendedor || '',
+    itens,
+    totalComFrete,
+  });
+  scheduleSave();
+}
+
 function buildOrderPdfFile(){
-  const { doc } = buildOrderPdf();
+  const { doc, totalComFrete } = buildOrderPdf();
   const meta = curState().orderMeta;
   const nome = (meta.razaoSocial || 'cliente').replace(/[^a-zA-Z0-9]+/g,'_').slice(0,40);
   const filename = `Pedido_${curBrand().label.replace(' ','')}_${nome}.pdf`;
+  saveOrderToHistory(totalComFrete);
   return { doc, filename };
 }
 
@@ -1910,6 +2745,78 @@ function deleteScenario(id){
 function fmtDate(iso){
   const d = new Date(iso);
   return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+}
+
+/* ============================================================
+   PEDIDOS ENVIADOS — histórico com resumo por mês
+   ============================================================ */
+
+function deleteOrderHistoryEntry(id){
+  const bstate = curState();
+  bstate.orderHistory = bstate.orderHistory.filter(o => o.id !== id);
+  scheduleSave();
+}
+
+function renderOrderHistory(){
+  const bstate = curState();
+  const body = document.getElementById('orderHistoryBody');
+  const orders = bstate.orderHistory.slice().sort((a,b) => b.savedAt - a.savedAt);
+
+  if(orders.length === 0){
+    body.innerHTML = `<p class="oh-empty">Nenhum pedido gerado ainda para ${curBrand().label}. Toda vez que você clicar em "Gerar PDF do pedido", "Enviar por WhatsApp" ou "Enviar por e-mail" dentro de Gerar Pedido, ele fica registrado aqui.</p>`;
+    return;
+  }
+
+  // agrupa por mês (a partir da data do pedido, não da data em que foi salvo)
+  const byMonth = {};
+  orders.forEach(o => {
+    const d = new Date(o.dataPedido + 'T00:00:00');
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    if(!byMonth[key]) byMonth[key] = { label: d.toLocaleDateString('pt-BR', {month:'long', year:'numeric'}), orders:[], total:0 };
+    byMonth[key].orders.push(o);
+    byMonth[key].total += o.totalComFrete;
+  });
+  const monthKeys = Object.keys(byMonth).sort().reverse();
+
+  body.innerHTML = monthKeys.map(key => {
+    const m = byMonth[key];
+    return `
+      <div class="oh-month">
+        <div class="oh-month-name">${m.label}</div>
+        <div class="oh-month-stats"><b>${m.orders.length}</b> pedido(s) · total <b>${fmtMoney(m.total)}</b></div>
+      </div>
+      ${m.orders.map(o => `
+        <div class="oh-order" data-oh="${o.id}">
+          <div class="oh-order-top">
+            <div>
+              <div class="oh-order-client">${o.cliente}</div>
+              <div class="oh-order-meta">${fmtDate(o.savedAt)} · ${o.estado}${o.vendedor ? ' · ' + o.vendedor : ''}</div>
+            </div>
+            <div class="oh-order-total">${fmtMoney(o.totalComFrete)}</div>
+          </div>
+          <div class="oh-order-items">
+            ${o.itens.map(i => `<div class="oh-item-row"><span>${i.nome} — ${i.qtd}cx</span><span>${fmtMoney(i.totalComImpostos)}</span></div>`).join('')}
+            <button class="oh-del" data-del-order="${o.id}" type="button">Excluir este registro</button>
+          </div>
+        </div>`).join('')}
+    `;
+  }).join('');
+
+  body.querySelectorAll('.oh-order').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if(e.target.closest('.oh-del')) return;
+      el.classList.toggle('open');
+    });
+  });
+  body.querySelectorAll('[data-del-order]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if(confirm('Excluir esse pedido do histórico? Essa ação não pode ser desfeita.')){
+        deleteOrderHistoryEntry(btn.dataset.delOrder);
+        renderOrderHistory();
+      }
+    });
+  });
 }
 
 function renderScenarios(){
@@ -2145,6 +3052,7 @@ function switchBrand(brandId){
   document.getElementById('scenariosOverlay').classList.remove('open');
   document.getElementById('compareOverlay').classList.remove('open');
   document.getElementById('orderOverlay').classList.remove('open');
+  document.getElementById('orderHistoryOverlay').classList.remove('open');
   renderBrandHeader();
   renderEstadoOptions();
   const all = renderTopBar();
@@ -2159,6 +3067,8 @@ async function bootApp(){
   renderEstadoOptions();
   setupImportButton();
   setupOrderFormListeners();
+  setupClientFormListeners();
+  setupPhotoSlots();
 
   document.querySelectorAll('.brand-tab').forEach(btn => {
     btn.addEventListener('click', () => switchBrand(btn.dataset.brand));
@@ -2216,6 +3126,7 @@ async function bootApp(){
     renderInsumos();
     document.getElementById('importStatus').textContent = '';
     document.getElementById('insumosOverlay').classList.add('open');
+    closeHeaderMenu();
   });
   document.getElementById('closeInsumos').addEventListener('click', () => {
     document.getElementById('insumosOverlay').classList.remove('open');
@@ -2224,6 +3135,7 @@ async function bootApp(){
   document.getElementById('openScenarios').addEventListener('click', () => {
     renderScenarios();
     document.getElementById('scenariosOverlay').classList.add('open');
+    closeHeaderMenu();
   });
   document.getElementById('closeScenarios').addEventListener('click', () => {
     document.getElementById('scenariosOverlay').classList.remove('open');
@@ -2238,6 +3150,17 @@ async function bootApp(){
   });
   document.getElementById('closeOrderForm').addEventListener('click', () => {
     document.getElementById('orderOverlay').classList.remove('open');
+  });
+  document.getElementById('openOrderHistory').addEventListener('click', () => {
+    renderOrderHistory();
+    document.getElementById('orderHistoryOverlay').classList.add('open');
+  });
+  document.getElementById('closeOrderHistory').addEventListener('click', () => {
+    document.getElementById('orderHistoryOverlay').classList.remove('open');
+  });
+  document.getElementById('saveOrderDraft').addEventListener('click', () => {
+    saveOrderDraft();
+    alert('Rascunho do pedido salvo. Você pode continuar de onde parou a qualquer momento, mesmo depois de sair e logar de novo.');
   });
   document.getElementById('generateOrderPdf').addEventListener('click', () => {
     const lines = getOrderLines().filter(l => l.qty !== null);
@@ -2293,11 +3216,16 @@ async function bootApp(){
 function applyRole(role, label){
   document.body.classList.remove('role-admin','role-user');
   document.body.classList.add(role === 'admin' ? 'role-admin' : 'role-user');
-  document.getElementById('roleBadge').textContent = label || (role === 'admin' ? 'admin' : 'usuário');
+  const text = label || (role === 'admin' ? 'admin' : 'usuário');
+  document.getElementById('roleBadge').textContent = text;
+  document.getElementById('hubRoleBadge').textContent = text;
 }
 
 function showLogin(){
   document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('hubScreen').classList.add('hidden');
+  document.getElementById('clientScreen').classList.add('hidden');
+  document.getElementById('catalogScreen').classList.add('hidden');
   document.getElementById('loginError').textContent = '';
   document.getElementById('loginUser').value = '';
   document.getElementById('loginPassword').value = '';
@@ -2306,6 +3234,26 @@ function showLogin(){
 
 function hideLogin(){
   document.getElementById('loginScreen').classList.add('hidden');
+}
+
+function closeHeaderMenu(){
+  document.getElementById('headerMenu').classList.add('hidden');
+}
+
+function showHub(){
+  document.getElementById('hubScreen').classList.remove('hidden');
+  document.getElementById('clientScreen').classList.add('hidden');
+  document.getElementById('catalogScreen').classList.add('hidden');
+}
+
+function hideHub(){
+  document.getElementById('hubScreen').classList.add('hidden');
+  sessionStorage.setItem('nova-era-in-app', '1');
+}
+
+function goToHub(){
+  sessionStorage.removeItem('nova-era-in-app');
+  showHub();
 }
 
 function attemptLogin(){
@@ -2321,17 +3269,28 @@ function attemptLogin(){
   sessionStorage.setItem('nova-era-role', match.role);
   sessionStorage.setItem('nova-era-role-label', match.label);
   applyRole(match.role, match.label);
+  resetSimulatorKeepingHistory();
+  renderBrandHeader();
+  renderEstadoOptions();
+  const all = renderTopBar();
+  renderProducts(all);
+  updateShareCount();
   hideLogin();
+  showHub();
 }
 
 function logout(){
   sessionStorage.removeItem('nova-era-role');
   sessionStorage.removeItem('nova-era-role-label');
+  sessionStorage.removeItem('nova-era-in-app');
   showLogin();
 }
 
 async function init(){
   document.getElementById('loginLogo').src = LOGO_FOCADO_URI;
+  document.getElementById('hubLogo').src = LOGO_FOCADO_URI;
+  document.getElementById('catalogLogoNovaEra').src = LOGO_DATA_URI;
+  document.getElementById('catalogLogoNewGreen').src = LOGO_NEWGREEN_URI;
   document.getElementById('loginForm').addEventListener('submit', (e) => {
     e.preventDefault();
     attemptLogin();
@@ -2339,6 +3298,72 @@ async function init(){
   document.getElementById('logoutBtn').addEventListener('click', (e) => {
     e.preventDefault();
     logout();
+  });
+  document.getElementById('hubLogoutBtn').addEventListener('click', (e) => {
+    e.preventDefault();
+    logout();
+  });
+  document.getElementById('hubGoSimulador').addEventListener('click', () => {
+    hideHub();
+  });
+  document.getElementById('hubGoCadastro').addEventListener('click', () => {
+    renderClientForm();
+    document.getElementById('hubScreen').classList.add('hidden');
+    document.getElementById('clientScreen').classList.remove('hidden');
+  });
+  document.getElementById('clientBackBtn').addEventListener('click', () => {
+    document.getElementById('clientScreen').classList.add('hidden');
+    showHub();
+  });
+  document.getElementById('hubGoCatalogos').addEventListener('click', () => {
+    document.getElementById('hubScreen').classList.add('hidden');
+    document.getElementById('catalogScreen').classList.remove('hidden');
+  });
+  document.getElementById('catalogBackBtn').addEventListener('click', () => {
+    document.getElementById('catalogScreen').classList.add('hidden');
+    showHub();
+  });
+  document.getElementById('saveClientDraft').addEventListener('click', () => {
+    saveClientDraft();
+    alert('Rascunho da ficha salvo. Você pode continuar de onde parou a qualquer momento, mesmo depois de sair e logar de novo.');
+  });
+  document.getElementById('generateClientPdf').addEventListener('click', () => {
+    if(!STATE.clientForm.razaoSocial.trim()){
+      alert('Preencha ao menos a razão social do cliente antes de gerar a ficha.');
+      return;
+    }
+    generateClientPdf();
+  });
+  document.getElementById('clientShareWhatsapp').addEventListener('click', () => {
+    if(!STATE.clientForm.razaoSocial.trim()){
+      alert('Preencha ao menos a razão social do cliente antes de gerar a ficha.');
+      return;
+    }
+    shareClientViaWhatsapp();
+  });
+  document.getElementById('clientShareEmail').addEventListener('click', () => {
+    if(!STATE.clientForm.razaoSocial.trim()){
+      alert('Preencha ao menos a razão social do cliente antes de gerar a ficha.');
+      return;
+    }
+    const cf = STATE.clientForm;
+    const subject = `Ficha Cadastral — ${cf.razaoSocial}`;
+    const body = buildClientShareText().replace(/\*/g,'');
+    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  });
+  document.getElementById('backToHub').addEventListener('click', () => {
+    closeHeaderMenu();
+    goToHub();
+  });
+  document.getElementById('headerMenuBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('headerMenu').classList.toggle('hidden');
+  });
+  document.addEventListener('click', (e) => {
+    const menu = document.getElementById('headerMenu');
+    if(!menu.classList.contains('hidden') && !e.target.closest('.menu-wrap')){
+      closeHeaderMenu();
+    }
   });
 
   await bootApp();
@@ -2348,6 +3373,12 @@ async function init(){
   if(savedRole === 'admin' || savedRole === 'user'){
     applyRole(savedRole, savedLabel);
     hideLogin();
+    if(sessionStorage.getItem('nova-era-in-app') === '1'){
+      // já tinha entrado no simulador nessa sessão (ex: deu um refresh na página) — volta direto pra lá
+      document.getElementById('hubScreen').classList.add('hidden');
+    }else{
+      showHub();
+    }
   }else{
     // aplica papel "usuário" (mais restritivo) por padrão enquanto aguarda login
     document.body.classList.add('role-user');
