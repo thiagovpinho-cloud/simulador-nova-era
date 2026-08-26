@@ -1,0 +1,17 @@
+{
+  "name": "Focado — Nova Era",
+  "short_name": "Focado",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#04352a",
+  "theme_color": "#04352a",
+  "description": "Simulador e Gestão Operacional Nova Era",
+  "icons": [
+    {
+      "src": "focado-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
