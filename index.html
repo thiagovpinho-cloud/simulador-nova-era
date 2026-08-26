@@ -3541,5 +3541,355 @@ async function init(){
 
 init();
 </script>
+
+<!-- FOCADO_OPS_V2_START -->
+<script>
+(function focadoOpsModule(){
+  'use strict';
+  if (document.getElementById('focadoOpsScreen')) return;
+
+  const KEY = 'focado-operacoes-v2';
+  const STAGES = [
+    {id:'COMERCIAL', label:'Comercial'},
+    {id:'PCP', label:'PCP'},
+    {id:'ESTOQUE_PRODUCAO', label:'Estoque / Produção'},
+    {id:'LOGISTICA', label:'Logística'},
+    {id:'ENTREGUE', label:'Entregue'}
+  ];
+  let OPS = loadOps();
+  let activeOrderId = null;
+  let view = 'orders';
+
+  function loadOps(){
+    try{
+      const p = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if(p && p.version === 2) return p;
+    }catch(_){}
+    return {version:2, orders:[], inventory:{}, events:[]};
+  }
+  function saveOps(){
+    localStorage.setItem(KEY, JSON.stringify(OPS));
+  }
+  function esc(v){
+    return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function money(v){
+    return Number(v || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  }
+  function dateBR(v){
+    if(!v) return '—';
+    const d = new Date(v + (String(v).length===10 ? 'T12:00:00' : ''));
+    return isNaN(d) ? '—' : d.toLocaleDateString('pt-BR');
+  }
+  function daysBetween(a,b){
+    if(!a || !b) return null;
+    const x = new Date(a+'T12:00:00'), y = new Date(b+'T12:00:00');
+    if(isNaN(x)||isNaN(y)) return null;
+    return Math.round((y-x)/86400000);
+  }
+  function stageIndex(status){ return Math.max(0, STAGES.findIndex(s=>s.id===status)); }
+  function orderTotal(o){ return (o.items||[]).reduce((s,i)=>s+(Number(i.qty)||0)*(Number(i.price)||0),0); }
+  function nextOrderNumber(){
+    const d = new Date();
+    return 'PED-' + d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0') + '-' + String(Date.now()).slice(-4);
+  }
+  function event(order, action){
+    const e = {at:Date.now(), action, status:order.status};
+    order.events = order.events || [];
+    order.events.push(e);
+    OPS.events.push({orderId:order.id, ...e});
+  }
+  function normalizeInventory(code, name){
+    const k = code || name;
+    if(!OPS.inventory[k]) OPS.inventory[k] = {code:code||'', name:name||code||'Produto', physical:0, reserved:0};
+    return OPS.inventory[k];
+  }
+  function available(inv){ return Math.max(0, Number(inv.physical||0)-Number(inv.reserved||0)); }
+
+  const style = document.createElement('style');
+  style.id = 'focadoOpsStyle';
+  style.textContent = `
+    #focadoOpsScreen{position:fixed;inset:0;z-index:999;background:#f5f7f3;display:flex;flex-direction:column;color:#1c231d;font-family:var(--sans)}
+    #focadoOpsScreen.hidden{display:none}
+    .ops-head{background:radial-gradient(circle at 30% 15%,#0a5443 0%,#04352a 55%,#021f19 100%);color:#fff;padding:14px 16px;position:sticky;top:0;z-index:3;box-shadow:0 4px 18px rgba(0,0,0,.18)}
+    .ops-head-row{max-width:920px;margin:auto;display:flex;align-items:center;gap:12px}
+    .ops-back{width:36px;height:36px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.1);color:#fff;border-radius:10px;font-size:18px;cursor:pointer}
+    .ops-title{flex:1}.ops-title h2{margin:0;font-family:var(--disp);font-size:17px}.ops-title p{margin:2px 0 0;font-size:10.5px;color:rgba(255,255,255,.65)}
+    .ops-body{width:100%;max-width:920px;margin:0 auto;padding:14px 16px 80px;overflow:auto}
+    .ops-nav{display:flex;gap:7px;margin-bottom:12px;overflow:auto}
+    .ops-tab{border:1px solid #dfe5da;background:#fff;border-radius:10px;padding:9px 12px;font-weight:700;font-size:11.5px;white-space:nowrap;cursor:pointer;color:#667066}
+    .ops-tab.active{background:#0a5443;color:#fff;border-color:#0a5443}
+    .ops-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+    .ops-kpi{background:#fff;border:1px solid #e3e8de;border-radius:13px;padding:12px}
+    .ops-kpi b{display:block;font-family:var(--disp);font-size:20px;color:#0a5443}.ops-kpi span{font-size:10px;color:#7b857a}
+    .ops-card{background:#fff;border:1px solid #e3e8de;border-radius:14px;padding:13px;margin-bottom:9px;box-shadow:0 2px 12px rgba(28,35,29,.04)}
+    .ops-card-top{display:flex;align-items:flex-start;gap:10px}.ops-card-main{flex:1;min-width:0}
+    .ops-card h3{margin:0;font-family:var(--disp);font-size:13px}.ops-muted{font-size:10.5px;color:#7d877b;margin-top:3px;line-height:1.45}
+    .ops-badge{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;padding:5px 7px;border-radius:7px;background:#e9f6e4;color:#2e7a25;white-space:nowrap}
+    .ops-progress{display:flex;gap:3px;margin-top:10px}.ops-progress i{height:5px;flex:1;border-radius:4px;background:#e7ebe4}.ops-progress i.done{background:#3e9c31}
+    .ops-actions{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}
+    .ops-btn{border:none;background:#0a5443;color:#fff;border-radius:9px;padding:9px 12px;font-size:11px;font-weight:700;cursor:pointer}
+    .ops-btn.secondary{background:#eef2ec;color:#4f5a50;border:1px solid #dfe5da}.ops-btn.warn{background:#fff4df;color:#8a650d;border:1px solid #edd6a0}.ops-btn.danger{background:#fcebe9;color:#b33f36}
+    .ops-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ops-field{background:#f6f8f4;border:1px solid #e1e6de;border-radius:10px;padding:8px 10px}
+    .ops-field.wide{grid-column:1/-1}.ops-field label{display:block;font-size:9px;color:#7b857a;margin-bottom:3px;text-transform:uppercase;font-weight:700;letter-spacing:.3px}
+    .ops-field input,.ops-field select,.ops-field textarea{width:100%;border:none;background:transparent;outline:none;font:inherit;font-size:12px;color:#1c231d}
+    .ops-field textarea{min-height:54px;resize:vertical}.ops-section{font-size:10px;text-transform:uppercase;font-weight:800;letter-spacing:.5px;color:#2e7a25;margin:16px 0 7px}
+    .ops-item{border:1px solid #e3e8de;border-radius:11px;padding:10px;margin-bottom:7px;background:#fff}
+    .ops-item-title{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;font-weight:700}.ops-item-meta{font-size:10px;color:#7d877b;margin-top:2px}
+    .ops-source{display:flex;gap:6px;margin-top:8px}.ops-source button{flex:1;border:1px solid #dfe5da;background:#f6f8f4;border-radius:8px;padding:7px;font-size:10.5px;font-weight:700;color:#667066;cursor:pointer}
+    .ops-source button.active{background:#e9f6e4;color:#2e7a25;border-color:#acd2a5}
+    .ops-alert{padding:9px 11px;border-radius:9px;background:#fff4df;color:#765a13;font-size:10.5px;margin:8px 0}.ops-alert.bad{background:#fcebe9;color:#983a32}
+    .ops-empty{text-align:center;padding:38px 18px;color:#7b857a;font-size:12px}
+    .ops-inv-row{display:grid;grid-template-columns:minmax(120px,1fr) 90px 80px 80px;gap:8px;align-items:center}
+    .ops-inv-row input{width:100%;border:1px solid #dfe5da;border-radius:8px;padding:7px;font-family:var(--mono);font-size:11px}
+    .ops-import{border:1.5px dashed #b9c5b4;border-radius:12px;padding:14px;background:#fbfcfa;margin-bottom:12px}.ops-import input{display:none}
+    @media(max-width:650px){.ops-kpis{grid-template-columns:1fr 1fr}.ops-grid{grid-template-columns:1fr}.ops-field.wide{grid-column:auto}.ops-inv-row{grid-template-columns:1fr 76px 65px 65px}.ops-body{padding-left:10px;padding-right:10px}}
+  `;
+  document.head.appendChild(style);
+
+  const hubGrid = document.querySelector('#hubScreen .hub-grid');
+  if(hubGrid){
+    const btn = document.createElement('button');
+    btn.className = 'hub-btn active';
+    btn.id = 'hubGoOperacoes';
+    btn.type = 'button';
+    btn.innerHTML = '<span class="hub-btn-icon">🏭</span><span class="hub-btn-label">Gestão Operacional</span><span class="hub-btn-soon" style="background:#e9f6e4;color:#2e7a25">novo</span>';
+    hubGrid.insertBefore(btn, hubGrid.lastElementChild);
+  }
+
+  const screen = document.createElement('div');
+  screen.id = 'focadoOpsScreen';
+  screen.className = 'hidden';
+  screen.innerHTML = '<div class="ops-head"><div class="ops-head-row"><button class="ops-back" id="opsBackBtn">←</button><div class="ops-title"><h2>Gestão Operacional</h2><p>Comercial → PCP → Estoque/Produção → Logística → Entrega</p></div><span class="role-badge" id="opsRoleBadge"></span></div></div><div class="ops-body" id="opsBody"></div>';
+  document.body.appendChild(screen);
+
+  document.getElementById('hubGoOperacoes')?.addEventListener('click', () => {
+    document.getElementById('hubScreen').classList.add('hidden');
+    screen.classList.remove('hidden');
+    document.getElementById('opsRoleBadge').textContent = sessionStorage.getItem('nova-era-role-label') || sessionStorage.getItem('nova-era-role') || 'usuário';
+    activeOrderId = null; view = 'orders'; render();
+  });
+  document.getElementById('opsBackBtn').addEventListener('click', () => {
+    screen.classList.add('hidden');
+    if(typeof showHub === 'function') showHub(); else document.getElementById('hubScreen').classList.remove('hidden');
+  });
+
+  function importCurrentOrder(){
+    try{
+      if(typeof getOrderLines !== 'function' || typeof curState !== 'function') throw new Error('Simulador indisponível');
+      const lines = getOrderLines().filter(l => l.qty !== null);
+      if(!lines.length){ alert('Preencha e marque pelo menos um produto no simulador antes de enviar para a operação.'); return; }
+      const meta = curState().orderMeta || {};
+      const o = {
+        id:'op_'+Date.now(),
+        number: nextOrderNumber(),
+        status:'COMERCIAL',
+        createdAt:Date.now(),
+        brand:(typeof curBrand==='function' ? curBrand().label : ''),
+        client:meta.razaoSocial || 'Cliente não informado',
+        cnpj:meta.cnpjCliente || '',
+        city:meta.cidade || '',
+        uf:'',
+        orderDate:meta.dataPedido || new Date().toISOString().slice(0,10),
+        suggestedPickup:'',
+        freightType:meta.tipoFrete || '',
+        notes:meta.observacoes || '',
+        pcp:{deliveryBase:'', productionDate:'', availableDate:'', separated:false},
+        logistics:{freightValue:meta.valorFrete || '', pickupDate:'', deliveryDate:'', carrier:''},
+        items: lines.map(l=>({code:String(l.code||''), name:l.def?.name||String(l.code||''), qty:Number(l.qty)||0, price:Number(l.price)||0, source:'', reservedQty:0})),
+        events:[]
+      };
+      event(o,'Pedido criado a partir do simulador');
+      OPS.orders.unshift(o);
+      saveOps();
+      activeOrderId=o.id; view='detail'; render();
+    }catch(e){ alert('Não foi possível importar o pedido atual: '+e.message); }
+  }
+
+  function reserveFinishedGoods(o){
+    let shortages=[];
+    (o.items||[]).forEach(item=>{
+      if(item.source!=='ESTOQUE' || item.reservedQty>0) return;
+      const inv=normalizeInventory(item.code,item.name);
+      const av=available(inv);
+      if(av < item.qty) shortages.push(item.name+' (disp. '+av+' / nec. '+item.qty+')');
+    });
+    if(shortages.length){
+      alert('Estoque acabado insuficiente para reservar:\\n\\n'+shortages.join('\\n')+'\\n\\nAjuste o estoque ou altere o atendimento para Produção.');
+      return false;
+    }
+    (o.items||[]).forEach(item=>{
+      if(item.source==='ESTOQUE' && item.reservedQty===0){
+        const inv=normalizeInventory(item.code,item.name);
+        inv.reserved=Number(inv.reserved||0)+Number(item.qty||0);
+        item.reservedQty=Number(item.qty||0);
+      }
+    });
+    return true;
+  }
+
+  function releaseReservation(item){
+    if(!item.reservedQty) return;
+    const inv=normalizeInventory(item.code,item.name);
+    inv.reserved=Math.max(0,Number(inv.reserved||0)-Number(item.reservedQty||0));
+    item.reservedQty=0;
+  }
+
+  function advance(o){
+    if(o.status==='COMERCIAL'){
+      o.status='PCP'; event(o,'Enviado ao PCP');
+    }else if(o.status==='PCP'){
+      if((o.items||[]).some(i=>!i.source)){ alert('Defina Estoque ou Produção para todos os itens.'); return; }
+      if(!o.pcp.deliveryBase){ alert('Informe a base de entrega/produção.'); return; }
+      if(!reserveFinishedGoods(o)) return;
+      o.status='ESTOQUE_PRODUCAO'; event(o,'Planejamento PCP confirmado');
+    }else if(o.status==='ESTOQUE_PRODUCAO'){
+      if(!o.pcp.availableDate){ alert('Informe a data disponível.'); return; }
+      if(!o.pcp.separated){ alert('Confirme que o pedido está separado/liberado.'); return; }
+      o.status='LOGISTICA'; event(o,'Liberado para Logística');
+    }else if(o.status==='LOGISTICA'){
+      if(!o.logistics.deliveryDate){ alert('Informe a data de entrega.'); return; }
+      if(o.orderDate && o.logistics.deliveryDate < o.orderDate){ alert('A data de entrega não pode ser anterior à data do pedido.'); return; }
+      (o.items||[]).forEach(item=>{
+        if(item.reservedQty>0){
+          const inv=normalizeInventory(item.code,item.name);
+          inv.reserved=Math.max(0,Number(inv.reserved||0)-Number(item.reservedQty||0));
+          inv.physical=Math.max(0,Number(inv.physical||0)-Number(item.reservedQty||0));
+          item.reservedQty=0;
+        }
+      });
+      o.status='ENTREGUE'; event(o,'Entrega registrada');
+    }
+    saveOps(); render();
+  }
+
+  function setSource(o,item,source){
+    if(item.source==='ESTOQUE' && source!=='ESTOQUE') releaseReservation(item);
+    item.source=source;
+    saveOps(); render();
+  }
+
+  function bindOrderFields(o){
+    document.querySelectorAll('[data-ofield]').forEach(el=>{
+      el.addEventListener('input',()=>{
+        const path=el.dataset.ofield.split('.');
+        let target=o;
+        for(let i=0;i<path.length-1;i++) target=target[path[i]];
+        target[path[path.length-1]]=el.type==='checkbox'?el.checked:el.value;
+        saveOps();
+      });
+      el.addEventListener('change',()=>{
+        if(el.type==='checkbox') {
+          const path=el.dataset.ofield.split('.');
+          let target=o;
+          for(let i=0;i<path.length-1;i++) target=target[path[i]];
+          target[path[path.length-1]]=el.checked;
+          saveOps();
+        }
+      });
+    });
+  }
+
+  function renderDetail(o){
+    const idx=stageIndex(o.status);
+    const ltAvail=daysBetween(o.orderDate,o.pcp.availableDate);
+    const ltLog=daysBetween(o.logistics.pickupDate,o.logistics.deliveryDate);
+    const ltTotal=daysBetween(o.orderDate,o.logistics.deliveryDate);
+    const invalidDelivery=!!(o.orderDate && o.logistics.deliveryDate && o.logistics.deliveryDate<o.orderDate);
+    let html='<div class="ops-actions"><button class="ops-btn secondary" id="opsListBack">← Pedidos</button></div>';
+    html+='<div class="ops-card"><div class="ops-card-top"><div class="ops-card-main"><h3>'+esc(o.number)+' · '+esc(o.client)+'</h3><div class="ops-muted">'+esc(o.brand)+' · '+esc(o.cnpj)+' · '+esc(o.city)+'</div></div><span class="ops-badge">'+esc(STAGES[idx].label)+'</span></div><div class="ops-progress">'+STAGES.map((s,i)=>'<i class="'+(i<=idx?'done':'')+'"></i>').join('')+'</div></div>';
+    if(invalidDelivery) html+='<div class="ops-alert bad">⚠ A data de entrega está anterior à data do pedido. Corrija antes de concluir.</div>';
+    html+='<div class="ops-section">Pedido</div><div class="ops-grid">'+
+      '<div class="ops-field"><label>Número</label><input data-ofield="number" value="'+esc(o.number)+'"></div>'+
+      '<div class="ops-field"><label>Data do pedido</label><input type="date" data-ofield="orderDate" value="'+esc(o.orderDate)+'"></div>'+
+      '<div class="ops-field wide"><label>Cliente</label><input data-ofield="client" value="'+esc(o.client)+'"></div>'+
+      '<div class="ops-field"><label>CNPJ</label><input data-ofield="cnpj" value="'+esc(o.cnpj)+'"></div>'+
+      '<div class="ops-field"><label>Cidade / UF</label><input data-ofield="city" value="'+esc(o.city)+'"></div>'+
+      '<div class="ops-field"><label>Frete</label><select data-ofield="freightType"><option value="">Selecione</option><option '+(o.freightType==='CIF'?'selected':'')+'>CIF</option><option '+(o.freightType==='FOB'?'selected':'')+'>FOB</option><option '+(o.freightType==='REDESPACHO'?'selected':'')+'>REDESPACHO</option></select></div>'+
+      '<div class="ops-field"><label>Sugestão de coleta</label><input type="date" data-ofield="suggestedPickup" value="'+esc(o.suggestedPickup)+'"></div>'+
+      '<div class="ops-field wide"><label>Observações</label><textarea data-ofield="notes">'+esc(o.notes)+'</textarea></div></div>';
+    html+='<div class="ops-section">Itens do pedido · '+(o.items||[]).length+'</div>';
+    (o.items||[]).forEach((item,n)=>{
+      const inv=normalizeInventory(item.code,item.name);
+      html+='<div class="ops-item"><div class="ops-item-title"><span>'+esc(item.code)+' · '+esc(item.name)+'</span><span>'+esc(item.qty)+' cx</span></div><div class="ops-item-meta">'+money(item.price)+'/cx · Total '+money(Number(item.qty)*Number(item.price))+' · Estoque disponível: '+available(inv)+'</div>';
+      if(o.status!=='ENTREGUE') html+='<div class="ops-source"><button data-source-index="'+n+'" data-source="ESTOQUE" class="'+(item.source==='ESTOQUE'?'active':'')+'">📦 Estoque</button><button data-source-index="'+n+'" data-source="PRODUCAO" class="'+(item.source==='PRODUCAO'?'active':'')+'">🏭 Produção</button></div>';
+      if(item.source==='PRODUCAO') html+='<div class="ops-alert">Produção necessária. Nesta versão o sistema sinaliza a necessidade; o consumo automático da ficha técnica será conectado na próxima evolução do módulo de estoque.</div>';
+      html+='</div>';
+    });
+    html+='<div class="ops-section">PCP</div><div class="ops-grid">'+
+      '<div class="ops-field"><label>Base de entrega / produção</label><select data-ofield="pcp.deliveryBase"><option value="">Selecione</option>'+['SENIR','GREENTECH','TOPLAND'].map(x=>'<option '+(o.pcp.deliveryBase===x?'selected':'')+'>'+x+'</option>').join('')+'</select></div>'+
+      '<div class="ops-field"><label>Data de produção</label><input type="date" data-ofield="pcp.productionDate" value="'+esc(o.pcp.productionDate)+'"></div>'+
+      '<div class="ops-field"><label>Data disponível</label><input type="date" data-ofield="pcp.availableDate" value="'+esc(o.pcp.availableDate)+'"></div>'+
+      '<div class="ops-field"><label>Separado / liberado</label><input type="checkbox" data-ofield="pcp.separated" '+(o.pcp.separated?'checked':'')+'></div></div>';
+    html+='<div class="ops-section">Logística</div><div class="ops-grid">'+
+      '<div class="ops-field"><label>Valor do frete</label><input type="number" step="0.01" data-ofield="logistics.freightValue" value="'+esc(o.logistics.freightValue)+'"></div>'+
+      '<div class="ops-field"><label>Transportadora</label><input data-ofield="logistics.carrier" value="'+esc(o.logistics.carrier)+'"></div>'+
+      '<div class="ops-field"><label>Data da coleta</label><input type="date" data-ofield="logistics.pickupDate" value="'+esc(o.logistics.pickupDate)+'"></div>'+
+      '<div class="ops-field"><label>Data da entrega</label><input type="date" data-ofield="logistics.deliveryDate" value="'+esc(o.logistics.deliveryDate)+'"></div></div>';
+    html+='<div class="ops-section">Lead times</div><div class="ops-kpis"><div class="ops-kpi"><b>'+(ltAvail==null?'—':ltAvail+'d')+'</b><span>Pedido → disponível</span></div><div class="ops-kpi"><b>'+(ltLog==null?'—':ltLog+'d')+'</b><span>Coleta → entrega</span></div><div class="ops-kpi"><b>'+(ltTotal==null?'—':ltTotal+'d')+'</b><span>Pedido → entrega</span></div><div class="ops-kpi"><b>'+money(orderTotal(o))+'</b><span>Valor do pedido</span></div></div>';
+    if(o.status!=='ENTREGUE'){
+      const labels={COMERCIAL:'Enviar ao PCP',PCP:'Confirmar planejamento',ESTOQUE_PRODUCAO:'Liberar para Logística',LOGISTICA:'Registrar entrega'};
+      html+='<div class="ops-actions"><button class="ops-btn" id="opsAdvance">'+labels[o.status]+'</button><button class="ops-btn danger" id="opsDelete">Excluir pedido</button></div>';
+    }else{
+      html+='<div class="ops-alert">✅ Pedido concluído e entregue.</div>';
+    }
+    document.getElementById('opsBody').innerHTML=html;
+    document.getElementById('opsListBack').onclick=()=>{activeOrderId=null;view='orders';render()};
+    document.getElementById('opsAdvance')?.addEventListener('click',()=>advance(o));
+    document.getElementById('opsDelete')?.addEventListener('click',()=>{
+      if(confirm('Excluir este pedido operacional?')){
+        (o.items||[]).forEach(releaseReservation);
+        OPS.orders=OPS.orders.filter(x=>x.id!==o.id);saveOps();activeOrderId=null;view='orders';render();
+      }
+    });
+    document.querySelectorAll('[data-source-index]').forEach(btn=>btn.addEventListener('click',()=>setSource(o,o.items[Number(btn.dataset.sourceIndex)],btn.dataset.source)));
+    bindOrderFields(o);
+  }
+
+  function renderInventory(){
+    const known={};
+    OPS.orders.forEach(o=>(o.items||[]).forEach(i=>{known[i.code||i.name]={code:i.code,name:i.name}}));
+    Object.values(known).forEach(x=>normalizeInventory(x.code,x.name));
+    const rows=Object.entries(OPS.inventory);
+    let html='<div class="ops-nav"><button class="ops-tab" data-view="orders">Pedidos</button><button class="ops-tab active" data-view="inventory">Estoque</button></div>';
+    html+='<div class="ops-import"><b style="font-size:12px">Marco zero do estoque</b><div class="ops-muted">Informe o estoque físico atual de produto acabado. Reservado e disponível são calculados pelo sistema.</div></div>';
+    if(!rows.length) html+='<div class="ops-empty">Ainda não existem produtos no módulo operacional. Importe um pedido atual para criar a base.</div>';
+    rows.sort((a,b)=>(a[1].name||'').localeCompare(b[1].name||'')).forEach(([k,inv])=>{
+      html+='<div class="ops-card"><div class="ops-inv-row"><div><h3>'+esc(inv.name)+'</h3><div class="ops-muted">'+esc(inv.code)+'</div></div><input type="number" min="0" step="1" value="'+esc(inv.physical)+'" data-inv="'+esc(k)+'"><div><b>'+esc(inv.reserved||0)+'</b><div class="ops-muted">reservado</div></div><div><b>'+available(inv)+'</b><div class="ops-muted">disponível</div></div></div></div>';
+    });
+    document.getElementById('opsBody').innerHTML=html;
+    bindNav();
+    document.querySelectorAll('[data-inv]').forEach(inp=>inp.addEventListener('change',()=>{const inv=OPS.inventory[inp.dataset.inv];inv.physical=Math.max(0,Number(inp.value)||0);saveOps();renderInventory()}));
+  }
+
+  function renderOrders(){
+    const total=OPS.orders.length, pcp=OPS.orders.filter(o=>o.status==='PCP').length, prod=OPS.orders.filter(o=>o.status==='ESTOQUE_PRODUCAO').length, log=OPS.orders.filter(o=>o.status==='LOGISTICA').length;
+    let html='<div class="ops-nav"><button class="ops-tab active" data-view="orders">Pedidos</button><button class="ops-tab" data-view="inventory">Estoque</button></div>';
+    html+='<div class="ops-kpis"><div class="ops-kpi"><b>'+total+'</b><span>Pedidos</span></div><div class="ops-kpi"><b>'+pcp+'</b><span>No PCP</span></div><div class="ops-kpi"><b>'+prod+'</b><span>Estoque/Produção</span></div><div class="ops-kpi"><b>'+log+'</b><span>Na Logística</span></div></div>';
+    html+='<div class="ops-actions" style="margin-bottom:12px"><button class="ops-btn" id="opsImportCurrent">＋ Enviar pedido atual para operação</button></div>';
+    if(!OPS.orders.length) html+='<div class="ops-empty"><b>Nenhum pedido operacional ainda.</b><br><br>Monte o pedido no simulador e use o botão acima. O mesmo pedido passará por todas as áreas, sem duplicar linhas entre abas.</div>';
+    OPS.orders.forEach(o=>{
+      const idx=stageIndex(o.status);
+      html+='<div class="ops-card"><div class="ops-card-top"><div class="ops-card-main"><h3>'+esc(o.number)+' · '+esc(o.client)+'</h3><div class="ops-muted">'+dateBR(o.orderDate)+' · '+(o.items||[]).length+' item(ns) · '+money(orderTotal(o))+'</div></div><span class="ops-badge">'+esc(STAGES[idx].label)+'</span></div><div class="ops-progress">'+STAGES.map((s,i)=>'<i class="'+(i<=idx?'done':'')+'"></i>').join('')+'</div><div class="ops-actions"><button class="ops-btn secondary" data-open-order="'+esc(o.id)+'">Abrir pedido</button></div></div>';
+    });
+    document.getElementById('opsBody').innerHTML=html;
+    bindNav();
+    document.getElementById('opsImportCurrent')?.addEventListener('click',importCurrentOrder);
+    document.querySelectorAll('[data-open-order]').forEach(b=>b.addEventListener('click',()=>{activeOrderId=b.dataset.openOrder;view='detail';render()}));
+  }
+
+  function bindNav(){
+    document.querySelectorAll('#opsBody [data-view]').forEach(b=>b.addEventListener('click',()=>{view=b.dataset.view;activeOrderId=null;render()}));
+  }
+  function render(){
+    if(view==='detail' && activeOrderId){
+      const o=OPS.orders.find(x=>x.id===activeOrderId);
+      if(o){ renderDetail(o); return; }
+    }
+    if(view==='inventory') renderInventory(); else renderOrders();
+  }
+})();
+</script>
+<!-- FOCADO_OPS_V2_END -->
 </body>
 </html>
