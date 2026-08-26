@@ -3542,7 +3542,7 @@ async function init(){
 init();
 </script>
 
-<!-- FOCADO_OPS_V5_START -->
+<!-- FOCADO_OPS_V6_START -->
 <script>
 (function focadoOpsModule(){
   'use strict';
@@ -3569,6 +3569,8 @@ init();
         if(!p.inputInventory) p.inputInventory = {};
         if(!p.stockMovements) p.stockMovements = [];
         if(!p.inventoryCounts) p.inventoryCounts=[];
+        if(!p.productionBases) p.productionBases={SENIR:{capacityPerDay:0,workingDays:[1,2,3,4,5]},GREENTECH:{capacityPerDay:0,workingDays:[1,2,3,4,5]},TOPLAND:{capacityPerDay:0,workingDays:[1,2,3,4,5]}};
+        (p.orders||[]).forEach(o=>{ if(!o.pcp) o.pcp={}; if(o.pcp.scheduledQty===undefined) o.pcp.scheduledQty=0; if(o.pcp.autoScheduled===undefined) o.pcp.autoScheduled=false; });
         Object.values(p.inputInventory||{}).forEach(inv=>{ if(!inv.reorder) inv.reorder={avgDaily:0,leadTimeDays:0,safetyStock:0}; });
         Object.values(p.inputInventory||{}).forEach(inv=>{ if(inv.blocked===undefined) inv.blocked=0; if(!inv.lots) inv.lots=[]; });
         Object.values(p.inventory||{}).forEach(inv=>{ if(inv.blocked===undefined) inv.blocked=0; });
@@ -3576,7 +3578,7 @@ init();
         return p;
       }
     }catch(_){}
-    return {version:3, orders:[], inventory:{}, inputInventory:{}, stockMovements:[], inventoryCounts:[], events:[]};
+    return {version:3, orders:[], inventory:{}, inputInventory:{}, stockMovements:[], inventoryCounts:[], productionBases:{SENIR:{capacityPerDay:0,workingDays:[1,2,3,4,5]},GREENTECH:{capacityPerDay:0,workingDays:[1,2,3,4,5]},TOPLAND:{capacityPerDay:0,workingDays:[1,2,3,4,5]}}, events:[]};
   }
   function saveOps(){
     localStorage.setItem(KEY, JSON.stringify(OPS));
@@ -3887,7 +3889,7 @@ init();
         suggestedPickup:'',
         freightType:meta.tipoFrete || '',
         notes:meta.observacoes || '',
-        pcp:{deliveryBase:'', productionDate:'', availableDate:'', separated:false},
+        pcp:{deliveryBase:'', productionDate:'', availableDate:'', separated:false,scheduledQty:0,autoScheduled:false},
         logistics:{freightValue:meta.valorFrete || '', pickupDate:'', deliveryDate:'', carrier:''},
         items: lines.map(l=>({productId:l.def?.id||'', code:String(l.code||''), name:l.def?.name||String(l.code||''), qty:Number(l.qty)||0, price:Number(l.price)||0, source:'', reservedQty:0, productionConsumed:false})),
         events:[]
@@ -3897,6 +3899,74 @@ init();
       saveOps();
       activeOrderId=o.id; view='detail'; render();
     }catch(e){ alert('Não foi possível importar o pedido atual: '+e.message); }
+  }
+
+  function productionQty(o){
+    return (o.items||[]).filter(i=>i.source==='PRODUCAO').reduce((s,i)=>s+(Number(i.qty)||0),0);
+  }
+  function isWorkingDay(date,base){
+    const cfg=OPS.productionBases?.[base]||{};
+    const days=cfg.workingDays||[1,2,3,4,5];
+    return days.includes(date.getDay());
+  }
+  function nextWorkingDate(date,base){
+    const d=new Date(date);
+    while(!isWorkingDay(d,base)) d.setDate(d.getDate()+1);
+    return d;
+  }
+  function dateKey(d){ return d.toISOString().slice(0,10); }
+  function scheduledLoadByDate(base,excludeOrderId){
+    const load={};
+    (OPS.orders||[]).forEach(o=>{
+      if(o.id===excludeOrderId) return;
+      if(o.pcp?.deliveryBase!==base) return;
+      if(!o.pcp?.productionDate) return;
+      const q=Number(o.pcp?.scheduledQty||productionQty(o)||0);
+      if(q<=0) return;
+      load[o.pcp.productionDate]=(load[o.pcp.productionDate]||0)+q;
+    });
+    return load;
+  }
+  function calculateProductionSchedule(o){
+    const base=o.pcp?.deliveryBase;
+    const qty=productionQty(o);
+    if(!base) return {ok:false,error:'Selecione a base de produção.'};
+    if(qty<=0) return {ok:true,productionDate:o.orderDate||new Date().toISOString().slice(0,10),availableDate:o.orderDate||new Date().toISOString().slice(0,10),days:0,qty:0};
+    const cfg=OPS.productionBases?.[base]||{};
+    const cap=Number(cfg.capacityPerDay)||0;
+    if(cap<=0) return {ok:false,error:'Configure a capacidade diária da base '+base+' antes de calcular a programação.'};
+    const load=scheduledLoadByDate(base,o.id);
+    let remaining=qty;
+    let cursor=nextWorkingDate(new Date((o.orderDate||new Date().toISOString().slice(0,10))+'T12:00:00'),base);
+    let first=null,last=null,safety=0;
+    while(remaining>0 && safety<365){
+      const key=dateKey(cursor);
+      const used=Number(load[key]||0);
+      const free=Math.max(0,cap-used);
+      if(free>0){
+        if(!first) first=key;
+        const allocated=Math.min(free,remaining);
+        load[key]=used+allocated;
+        remaining-=allocated;
+        last=key;
+      }
+      cursor.setDate(cursor.getDate()+1);
+      cursor=nextWorkingDate(cursor,base);
+      safety++;
+    }
+    if(remaining>0) return {ok:false,error:'Não foi possível encontrar capacidade dentro de 365 dias.'};
+    return {ok:true,productionDate:first,availableDate:last,days:daysBetween(o.orderDate,last),qty};
+  }
+  function applyAutoSchedule(o){
+    const res=calculateProductionSchedule(o);
+    if(!res.ok){ alert(res.error); return false; }
+    o.pcp.productionDate=res.productionDate;
+    o.pcp.availableDate=res.availableDate;
+    o.pcp.scheduledQty=res.qty;
+    o.pcp.autoScheduled=true;
+    event(o,'Programação de produção calculada automaticamente');
+    saveOps();
+    return true;
   }
 
   function reserveFinishedGoods(o){
@@ -3934,6 +4004,7 @@ init();
     }else if(o.status==='PCP'){
       if((o.items||[]).some(i=>!i.source)){ alert('Defina Estoque ou Produção para todos os itens.'); return; }
       if(!o.pcp.deliveryBase){ alert('Informe a base de entrega/produção.'); return; }
+      if(productionQty(o)>0 && !applyAutoSchedule(o)) return;
       if(!reserveFinishedGoods(o)) return;
       o.status='ESTOQUE_PRODUCAO'; event(o,'Planejamento PCP confirmado');
     }else if(o.status==='ESTOQUE_PRODUCAO'){
@@ -4027,6 +4098,11 @@ init();
       '<div class="ops-field"><label>Data de produção</label><input type="date" data-ofield="pcp.productionDate" value="'+esc(o.pcp.productionDate)+'"></div>'+
       '<div class="ops-field"><label>Data disponível</label><input type="date" data-ofield="pcp.availableDate" value="'+esc(o.pcp.availableDate)+'"></div>'+
       '<div class="ops-field"><label>Separado / liberado</label><input type="checkbox" data-ofield="pcp.separated" '+(o.pcp.separated?'checked':'')+'></div></div>';
+    if(productionQty(o)>0){
+      const sched=calculateProductionSchedule(o);
+      html+='<div class="ops-alert '+(!sched.ok?'bad':'')+'"><b>Programação assistida</b><br>'+(sched.ok?('Volume a produzir: '+sched.qty+' cx · Primeira produção: '+dateBR(sched.productionDate)+' · Disponível: '+dateBR(sched.availableDate)+' · Lead time produtivo: '+(sched.days==null?'—':sched.days+' dia(s)')):esc(sched.error))+'</div>';
+      html+='<div class="ops-actions"><button class="ops-btn secondary" id="opsAutoSchedule">Recalcular programação</button></div>';
+    }
     html+='<div class="ops-section">Logística</div><div class="ops-grid">'+
       '<div class="ops-field"><label>Valor do frete</label><input type="number" step="0.01" data-ofield="logistics.freightValue" value="'+esc(o.logistics.freightValue)+'"></div>'+
       '<div class="ops-field"><label>Transportadora</label><input data-ofield="logistics.carrier" value="'+esc(o.logistics.carrier)+'"></div>'+
@@ -4042,6 +4118,7 @@ init();
     document.getElementById('opsBody').innerHTML=html;
     document.getElementById('opsListBack').onclick=()=>{activeOrderId=null;view='orders';render()};
     document.getElementById('opsAdvance')?.addEventListener('click',()=>advance(o));
+    document.getElementById('opsAutoSchedule')?.addEventListener('click',()=>{if(applyAutoSchedule(o)) renderDetail(o);});
     document.getElementById('opsDelete')?.addEventListener('click',()=>{
       if(confirm('Excluir este pedido operacional?')){
         (o.items||[]).forEach(releaseReservation);
@@ -4121,7 +4198,7 @@ init();
 
   function renderMovementHistory(){
     const rows=(OPS.stockMovements||[]).slice().sort((a,b)=>b.at-a.at);
-    let html='<div class="ops-nav"><button class="ops-tab" data-view="orders">Pedidos</button><button class="ops-tab" data-view="inventory">Produtos acabados</button><button class="ops-tab" data-view="inputs">Insumos</button><button class="ops-tab active" data-view="movements">Movimentações</button><button class="ops-tab" data-view="purchases">Reposição</button></div>';
+    let html='<div class="ops-nav"><button class="ops-tab" data-view="orders">Pedidos</button><button class="ops-tab" data-view="inventory">Produtos acabados</button><button class="ops-tab" data-view="inputs">Insumos</button><button class="ops-tab active" data-view="movements">Movimentações</button><button class="ops-tab" data-view="purchases">Reposição</button><button class="ops-tab" data-view="production">Produção</button></div>';
     html+='<div class="ops-import"><b style="font-size:12px">Histórico de estoque</b><div class="ops-muted">Entradas, saídas, ajustes, bloqueios, desbloqueios e consumos automáticos ficam registrados aqui.</div></div>';
     if(!rows.length) html+='<div class="ops-empty">Nenhuma movimentação registrada.</div>';
     rows.slice(0,200).forEach(m=>{
@@ -4136,7 +4213,7 @@ init();
     OPS.orders.forEach(o=>(o.items||[]).forEach(i=>{known[i.code||i.name]={code:i.code,name:i.name}}));
     Object.values(known).forEach(x=>normalizeInventory(x.code,x.name));
     const rows=Object.entries(OPS.inventory);
-    let html='<div class="ops-nav"><button class="ops-tab" data-view="orders">Pedidos</button><button class="ops-tab active" data-view="inventory">Produtos acabados</button><button class="ops-tab" data-view="inputs">Insumos</button><button class="ops-tab" data-view="movements">Movimentações</button><button class="ops-tab" data-view="purchases">Reposição</button></div>';
+    let html='<div class="ops-nav"><button class="ops-tab" data-view="orders">Pedidos</button><button class="ops-tab active" data-view="inventory">Produtos acabados</button><button class="ops-tab" data-view="inputs">Insumos</button><button class="ops-tab" data-view="movements">Movimentações</button><button class="ops-tab" data-view="purchases">Reposição</button><button class="ops-tab" data-view="production">Produção</button></div>';
     html+='<div class="ops-import"><b style="font-size:12px">Marco zero — produto acabado</b><div class="ops-muted">Informe o estoque físico atual. Reservado e disponível são calculados pelo sistema.</div></div>';
     if(!rows.length) html+='<div class="ops-empty">Ainda não existem produtos no módulo operacional. Importe um pedido atual para criar a base.</div>';
     rows.sort((a,b)=>(a[1].name||'').localeCompare(b[1].name||'')).forEach(([k,inv])=>{
@@ -4147,12 +4224,31 @@ init();
     document.querySelectorAll('[data-move-finished]').forEach(btn=>btn.addEventListener('click',()=>openMovementModal('finished',btn.dataset.moveFinished)));
   }
 
+  function renderProductionPlanning(){
+    OPS.productionBases=OPS.productionBases||{SENIR:{capacityPerDay:0,workingDays:[1,2,3,4,5]},GREENTECH:{capacityPerDay:0,workingDays:[1,2,3,4,5]},TOPLAND:{capacityPerDay:0,workingDays:[1,2,3,4,5]}};
+    const productionOrders=(OPS.orders||[]).filter(o=>productionQty(o)>0 && o.status!=='ENTREGUE');
+    let html='<div class="ops-nav"><button class="ops-tab" data-view="orders">Pedidos</button><button class="ops-tab" data-view="inventory">Produtos acabados</button><button class="ops-tab" data-view="inputs">Insumos</button><button class="ops-tab" data-view="movements">Movimentações</button><button class="ops-tab" data-view="purchases">Reposição</button><button class="ops-tab active" data-view="production">Produção</button></div>';
+    html+='<div class="ops-import"><b style="font-size:12px">Capacidade de produção</b><div class="ops-muted">Configure a capacidade diária em caixas por base. A fila de pedidos passa a consumir essa capacidade para sugerir datas realistas.</div></div>';
+    Object.entries(OPS.productionBases).forEach(([base,cfg])=>{
+      html+='<div class="ops-card"><div class="ops-card-top"><div class="ops-card-main"><h3>'+esc(base)+'</h3><div class="ops-muted">Dias úteis padrão: segunda a sexta</div></div><div class="ops-field" style="width:150px"><label>Capacidade cx/dia</label><input type="number" min="0" step="1" value="'+esc(cfg.capacityPerDay||0)+'" data-base-cap="'+esc(base)+'"></div></div></div>';
+    });
+    html+='<div class="ops-section">Fila de produção</div>';
+    if(!productionOrders.length) html+='<div class="ops-empty">Nenhuma ordem de produção em aberto.</div>';
+    productionOrders.sort((a,b)=>(a.pcp?.productionDate||'9999').localeCompare(b.pcp?.productionDate||'9999')).forEach(o=>{
+      const sched=calculateProductionSchedule(o);
+      html+='<div class="ops-card"><div class="ops-card-top"><div class="ops-card-main"><h3>'+esc(o.number)+' · '+esc(o.client)+'</h3><div class="ops-muted">'+productionQty(o)+' cx · '+esc(o.pcp?.deliveryBase||'Base não definida')+' · '+(sched.ok?('previsão '+dateBR(sched.availableDate)):esc(sched.error))+'</div></div><span class="ops-badge">'+esc(STAGES[stageIndex(o.status)].label)+'</span></div><div class="ops-actions"><button class="ops-mov-btn" data-open-prod-order="'+esc(o.id)+'">Abrir pedido</button></div></div>';
+    });
+    document.getElementById('opsBody').innerHTML=html; bindNav();
+    document.querySelectorAll('[data-base-cap]').forEach(inp=>inp.addEventListener('change',()=>{const base=inp.dataset.baseCap;OPS.productionBases[base].capacityPerDay=Math.max(0,Number(inp.value)||0);saveOps();renderProductionPlanning();}));
+    document.querySelectorAll('[data-open-prod-order]').forEach(b=>b.addEventListener('click',()=>{activeOrderId=b.dataset.openProdOrder;view='detail';render();}));
+  }
+
   function renderPurchaseAlerts(){
     if(typeof BRANDS!=='undefined'){
       Object.values(BRANDS).forEach(brand=>(brand.insumos||[]).forEach(ins=>{if(ins.group!=='Processo') normalizeInputInventory(ins.code,ins.desc,ins.unit);}));
     }
     const alerts=Object.entries(OPS.inputInventory).map(([key,inv])=>({key,inv,st:reorderStatus(inv)})).filter(x=>x.st.point>0&&x.st.needsBuy).sort((a,b)=>(b.st.point-b.st.available)-(a.st.point-a.st.available));
-    let html='<div class="ops-nav"><button class="ops-tab" data-view="orders">Pedidos</button><button class="ops-tab" data-view="inventory">Produtos acabados</button><button class="ops-tab" data-view="inputs">Insumos</button><button class="ops-tab" data-view="movements">Movimentações</button><button class="ops-tab active" data-view="purchases">Reposição</button></div>';
+    let html='<div class="ops-nav"><button class="ops-tab" data-view="orders">Pedidos</button><button class="ops-tab" data-view="inventory">Produtos acabados</button><button class="ops-tab" data-view="inputs">Insumos</button><button class="ops-tab" data-view="movements">Movimentações</button><button class="ops-tab active" data-view="purchases">Reposição</button><button class="ops-tab" data-view="production">Produção</button></div>';
     html+='<div class="ops-import"><b style="font-size:12px">Alertas de reposição</b><div class="ops-muted">Ponto de reposição = consumo médio diário × lead time + estoque de segurança. Esta etapa alerta a necessidade; o módulo completo de Compras continua separado.</div></div>';
     if(!alerts.length) html+='<div class="ops-empty">Nenhum insumo configurado abaixo do ponto de reposição.</div>';
     alerts.forEach(x=>{html+='<div class="ops-card"><div class="ops-card-top"><div class="ops-card-main"><h3>'+esc(x.inv.name)+'</h3><div class="ops-muted">Disponível '+x.st.available.toFixed(3)+' '+esc(x.inv.unit)+' · Ponto '+x.st.point.toFixed(3)+' · Sugestão mínima '+x.st.suggested.toFixed(3)+'</div></div><span class="ops-badge" style="background:#fff4df;color:#8a650d">COMPRAR</span></div><div class="ops-actions"><button class="ops-mov-btn" data-purchase-open="'+esc(x.key)+'">Abrir insumo</button></div></div>';});
@@ -4167,7 +4263,7 @@ init();
       }));
     }
     const rows=Object.entries(OPS.inputInventory).filter(([,inv])=>inv.code!=='');
-    let html='<div class="ops-nav"><button class="ops-tab" data-view="orders">Pedidos</button><button class="ops-tab" data-view="inventory">Produtos acabados</button><button class="ops-tab active" data-view="inputs">Insumos</button><button class="ops-tab" data-view="movements">Movimentações</button><button class="ops-tab" data-view="purchases">Reposição</button></div>';
+    let html='<div class="ops-nav"><button class="ops-tab" data-view="orders">Pedidos</button><button class="ops-tab" data-view="inventory">Produtos acabados</button><button class="ops-tab active" data-view="inputs">Insumos</button><button class="ops-tab" data-view="movements">Movimentações</button><button class="ops-tab" data-view="purchases">Reposição</button><button class="ops-tab" data-view="production">Produção</button></div>';
     html+='<div class="ops-import"><b style="font-size:12px">Marco zero — insumos</b><div class="ops-muted">Cadastre o estoque físico atual de matérias-primas, embalagens, rótulos e itens logísticos. As necessidades de produção são calculadas automaticamente pelas fichas técnicas.</div></div>';
     rows.sort((a,b)=>(a[1].name||'').localeCompare(b[1].name||'')).forEach(([k,inv])=>{
       const rst=reorderStatus(inv); html+='<div class="ops-card"><div class="ops-inv-row"><div><h3>'+esc(inv.name)+(rst.point>0&&rst.needsBuy?' ⚠️':'')+'</h3><div class="ops-muted">Ficha '+esc(inv.code)+' · ERP '+esc((inv.erpIds||[]).join(', '))+' · '+esc(inv.unit)+(inv.warehouse?' · '+esc(inv.warehouse):'')+(rst.point>0?' · Ponto reposição '+rst.point.toFixed(3):'')+'</div></div><button class="ops-mov-btn" data-move-input="'+esc(k)+'">Movimentar</button><div><b>'+Number(inv.blocked||0).toFixed(3)+'</b><div class="ops-muted">bloqueado</div></div><div><b>'+inputAvailable(inv).toFixed(3)+'</b><div class="ops-muted">disponível</div></div></div></div>';
@@ -4179,7 +4275,7 @@ init();
 
   function renderOrders(){
     const total=OPS.orders.length, pcp=OPS.orders.filter(o=>o.status==='PCP').length, prod=OPS.orders.filter(o=>o.status==='ESTOQUE_PRODUCAO').length, log=OPS.orders.filter(o=>o.status==='LOGISTICA').length;
-    let html='<div class="ops-nav"><button class="ops-tab active" data-view="orders">Pedidos</button><button class="ops-tab" data-view="inventory">Produtos acabados</button><button class="ops-tab" data-view="inputs">Insumos</button><button class="ops-tab" data-view="movements">Movimentações</button><button class="ops-tab" data-view="purchases">Reposição</button></div>';
+    let html='<div class="ops-nav"><button class="ops-tab active" data-view="orders">Pedidos</button><button class="ops-tab" data-view="inventory">Produtos acabados</button><button class="ops-tab" data-view="inputs">Insumos</button><button class="ops-tab" data-view="movements">Movimentações</button><button class="ops-tab" data-view="purchases">Reposição</button><button class="ops-tab" data-view="production">Produção</button></div>';
     html+='<div class="ops-kpis"><div class="ops-kpi"><b>'+total+'</b><span>Pedidos</span></div><div class="ops-kpi"><b>'+pcp+'</b><span>No PCP</span></div><div class="ops-kpi"><b>'+prod+'</b><span>Estoque/Produção</span></div><div class="ops-kpi"><b>'+log+'</b><span>Na Logística</span></div></div>';
     html+='<div class="ops-actions" style="margin-bottom:12px"><button class="ops-btn" id="opsImportCurrent">＋ Enviar pedido atual para operação</button></div>';
     if(!OPS.orders.length) html+='<div class="ops-empty"><b>Nenhum pedido operacional ainda.</b><br><br>Monte o pedido no simulador e use o botão acima. O mesmo pedido passará por todas as áreas, sem duplicar linhas entre abas.</div>';
@@ -4201,10 +4297,10 @@ init();
       const o=OPS.orders.find(x=>x.id===activeOrderId);
       if(o){ renderDetail(o); return; }
     }
-    if(view==='inventory') renderInventory(); else if(view==='inputs') renderInputs(); else if(view==='movements') renderMovementHistory(); else if(view==='purchases') renderPurchaseAlerts(); else renderOrders();
+    if(view==='inventory') renderInventory(); else if(view==='inputs') renderInputs(); else if(view==='movements') renderMovementHistory(); else if(view==='purchases') renderPurchaseAlerts(); else if(view==='production') renderProductionPlanning(); else renderOrders();
   }
 })();
 </script>
-<!-- FOCADO_OPS_V5_END -->
+<!-- FOCADO_OPS_V6_END -->
 </body>
 </html>
