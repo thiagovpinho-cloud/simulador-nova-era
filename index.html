@@ -3542,13 +3542,13 @@ async function init(){
 init();
 </script>
 
-<!-- FOCADO_OPS_V2_START -->
+<!-- FOCADO_OPS_V3_START -->
 <script>
 (function focadoOpsModule(){
   'use strict';
   if (document.getElementById('focadoOpsScreen')) return;
 
-  const KEY = 'focado-operacoes-v2';
+  const KEY = 'focado-operacoes-v2'; // chave mantida para migrar dados da v2
   const STAGES = [
     {id:'COMERCIAL', label:'Comercial'},
     {id:'PCP', label:'PCP'},
@@ -3563,9 +3563,14 @@ init();
   function loadOps(){
     try{
       const p = JSON.parse(localStorage.getItem(KEY) || 'null');
-      if(p && p.version === 2) return p;
+      if(p && (p.version === 2 || p.version === 3)){
+        p.version = 3;
+        if(!p.inputInventory) p.inputInventory = {};
+        (p.orders||[]).forEach(o=>(o.items||[]).forEach(i=>{ if(i.productId===undefined) i.productId=''; if(i.productionConsumed===undefined) i.productionConsumed=false; }));
+        return p;
+      }
     }catch(_){}
-    return {version:2, orders:[], inventory:{}, events:[]};
+    return {version:3, orders:[], inventory:{}, inputInventory:{}, events:[]};
   }
   function saveOps(){
     localStorage.setItem(KEY, JSON.stringify(OPS));
@@ -3605,6 +3610,62 @@ init();
     return OPS.inventory[k];
   }
   function available(inv){ return Math.max(0, Number(inv.physical||0)-Number(inv.reserved||0)); }
+  function normalizeInputInventory(code, name, unit){
+    const k=String(code||name||'');
+    if(!OPS.inputInventory[k]) OPS.inputInventory[k]={code:String(code||''),name:name||String(code||'Insumo'),unit:unit||'',physical:0,reserved:0};
+    return OPS.inputInventory[k];
+  }
+  function inputAvailable(inv){ return Math.max(0, Number(inv.physical||0)-Number(inv.reserved||0)); }
+  function getBrandByLabel(label){
+    if(typeof BRANDS==='undefined') return null;
+    return Object.values(BRANDS).find(b=>b.label===label) || null;
+  }
+  function getRecipe(item,o){
+    const brand=getBrandByLabel(o.brand);
+    if(!brand) return [];
+    const def=(brand.products||[]).find(p=>p.id===item.productId || (brand.orderForm?.productCodes?.[p.id]!==undefined && String(brand.orderForm.productCodes[p.id])===String(item.code)));
+    if(!def) return [];
+    return (def.materials||[]).map(m=>{
+      const ins=brand.insumosByCode?.[m.insumo] || {};
+      const perUnit=Number(m.qty)||0;
+      const loss=Number(m.perda)||0;
+      const total=perUnit*(1+loss)*Number(def.unitsPerCaixa||1)*Number(item.qty||0);
+      return {code:String(m.insumo),name:ins.desc||String(m.insumo),unit:ins.unit||'',required:total};
+    }).filter(r=>r.required>0);
+  }
+  function productionNeeds(o){
+    const agg={};
+    (o.items||[]).filter(i=>i.source==='PRODUCAO').forEach(item=>{
+      getRecipe(item,o).forEach(r=>{
+        if(!agg[r.code]) agg[r.code]={...r,required:0};
+        agg[r.code].required+=r.required;
+      });
+    });
+    return Object.values(agg);
+  }
+  function checkProductionInputs(o){
+    const needs=productionNeeds(o), shortages=[];
+    needs.forEach(r=>{
+      const inv=normalizeInputInventory(r.code,r.name,r.unit);
+      if(inputAvailable(inv)+1e-9<r.required) shortages.push({...r,available:inputAvailable(inv)});
+    });
+    return {needs,shortages};
+  }
+  function consumeProductionInputs(o){
+    if((o.items||[]).filter(i=>i.source==='PRODUCAO' && !i.productionConsumed).length===0) return true;
+    const chk=checkProductionInputs(o);
+    if(chk.shortages.length){
+      alert('Insumos insuficientes para a produção:\n\n'+chk.shortages.map(s=>s.name+' — disponível '+s.available.toFixed(3)+' '+s.unit+' / necessário '+s.required.toFixed(3)+' '+s.unit).join('\n')+'\n\nAtualize o estoque de insumos antes de liberar.');
+      return false;
+    }
+    chk.needs.forEach(r=>{
+      const inv=normalizeInputInventory(r.code,r.name,r.unit);
+      inv.physical=Math.max(0,Number(inv.physical||0)-r.required);
+    });
+    (o.items||[]).filter(i=>i.source==='PRODUCAO').forEach(i=>i.productionConsumed=true);
+    event(o,'Insumos consumidos pela ficha técnica');
+    return true;
+  }
 
   const style = document.createElement('style');
   style.id = 'focadoOpsStyle';
@@ -3696,7 +3757,7 @@ init();
         notes:meta.observacoes || '',
         pcp:{deliveryBase:'', productionDate:'', availableDate:'', separated:false},
         logistics:{freightValue:meta.valorFrete || '', pickupDate:'', deliveryDate:'', carrier:''},
-        items: lines.map(l=>({code:String(l.code||''), name:l.def?.name||String(l.code||''), qty:Number(l.qty)||0, price:Number(l.price)||0, source:'', reservedQty:0})),
+        items: lines.map(l=>({productId:l.def?.id||'', code:String(l.code||''), name:l.def?.name||String(l.code||''), qty:Number(l.qty)||0, price:Number(l.price)||0, source:'', reservedQty:0, productionConsumed:false})),
         events:[]
       };
       event(o,'Pedido criado a partir do simulador');
@@ -3746,6 +3807,7 @@ init();
     }else if(o.status==='ESTOQUE_PRODUCAO'){
       if(!o.pcp.availableDate){ alert('Informe a data disponível.'); return; }
       if(!o.pcp.separated){ alert('Confirme que o pedido está separado/liberado.'); return; }
+      if(!consumeProductionInputs(o)) return;
       o.status='LOGISTICA'; event(o,'Liberado para Logística');
     }else if(o.status==='LOGISTICA'){
       if(!o.logistics.deliveryDate){ alert('Informe a data de entrega.'); return; }
@@ -3813,7 +3875,15 @@ init();
       const inv=normalizeInventory(item.code,item.name);
       html+='<div class="ops-item"><div class="ops-item-title"><span>'+esc(item.code)+' · '+esc(item.name)+'</span><span>'+esc(item.qty)+' cx</span></div><div class="ops-item-meta">'+money(item.price)+'/cx · Total '+money(Number(item.qty)*Number(item.price))+' · Estoque disponível: '+available(inv)+'</div>';
       if(o.status!=='ENTREGUE') html+='<div class="ops-source"><button data-source-index="'+n+'" data-source="ESTOQUE" class="'+(item.source==='ESTOQUE'?'active':'')+'">📦 Estoque</button><button data-source-index="'+n+'" data-source="PRODUCAO" class="'+(item.source==='PRODUCAO'?'active':'')+'">🏭 Produção</button></div>';
-      if(item.source==='PRODUCAO') html+='<div class="ops-alert">Produção necessária. Nesta versão o sistema sinaliza a necessidade; o consumo automático da ficha técnica será conectado na próxima evolução do módulo de estoque.</div>';
+      if(item.source==='PRODUCAO'){
+        const recipe=getRecipe(item,o);
+        if(recipe.length){
+          const lacking=recipe.filter(r=>inputAvailable(normalizeInputInventory(r.code,r.name,r.unit))+1e-9<r.required);
+          html+='<div class="ops-alert '+(lacking.length?'bad':'')+'"><b>Ficha técnica — necessidade para este item</b><br>'+recipe.map(r=>esc(r.name)+': '+r.required.toFixed(3)+' '+esc(r.unit)+' · disponível '+inputAvailable(normalizeInputInventory(r.code,r.name,r.unit)).toFixed(3)).join('<br>')+(lacking.length?'<br><b>⚠ Há insumos insuficientes.</b>':'<br><b>✓ Insumos suficientes.</b>')+'</div>';
+        }else{
+          html+='<div class="ops-alert bad">Não foi possível localizar a ficha técnica deste produto. Verifique o vínculo do código do produto.</div>';
+        }
+      }
       html+='</div>';
     });
     html+='<div class="ops-section">PCP</div><div class="ops-grid">'+
@@ -3851,8 +3921,8 @@ init();
     OPS.orders.forEach(o=>(o.items||[]).forEach(i=>{known[i.code||i.name]={code:i.code,name:i.name}}));
     Object.values(known).forEach(x=>normalizeInventory(x.code,x.name));
     const rows=Object.entries(OPS.inventory);
-    let html='<div class="ops-nav"><button class="ops-tab" data-view="orders">Pedidos</button><button class="ops-tab active" data-view="inventory">Estoque</button></div>';
-    html+='<div class="ops-import"><b style="font-size:12px">Marco zero do estoque</b><div class="ops-muted">Informe o estoque físico atual de produto acabado. Reservado e disponível são calculados pelo sistema.</div></div>';
+    let html='<div class="ops-nav"><button class="ops-tab" data-view="orders">Pedidos</button><button class="ops-tab active" data-view="inventory">Produtos acabados</button><button class="ops-tab" data-view="inputs">Insumos</button></div>';
+    html+='<div class="ops-import"><b style="font-size:12px">Marco zero — produto acabado</b><div class="ops-muted">Informe o estoque físico atual. Reservado e disponível são calculados pelo sistema.</div></div>';
     if(!rows.length) html+='<div class="ops-empty">Ainda não existem produtos no módulo operacional. Importe um pedido atual para criar a base.</div>';
     rows.sort((a,b)=>(a[1].name||'').localeCompare(b[1].name||'')).forEach(([k,inv])=>{
       html+='<div class="ops-card"><div class="ops-inv-row"><div><h3>'+esc(inv.name)+'</h3><div class="ops-muted">'+esc(inv.code)+'</div></div><input type="number" min="0" step="1" value="'+esc(inv.physical)+'" data-inv="'+esc(k)+'"><div><b>'+esc(inv.reserved||0)+'</b><div class="ops-muted">reservado</div></div><div><b>'+available(inv)+'</b><div class="ops-muted">disponível</div></div></div></div>';
@@ -3862,9 +3932,26 @@ init();
     document.querySelectorAll('[data-inv]').forEach(inp=>inp.addEventListener('change',()=>{const inv=OPS.inventory[inp.dataset.inv];inv.physical=Math.max(0,Number(inp.value)||0);saveOps();renderInventory()}));
   }
 
+  function renderInputs(){
+    if(typeof BRANDS!=='undefined'){
+      Object.values(BRANDS).forEach(brand=>(brand.insumos||[]).forEach(ins=>{
+        if(ins.group!=='Processo') normalizeInputInventory(ins.code,ins.desc,ins.unit);
+      }));
+    }
+    const rows=Object.entries(OPS.inputInventory).filter(([,inv])=>inv.code!=='');
+    let html='<div class="ops-nav"><button class="ops-tab" data-view="orders">Pedidos</button><button class="ops-tab" data-view="inventory">Produtos acabados</button><button class="ops-tab active" data-view="inputs">Insumos</button></div>';
+    html+='<div class="ops-import"><b style="font-size:12px">Marco zero — insumos</b><div class="ops-muted">Cadastre o estoque físico atual de matérias-primas, embalagens, rótulos e itens logísticos. As necessidades de produção são calculadas automaticamente pelas fichas técnicas.</div></div>';
+    rows.sort((a,b)=>(a[1].name||'').localeCompare(b[1].name||'')).forEach(([k,inv])=>{
+      html+='<div class="ops-card"><div class="ops-inv-row"><div><h3>'+esc(inv.name)+'</h3><div class="ops-muted">'+esc(inv.code)+' · '+esc(inv.unit)+'</div></div><input type="number" min="0" step="0.001" value="'+esc(inv.physical)+'" data-input-inv="'+esc(k)+'"><div><b>'+Number(inv.reserved||0).toFixed(3)+'</b><div class="ops-muted">reservado</div></div><div><b>'+inputAvailable(inv).toFixed(3)+'</b><div class="ops-muted">disponível</div></div></div></div>';
+    });
+    document.getElementById('opsBody').innerHTML=html;
+    bindNav();
+    document.querySelectorAll('[data-input-inv]').forEach(inp=>inp.addEventListener('change',()=>{const inv=OPS.inputInventory[inp.dataset.inputInv];inv.physical=Math.max(0,Number(inp.value)||0);saveOps();renderInputs()}));
+  }
+
   function renderOrders(){
     const total=OPS.orders.length, pcp=OPS.orders.filter(o=>o.status==='PCP').length, prod=OPS.orders.filter(o=>o.status==='ESTOQUE_PRODUCAO').length, log=OPS.orders.filter(o=>o.status==='LOGISTICA').length;
-    let html='<div class="ops-nav"><button class="ops-tab active" data-view="orders">Pedidos</button><button class="ops-tab" data-view="inventory">Estoque</button></div>';
+    let html='<div class="ops-nav"><button class="ops-tab active" data-view="orders">Pedidos</button><button class="ops-tab" data-view="inventory">Produtos acabados</button><button class="ops-tab" data-view="inputs">Insumos</button></div>';
     html+='<div class="ops-kpis"><div class="ops-kpi"><b>'+total+'</b><span>Pedidos</span></div><div class="ops-kpi"><b>'+pcp+'</b><span>No PCP</span></div><div class="ops-kpi"><b>'+prod+'</b><span>Estoque/Produção</span></div><div class="ops-kpi"><b>'+log+'</b><span>Na Logística</span></div></div>';
     html+='<div class="ops-actions" style="margin-bottom:12px"><button class="ops-btn" id="opsImportCurrent">＋ Enviar pedido atual para operação</button></div>';
     if(!OPS.orders.length) html+='<div class="ops-empty"><b>Nenhum pedido operacional ainda.</b><br><br>Monte o pedido no simulador e use o botão acima. O mesmo pedido passará por todas as áreas, sem duplicar linhas entre abas.</div>';
@@ -3886,10 +3973,10 @@ init();
       const o=OPS.orders.find(x=>x.id===activeOrderId);
       if(o){ renderDetail(o); return; }
     }
-    if(view==='inventory') renderInventory(); else renderOrders();
+    if(view==='inventory') renderInventory(); else if(view==='inputs') renderInputs(); else renderOrders();
   }
 })();
 </script>
-<!-- FOCADO_OPS_V2_END -->
+<!-- FOCADO_OPS_V3_END -->
 </body>
 </html>
