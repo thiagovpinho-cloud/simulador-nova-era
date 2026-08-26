@@ -3557,6 +3557,7 @@ init();
     {id:'ENTREGUE', label:'Entregue'}
   ];
   let OPS = loadOps();
+  seedInitialInputStock();
   let activeOrderId = null;
   let view = 'orders';
 
@@ -3619,6 +3620,45 @@ init();
   function getBrandByLabel(label){
     if(typeof BRANDS==='undefined') return null;
     return Object.values(BRANDS).find(b=>b.label===label) || null;
+  }
+
+  const INITIAL_INPUT_STOCK = [
+    {erpId:'5308', recipeCode:'59900', name:'CAIXA 12X1', qty:19778, unit:'UNID', warehouse:'Insumos Nova Odessa', note:'', blocked:0},
+    {erpId:'6453', recipeCode:'46875', name:'CAIXA PUMP 440 GR', qty:7245, unit:'UNID', warehouse:'Insumos Nova Odessa', note:'', blocked:0},
+    {erpId:'5307', recipeCode:'46887', name:'CAIXA 3X5L', qty:11911, unit:'UNID', warehouse:'Insumos Nova Odessa', note:'', blocked:0},
+    {erpId:'5343', recipeCode:'107852', name:'BARRICA 10 KG', qty:1013, unit:'UNID', warehouse:'Insumos Nova Odessa', note:'', blocked:0},
+    {erpId:'6476', recipeCode:'60100', name:'GARRAFA ÁLCOOL 46° TRADICIONAL', qty:7259, unit:'UNID', warehouse:'Insumos Nova Odessa', note:'', blocked:0},
+    {erpId:'5587', recipeCode:'111960', name:'GARRAFA BICARBONATO', qty:0, unit:'UNID', warehouse:'Insumos Nova Odessa', note:'', blocked:0},
+    {erpId:'12812', recipeCode:'60100', name:'GARRAFA 46° BACTERICIDA', qty:0, unit:'UNID', warehouse:'Insumos Nova Odessa', note:'', blocked:0},
+    {erpId:'4571', recipeCode:'60150', name:'TAMPA VERDE ESCURA', qty:196176, unit:'UNID', warehouse:'Insumos Nova Odessa', note:'', blocked:0},
+    {erpId:'13641', recipeCode:'60124', name:'TAMPA AZUL CHIUSO', qty:88040, unit:'UNID', warehouse:'Insumos Nova Odessa', note:'', blocked:0},
+    {erpId:'6454', recipeCode:'60148', name:'VÁLVULA PUMP', qty:61669, unit:'UNID', warehouse:'Insumos Nova Odessa', note:'', blocked:0},
+    {erpId:'5471', recipeCode:'93646', name:'RÓTULO 4,3 KG', qty:87210, unit:'UNID', warehouse:'Insumos Nova Odessa', note:'CLASSIFICADO NÃO CONFORME', blocked:87210},
+    {erpId:'5295-1', recipeCode:'93609', name:'RÓTULO 5 LITROS SENIR', qty:51510, unit:'UNID', warehouse:'Insumos Nova Odessa', note:'', blocked:0},
+    {erpId:'6455-NC', recipeCode:'46735', name:'RÓTULO 440 G PUMP', qty:83231, unit:'UNID', warehouse:'Insumos Nova Odessa', note:'CLASSIFICADO NÃO CONFORME', blocked:83231},
+    {erpId:'6455', recipeCode:'46735', name:'RÓTULO 440 G PUMP', qty:11008, unit:'UNID', warehouse:'Insumos Nova Odessa', note:'', blocked:0},
+    {erpId:'4153', recipeCode:'60227', name:'CARBOPOL', qty:40, unit:'KG', warehouse:'Insumos Nova Odessa', note:'', blocked:0},
+    {erpId:'12809', recipeCode:'136451', name:'BACKUAT ECO', qty:0, unit:'KG', warehouse:'Insumos Nova Odessa', note:'', blocked:0},
+  ];
+
+  function seedInitialInputStock(){
+    if(OPS.initialInputStockSeeded) return;
+    INITIAL_INPUT_STOCK.forEach(row=>{
+      const key=String(row.recipeCode||row.erpId);
+      const inv=normalizeInputInventory(key,row.name,row.unit);
+      inv.code=key;
+      inv.erpIds=inv.erpIds||[];
+      if(!inv.erpIds.includes(row.erpId)) inv.erpIds.push(row.erpId);
+      inv.name=inv.name||row.name;
+      inv.unit=row.unit||inv.unit;
+      inv.warehouse=row.warehouse;
+      inv.physical=Number(inv.physical||0)+Number(row.qty||0);
+      inv.blocked=Number(inv.blocked||0)+Number(row.blocked||0);
+      inv.lots=inv.lots||[];
+      inv.lots.push({source:'Inventário 26/08/2026',erpId:row.erpId,qty:Number(row.qty||0),blocked:Number(row.blocked||0),warehouse:row.warehouse,note:row.note||''});
+    });
+    OPS.initialInputStockSeeded=true;
+    saveOps();
   }
   function getRecipe(item,o){
     const brand=getBrandByLabel(o.brand);
@@ -3942,7 +3982,7 @@ init();
     let html='<div class="ops-nav"><button class="ops-tab" data-view="orders">Pedidos</button><button class="ops-tab" data-view="inventory">Produtos acabados</button><button class="ops-tab active" data-view="inputs">Insumos</button></div>';
     html+='<div class="ops-import"><b style="font-size:12px">Marco zero — insumos</b><div class="ops-muted">Cadastre o estoque físico atual de matérias-primas, embalagens, rótulos e itens logísticos. As necessidades de produção são calculadas automaticamente pelas fichas técnicas.</div></div>';
     rows.sort((a,b)=>(a[1].name||'').localeCompare(b[1].name||'')).forEach(([k,inv])=>{
-      html+='<div class="ops-card"><div class="ops-inv-row"><div><h3>'+esc(inv.name)+'</h3><div class="ops-muted">'+esc(inv.code)+' · '+esc(inv.unit)+'</div></div><input type="number" min="0" step="0.001" value="'+esc(inv.physical)+'" data-input-inv="'+esc(k)+'"><div><b>'+Number(inv.reserved||0).toFixed(3)+'</b><div class="ops-muted">reservado</div></div><div><b>'+inputAvailable(inv).toFixed(3)+'</b><div class="ops-muted">disponível</div></div></div></div>';
+      html+='<div class="ops-card"><div class="ops-inv-row"><div><h3>'+esc(inv.name)+'</h3><div class="ops-muted">Ficha '+esc(inv.code)+' · ERP '+esc((inv.erpIds||[]).join(', '))+' · '+esc(inv.unit)+(inv.warehouse?' · '+esc(inv.warehouse):'')+'</div></div><input type="number" min="0" step="0.001" value="'+esc(inv.physical)+'" data-input-inv="'+esc(k)+'"><div><b>'+Number(inv.blocked||0).toFixed(3)+'</b><div class="ops-muted">bloqueado</div></div><div><b>'+inputAvailable(inv).toFixed(3)+'</b><div class="ops-muted">disponível</div></div></div></div>';
     });
     document.getElementById('opsBody').innerHTML=html;
     bindNav();
