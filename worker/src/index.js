@@ -25,6 +25,37 @@ function json(data,status=200,extra={}){
     headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store",...extra}
   });
 }
+function esc(value){
+  return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
+}
+function setupPage(message="",ok=false){
+  return new Response(`<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Focado — Configuração inicial</title>
+<style>
+body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#f4f7f5;margin:0;color:#17352a}
+main{max-width:520px;margin:48px auto;padding:28px;background:#fff;border:1px solid #dfe8e3;border-radius:18px;box-shadow:0 10px 30px #0000000d}
+h1{margin:0 0 8px;font-size:26px}.muted{color:#61756d;margin:0 0 24px}
+label{display:block;font-weight:700;margin:14px 0 6px}input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #cddbd4;border-radius:10px;font-size:16px}
+button{margin-top:22px;width:100%;padding:13px;border:0;border-radius:10px;background:#174f3b;color:white;font-weight:800;font-size:16px;cursor:pointer}
+.msg{padding:12px 14px;border-radius:10px;margin:0 0 18px;background:${ok?"#e7f7ee":"#fff2f2"};color:${ok?"#1f6b47":"#9a2e2e"}}
+small{display:block;margin-top:16px;color:#6f817a}
+</style></head>
+<body><main>
+<h1>Focado</h1><p class="muted">Criação do primeiro administrador</p>
+${message?`<div class="msg">${esc(message)}</div>`:""}
+<form method="post" action="/setup" autocomplete="off">
+<label>Token de bootstrap</label><input name="bootstrapToken" type="password" required>
+<label>E-mail</label><input name="email" type="email" required>
+<label>Nome</label><input name="name" value="Thiago Pinho" required>
+<label>Senha</label><input name="password" type="password" minlength="10" required>
+<button type="submit">Criar administrador</button>
+</form>
+<small>Esta página funciona somente enquanto ainda não existir nenhum usuário.</small>
+</main></body></html>`,{status:200,headers:{"content-type":"text/html; charset=utf-8","cache-control":"no-store","x-frame-options":"DENY"}});
+}
 function corsHeaders(request,env){
   const origin=request.headers.get("origin")||"";
   const allowed=new Set(["https://thiagovpinho-cloud.github.io",String(env.FOCADO_ALLOWED_ORIGIN||"")].filter(Boolean));
@@ -183,8 +214,30 @@ async function route(request,env){
   if(path==="/health"&&request.method==="GET"){
     return json({service:"focado-api",runtime:"cloudflare-workers",version:"1",status:"ok",storage:Boolean(env.HYPERDRIVE)});
   }
+  if(path==="/setup"&&request.method==="GET"){
+    return setupPage();
+  }
 
   return withDb(env,async db=>{
+    if(path==="/setup"&&request.method==="POST"){
+      const form=await request.formData();
+      const expected=String(env.FOCADO_BOOTSTRAP_TOKEN||"");
+      const supplied=String(form.get("bootstrapToken")||"");
+      if(!expected||!constEq(expected,supplied))return setupPage("Token de bootstrap inválido.");
+      const count=await db.query("select count(*)::int as n from public.focado_users");
+      if(Number(count.rows[0]?.n||0)>0)return setupPage("O administrador inicial já foi criado.",true);
+      const email=String(form.get("email")||"").trim().toLowerCase();
+      const name=String(form.get("name")||"").trim();
+      const password=String(form.get("password")||"");
+      if(!email||!name||password.length<10)return setupPage("Confira os campos. A senha deve ter pelo menos 10 caracteres.");
+      const p=await passwordHash(password);
+      const r=await db.query(`
+        insert into public.focado_users(email,name,role,password_salt,password_hash)
+        values($1,$2,'ADMIN',$3,$4)
+        returning id,email,name,role
+      `,[email,name,p.salt,`pbkdf2${p.iterations}${p.hash}`]);
+      return setupPage(`Administrador ${r.rows[0].name} criado com sucesso. Agora você já pode entrar no Focado.`,true);
+    }
     if(path==="/auth/bootstrap"&&request.method==="POST"){
       const expected=String(env.FOCADO_BOOTSTRAP_TOKEN||""),supplied=request.headers.get("x-bootstrap-token")||"";
       if(!expected||!constEq(expected,supplied))return json({error:"UNAUTHORIZED"},401);
