@@ -32,3 +32,24 @@ O adaptador atual de memória existe somente para desenvolvimento e só é habil
 
 ## Próxima evolução
 Substituir o adaptador de desenvolvimento em `api/_lib/store.js` por um adaptador Postgres sem alterar os endpoints nem os módulos do frontend.
+
+
+## Persistência Neon
+Projeto dedicado: `focado`.
+
+A API usa `@neondatabase/serverless` e lê a conexão exclusivamente de `DATABASE_URL`.
+
+Tabela ativa:
+- `public.focado_workspace_state`
+- chave: `workspace_key`
+- estado: `payload jsonb`
+- concorrência: `revision bigint`
+- auditoria temporal mínima: `updated_at timestamptz`
+
+O segredo de conexão nunca deve ser incluído no repositório.
+
+## Variáveis obrigatórias na API
+- `DATABASE_URL`: conexão pooled do Neon
+- `FOCADO_API_TOKEN`: segredo de autenticação da API
+
+Até que essas variáveis estejam configuradas no ambiente serverless, o frontend permanece no modo local seguro.
