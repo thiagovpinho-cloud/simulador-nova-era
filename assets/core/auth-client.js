@@ -130,12 +130,8 @@
     window.FocadoDataStore?.setSessionToken?.('');
   }
 
-  function adoptLegacy(role,label){
-    if(getUser())return getUser();
-    const mapped=String(role||'').toLowerCase()==='admin'?'ADMIN':'COMERCIAL';
-    const user={id:null,email:null,name:label||roleLabel(mapped),role:mapped,legacy:true};
-    saveUser(user);
-    return user;
+  function adoptLegacy(){
+    return null;
   }
 
   window.FocadoAuth={login,logout,restore,getUser,getRole,roleLabel,can,remoteConfigured,adoptLegacy,clear,ROUTE_ACCESS};
