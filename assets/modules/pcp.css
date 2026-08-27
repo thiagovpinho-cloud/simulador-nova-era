@@ -17,3 +17,12 @@
 .fpcp-kpi-filter{appearance:none;text-align:left;cursor:pointer;width:100%;font:inherit}
 .fpcp-kpi-filter:hover{border-color:#99cdbb;box-shadow:0 5px 18px rgba(11,126,93,.08);transform:translateY(-1px)}
 .fpcp-kpi-filter.selected{border-color:var(--fx-green);box-shadow:0 0 0 2px rgba(11,126,93,.10)}
+
+.fpcp-consolidated{min-width:1320px}
+.fpcp-base-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.fpcp-base-card{background:#fff;border:1px solid var(--fx-border);border-radius:12px;padding:14px}
+.fpcp-base-card span{display:block;font-size:9px;font-weight:800;color:var(--fx-muted);text-transform:uppercase;letter-spacing:.35px}
+.fpcp-base-card strong{display:block;font-size:19px;color:#174838;margin-top:5px}
+.fpcp-base-card small{display:block;font-size:9px;color:var(--fx-muted);margin-top:4px;line-height:1.4}
+@media(max-width:900px){.fpcp-base-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.fpcp-base-grid{grid-template-columns:1fr}}
