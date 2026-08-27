@@ -8,3 +8,24 @@
 .fl-table-wrap{background:#fff;border:1px solid var(--fx-border);border-radius:15px;overflow:auto}.fl-table{width:100%;border-collapse:collapse;min-width:1120px}.fl-table th{padding:10px 12px;text-align:left;background:#f7f9f8;color:var(--fx-muted);font-size:9px;text-transform:uppercase;letter-spacing:.35px}.fl-table td{padding:11px 12px;border-top:1px solid #edf1ee;font-size:10px;vertical-align:middle}
 .fl-order{font-weight:800;color:#075f48}.fl-client{font-weight:700}.fl-muted{font-size:8.7px;color:var(--fx-muted);margin-top:2px}.fl-chip{display:inline-flex;border-radius:999px;padding:4px 7px;font-size:8.5px;font-weight:800}.fl-chip.ready{background:#e8f6ef;color:#08785b}.fl-chip.wait{background:#eaf2ff;color:#2d66c8}.fl-chip.warn{background:#fff0e4;color:#c45e12}.fl-chip.bad{background:#fdeced;color:#c7333a}.fl-open{border:1px solid var(--fx-green);background:var(--fx-green);border-radius:8px;padding:6px 9px;font-size:9px;font-weight:700;color:#fff;cursor:pointer}.fl-empty{padding:40px 20px;text-align:center;color:var(--fx-muted);font-size:11px}
 @media(max-width:1000px){.fl-kpis{grid-template-columns:repeat(3,1fr)}.fl-grid{grid-template-columns:1fr}}@media(max-width:700px){.fl-kpis{grid-template-columns:repeat(2,1fr)}.fl-head{align-items:flex-start;flex-direction:column}}
+.fl-detail-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:16px;align-items:start}
+.fl-panel-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px}
+.fl-panel-title h2{margin:2px 0 0;font-size:14px;color:var(--fx-text)}
+.fl-eyebrow{display:block;font-size:8px;font-weight:900;letter-spacing:.8px;color:var(--fx-green);text-transform:uppercase}
+.fl-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.fl-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.fl-field span{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.35px;color:var(--fx-muted)}
+.fl-field input,.fl-field select,.fl-field textarea{width:100%;box-sizing:border-box;border:1px solid var(--fx-border);background:#fbfcfb;color:var(--fx-text);border-radius:10px;padding:10px 11px;font:inherit;font-size:11px;outline:none;transition:border-color .15s ease,box-shadow .15s ease,background .15s ease}
+.fl-field input:focus,.fl-field select:focus,.fl-field textarea:focus{background:#fff;border-color:var(--fx-green);box-shadow:0 0 0 3px rgba(6,126,92,.08)}
+.fl-field textarea{min-height:92px;resize:vertical}
+.fl-span-2{grid-column:span 2}
+.fl-form-actions{margin-top:16px;padding-top:14px;border-top:1px solid #edf1ee;justify-content:flex-end}
+.fl-pickup-list{display:flex;flex-direction:column;gap:8px}
+.fl-pickup-list .fl-alert{padding:11px 12px;border:1px solid #e8eeea;border-radius:11px;background:#fafcfb}
+.fl-pickup-list .fl-alert:last-child{border:1px solid #e8eeea}
+.fl-page>.fl-alert{padding:12px 14px;border:1px solid #e7ece9;border-radius:12px;background:#fbfcfb}
+.fl-page>.fl-alert .fl-alert-icon{background:#eef5f2;color:#0b6f53}
+.fl-head>div:first-child{display:flex;flex-direction:column;align-items:flex-start}
+.fl-head .fl-btn{margin-bottom:8px}
+@media(max-width:1000px){.fl-detail-grid{grid-template-columns:1fr}}
+@media(max-width:700px){.fl-form-grid{grid-template-columns:1fr}.fl-span-2{grid-column:span 1}.fl-form-actions{justify-content:stretch}.fl-form-actions .fl-btn{width:100%}}
