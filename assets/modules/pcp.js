@@ -11,6 +11,25 @@
   const orderValue=o=>(o.items||[]).reduce((s,i)=>s+(Number(i.qty)||0)*(Number(i.price)||0),0);
   let filters={q:'',base:'TODAS'};
 
+  function ensureOrderIds(ops){
+    let changed=false;
+    const used=new Set((ops.orders||[]).map(o=>String(o.id||'')).filter(Boolean));
+    (ops.orders||[]).forEach((o,index)=>{
+      if(o.id)return;
+      const base=String(o.number||('pedido-'+(index+1))).replace(/[^a-zA-Z0-9_-]/g,'_');
+      let candidate='op_'+base, n=2;
+      while(used.has(candidate)){candidate='op_'+base+'_'+n;n++}
+      o.id=candidate;used.add(candidate);changed=true;
+      o.events=Array.isArray(o.events)?o.events:[];
+      o.events.unshift({at:Date.now(),text:'Identificador interno do pedido normalizado automaticamente',user:'Sistema'});
+    });
+    if(changed){
+      if(window.FocadoDataStore?.writeLocal)window.FocadoDataStore.writeLocal(ops);
+      window.FocadoDataStore?.save?.(ops);
+    }
+    return ops;
+  }
+
   function finishedAvailable(ops,item){
     const inv=(ops.inventory||{})[String(item.code||item.productId||item.name)]||(ops.inventory||{})[String(item.code||'')]||null;
     if(!inv)return 0;
@@ -25,7 +44,7 @@
   }
   function render(state){
     filters=state||filters;
-    const ops=load();
+    const ops=ensureOrderIds(load());
     const all=(ops.orders||[]).filter(o=>o.status==='PCP'||o.status==='ESTOQUE_PRODUCAO');
     const rows=all.filter(o=>{
       const q=filters.q.toLowerCase();
@@ -58,13 +77,19 @@
     if(!rows.length)return '<div class="fpcp-empty">Nenhum pedido aguardando PCP para os filtros atuais.</div>';
     return '<table class="fpcp-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Data</th><th>Itens</th><th>Valor</th><th>Base</th><th>Disponível</th><th>Status PCP</th><th></th></tr></thead><tbody>'+rows.map(o=>{
       const st=planningStatus(o);
-      return '<tr><td><div class="fpcp-order">'+esc(o.number)+'</div></td><td><div class="fpcp-client">'+esc(o.client||'—')+'</div><div class="fpcp-muted">'+esc([o.city,o.uf].filter(Boolean).join('/'))+'</div></td><td>'+dbr(o.orderDate)+'</td><td>'+((o.items||[]).length)+'<div class="fpcp-muted">'+totalQty(o)+' cx</div></td><td>'+money(orderValue(o))+'</td><td>'+esc(o.pcp?.deliveryBase||'—')+'</td><td>'+dbr(o.pcp?.availableDate)+'</td><td><span class="fpcp-status '+st[1]+'">'+st[0]+'</span></td><td><button class="fpcp-open" data-fpcp-open="'+esc(o.id)+'">'+(o.status==='PCP'?'Planejar':'Consultar')+'</button></td></tr>';
+      return '<tr><td><div class="fpcp-order">'+esc(o.number)+'</div></td><td><div class="fpcp-client">'+esc(o.client||'—')+'</div><div class="fpcp-muted">'+esc([o.city,o.uf].filter(Boolean).join('/'))+'</div></td><td>'+dbr(o.orderDate)+'</td><td>'+((o.items||[]).length)+'<div class="fpcp-muted">'+totalQty(o)+' cx</div></td><td>'+money(orderValue(o))+'</td><td>'+esc(o.pcp?.deliveryBase||'—')+'</td><td>'+dbr(o.pcp?.availableDate)+'</td><td><span class="fpcp-status '+st[1]+'">'+st[0]+'</span></td><td><button class="fpcp-open" data-fpcp-open="'+esc(o.id||o.number)+'" data-fpcp-number="'+esc(o.number||'')+'">'+(o.status==='PCP'?'Planejar':'Consultar')+'</button></td></tr>';
     }).join('')+'</tbody></table>';
   }
 
   function openOrder(id){
-    const ops=load(),o=(ops.orders||[]).find(x=>String(x.id)===String(id));
-    if(!o){alert('Pedido não encontrado.');return}
+    const ops=ensureOrderIds(load());
+    const key=String(id||'');
+    const o=(ops.orders||[]).find(x=>String(x.id||'')===key || String(x.number||'')===key);
+    if(!o){
+      alert('Não foi possível abrir este pedido. A lista será atualizada.');
+      render(filters);
+      return;
+    }
     renderDetail(o,ops);
   }
   function renderDetail(o,ops){
