@@ -32,12 +32,8 @@
   document.body.appendChild(shell);
 
   function syncBrandLogo(){
-    const source=(typeof LOGO_FOCADO_URI!=='undefined' && LOGO_FOCADO_URI)
-      || document.getElementById('loginLogo')?.src
-      || document.getElementById('hubLogo')?.src
-      || '';
     const target=document.getElementById('fxBrandLogo');
-    if(target && source) target.src=source;
+    if(target && !target.src.includes('focado-brand.svg')) target.src='focado-brand.svg?v=20260827c';
   }
   syncBrandLogo();
   window.addEventListener('load',syncBrandLogo);
