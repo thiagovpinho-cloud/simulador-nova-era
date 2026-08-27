@@ -1,5 +1,6 @@
 import pg from "pg";
 import { DOMAIN_PERMISSION, FLOW, RULES_VERSION, applyDomain, applyTransitionSideEffects, getOrder, validateTransition } from "../../shared/domain-rules.js";
+import { ensurePlatformV2, syncPlatformV2, appendChange, loginThrottle } from "./platform-v2.js";
 const { Client } = pg;
 
 const WORKSPACE = "default";
@@ -87,7 +88,10 @@ async function withDb(env,fn){
   if(!env.HYPERDRIVE?.connectionString)throw Object.assign(new Error("HYPERDRIVE_NOT_CONFIGURED"),{code:"STORE_NOT_CONFIGURED"});
   const client=new Client({connectionString:env.HYPERDRIVE.connectionString});
   await client.connect();
-  try{return await fn(client)}finally{await client.end()}
+  try{
+    await ensurePlatformV2(client);
+    return await fn(client);
+  }finally{await client.end()}
 }
 async function sessionFrom(request,db){
   const header=request.headers.get("authorization")||"";
@@ -181,6 +185,8 @@ async function route(request,env){
       const body=await request.json();
       const email=String(body.email||"").trim().toLowerCase(),password=String(body.password||"");
       if(!email||!password)return json({error:"INVALID_CREDENTIALS"},400);
+      const ipHash=await sha256Text(request.headers.get("cf-connecting-ip")||request.headers.get("x-forwarded-for")||"unknown");
+      const recordLogin=await loginThrottle(db,email,ipHash);
       const r=await db.query("select id,email,name,role,password_salt,password_hash,active from public.focado_users where email=$1 limit 1",[email]);
       const user=r.rows[0];
       let ok=false;
@@ -189,7 +195,8 @@ async function route(request,env){
         const p=await passwordHash(password,user.password_salt,Number(it));
         ok=constEq(p.hash,expected);
       }
-      if(!ok)return json({error:"INVALID_CREDENTIALS"},401);
+      if(!ok){await recordLogin(false);return json({error:"INVALID_CREDENTIALS"},401)}
+      await recordLogin(true);
       const token=newToken(),tokenHash=await sha256Text(token);
       const expiresAt=new Date(Date.now()+12*60*60*1000).toISOString();
       await db.query("insert into public.focado_sessions(user_id,token_hash,expires_at,user_agent) values($1,$2,$3,$4)",[user.id,tokenHash,expiresAt,(request.headers.get("user-agent")||"").slice(0,500)]);
@@ -251,7 +258,10 @@ async function route(request,env){
       if(!body.payload||typeof body.payload!=="object"||Array.isArray(body.payload))return json({error:"INVALID_PAYLOAD"},400);
       const raw=request.headers.get("if-match"),expected=raw==null?null:Number(String(raw).replace(/"/g,""));
       if(expected==null||!Number.isFinite(expected))return json({error:"INVALID_REVISION"},400);
+      const before=await readWorkspace(db,false);
       const saved=await writeWorkspace(db,body.payload,expected);
+      await syncPlatformV2(db,saved.payload);
+      await appendChange(db,{userId:s.userId,action:'WORKSPACE_WRITE',entityType:'workspace',entityId:WORKSPACE,revision:saved.revision,before:before?.payload||{},after:saved.payload,metadata:{source:'state'}});
       await db.query("insert into public.focado_audit_events(user_id,action,entity_type,entity_id,metadata) values($1,'WORKSPACE_WRITE','workspace',$2,$3::jsonb)",[s.userId,WORKSPACE,JSON.stringify({revision:saved.revision})]);
       return json(saved,200,{"etag":`"${saved.revision}"`});
     }
@@ -262,10 +272,12 @@ async function route(request,env){
       const s=await requireSession(request,db,permission);
       await db.query("begin");
       try{
-        const row=await readWorkspace(db,true),revision=row?.revision||0,state=structuredClone(row?.payload||{});
+        const row=await readWorkspace(db,true),revision=row?.revision||0,before=structuredClone(row?.payload||{}),state=structuredClone(row?.payload||{});
         if(body.revision!=null&&Number(body.revision)!==revision)throw Object.assign(new Error("REVISION_CONFLICT"),{status:409,currentRevision:revision});
         applyDomain(domain,state,body);
         const saved=await writeWorkspace(db,state,revision);
+        await syncPlatformV2(db,saved.payload);
+        await appendChange(db,{userId:s.userId,action:'DOMAIN_WRITE',entityType:domain.toLowerCase(),entityId:String(body.orderId||WORKSPACE),revision:saved.revision,before,after:saved.payload,metadata:{domain}});
         await db.query("insert into public.focado_audit_events(user_id,action,entity_type,entity_id,metadata) values($1,'DOMAIN_WRITE',$2,$3,$4::jsonb)",[s.userId,domain.toLowerCase(),String(body.orderId||WORKSPACE),JSON.stringify({domain,revision:saved.revision})]);
         await db.query("commit");
         return json({ok:true,revision:saved.revision,payload:saved.payload},200,{"etag":`"${saved.revision}"`});
@@ -276,7 +288,7 @@ async function route(request,env){
       const body=await request.json();
       await db.query("begin");
       try{
-        const row=await readWorkspace(db,true),revision=row?.revision||0,state=structuredClone(row?.payload||{});
+        const row=await readWorkspace(db,true),revision=row?.revision||0,before=structuredClone(row?.payload||{}),state=structuredClone(row?.payload||{});
         if(body.revision!=null&&Number(body.revision)!==revision)throw Object.assign(new Error("REVISION_CONFLICT"),{status:409,currentRevision:revision});
         const order=getOrder(state,body.orderId);if(!order)throw Object.assign(new Error("ORDER_NOT_FOUND"),{status:404});
         const rule=FLOW[order.status];if(!rule)throw Object.assign(new Error("INVALID_TRANSITION"),{status:400});
@@ -288,10 +300,19 @@ async function route(request,env){
         order.status=rule.to;order.events=Array.isArray(order.events)?order.events:[];
         order.events.unshift({at:Date.now(),type:"STATUS_TRANSITION",from,to:rule.to,user:s.name||s.email});
         const saved=await writeWorkspace(db,state,revision);
+        await syncPlatformV2(db,saved.payload);
+        await appendChange(db,{userId:s.userId,action:'STATUS_TRANSITION',entityType:'order',entityId:String(order.id),revision:saved.revision,before,after:saved.payload,metadata:{from,to:rule.to}});
         await db.query("insert into public.focado_audit_events(user_id,action,entity_type,entity_id,metadata) values($1,'STATUS_TRANSITION','order',$2,$3::jsonb)",[s.userId,String(order.id),JSON.stringify({from,to:rule.to,revision:saved.revision})]);
         await db.query("commit");
         return json({ok:true,orderId:order.id,from,to:rule.to,revision:saved.revision});
       }catch(e){await db.query("rollback");throw e}
+    }
+
+    if(path==="/audit/changes"&&request.method==="GET"){
+      await requireSession(request,db,"users.manage");
+      const limit=Math.min(200,Math.max(1,Number(url.searchParams.get("limit")||50)));
+      const r=await db.query(`select id,occurred_at as "occurredAt",user_id as "userId",action,entity_type as "entityType",entity_id as "entityId",revision,reason,metadata from public.focado_v2_change_log order by id desc limit $1`,[limit]);
+      return json({changes:r.rows});
     }
 
     if(path==="/users"&&request.method==="GET"){
