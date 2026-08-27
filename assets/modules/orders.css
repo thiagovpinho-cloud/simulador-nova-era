@@ -13,3 +13,11 @@
 .fo-history{display:flex;flex-direction:column}.fo-history-row{display:grid;grid-template-columns:80px 1fr;gap:10px;padding:9px 0;border-top:1px solid #edf1ee}.fo-history-row:first-child{border-top:0}.fo-history-row>span{font-size:8.5px;color:var(--fx-muted)}.fo-history-row b{display:block;font-size:9.5px}.fo-history-row small{display:block;font-size:8px;color:var(--fx-muted);margin-top:2px}
 @media(max-width:1000px){.fo-fields{grid-template-columns:repeat(2,1fr)}.fo-summary{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:650px){.fo-head{align-items:flex-start;flex-direction:column}.fo-summary{grid-template-columns:1fr 1fr}.fo-fields{grid-template-columns:1fr}.fo-field.wide{grid-column:auto}.fo-card{padding:12px}.fo-actions{width:100%}.fo-actions .fo-btn{flex:1}.fo-flowline{padding:8px}.fo-history-row{grid-template-columns:64px 1fr}}
+
+.fo-field select{width:100%;border:1px solid var(--fx-border);border-radius:9px;padding:9px 10px;font-size:10px;background:#fff;outline:0}
+.fo-field select:focus{border-color:#0b6a51;box-shadow:0 0 0 2px rgba(11,106,81,.08)}
+.fo-inline-input{display:flex;gap:6px}.fo-inline-input input{min-width:0;flex:1}.fo-inline-input button{border:1px solid #0b6a51;background:#e8f5ef;color:#075f48;border-radius:8px;padding:0 9px;font-size:8.5px;font-weight:800;cursor:pointer}
+.fo-inline-input button:disabled{opacity:.5;cursor:default}.fo-cnpj-status{font-size:8.8px;color:var(--fx-muted);margin-top:9px;min-height:14px}.fo-cnpj-status.ok{color:#08785b}.fo-cnpj-status.warn{color:#a96308}.fo-cnpj-status.bad{color:#bd3439}
+.fo-period{display:flex;align-items:end;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid var(--fx-border);border-radius:14px;padding:12px}
+.fo-period label{display:flex;flex-direction:column;gap:4px}.fo-period label span,.fo-period>div span{font-size:8px;color:var(--fx-muted);font-weight:700}.fo-period input{border:1px solid var(--fx-border);border-radius:9px;padding:8px 9px;font-size:10px}.fo-period>div{min-width:100px;padding:0 10px}.fo-period>div strong{display:block;font-size:15px;margin-top:3px}.fo-report-table{min-width:1100px}
+@media(max-width:650px){.fo-inline-input{flex-direction:column}.fo-inline-input button{min-height:36px}.fo-period{align-items:stretch}.fo-period label{flex:1;min-width:130px}.fo-period>div{padding:4px 0}}
