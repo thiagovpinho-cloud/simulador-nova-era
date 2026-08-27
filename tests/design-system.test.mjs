@@ -64,3 +64,10 @@ for(const p of ['assets/app-shell.css','assets/modules/pcp.css','assets/modules/
 }
 
 console.log('design-system: ok');
+
+const shellProduct=read('assets/app-shell.js');
+const shellProductCss=read('assets/app-shell.css');
+assert.ok(shellProduct.includes('PRIORIDADE AGORA'),'Dashboard deve priorizar exceções operacionais');
+assert.ok(shellProduct.includes('OPERAÇÃO SOB CONTROLE'),'Dashboard deve possuir estado saudável');
+assert.ok(shellProductCss.includes('.fx-command'),'Dashboard deve possuir command center visual');
+assert.ok(dsCss.includes('Journey UI 2.0'),'Design System deve refinar as jornadas principais');
