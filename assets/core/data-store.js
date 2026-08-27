@@ -139,6 +139,41 @@
       return {mode:'remote',ok:false,error:String(err.message),status:err.status,code:err.code};
     }
   }
+
+  async function getDomainV2(domain){
+    if(!isRemoteReady())return {ok:false,mode:'local',data:null};
+    try{
+      const body=await remoteRequest('/api/v2/domain/'+encodeURIComponent(String(domain||'').toLowerCase()));
+      return {ok:true,mode:'remote-v2',data:body?.data||[],revision:body?.revision};
+    }catch(err){
+      console.warn('[FocadoDataStore] leitura v2 indisponível para '+domain,err);
+      return {ok:false,mode:'fallback',data:null,error:String(err.message)};
+    }
+  }
+
+  async function refreshDomainV2(domain){
+    const result=await getDomainV2(domain);
+    if(!result.ok)return result;
+    const state=readLocal();
+    const key=String(domain||'').toLowerCase();
+    if(key==='customers')state.customers=Array.isArray(result.data)?result.data:[];
+    if(key==='orders')state.orders=Array.isArray(result.data)?result.data:[];
+    writeLocal(state);
+    return {...result,payload:state};
+  }
+
+  async function getV2Consistency(){
+    if(!isRemoteReady())return {ok:false,mode:'local'};
+    try{return await remoteRequest('/api/v2/consistency')}
+    catch(err){return {ok:false,error:String(err.message),status:err.status}}
+  }
+
+  async function getSecurityHealth(){
+    if(!isRemoteReady())return {ok:false,mode:'local'};
+    try{return await remoteRequest('/api/security/health')}
+    catch(err){return {ok:false,error:String(err.message),status:err.status}}
+  }
+
   function emit(detail){
     listeners.forEach(fn=>{try{fn(detail)}catch(_){}});
     window.dispatchEvent(new CustomEvent('focado:data-updated',{detail}));
@@ -147,7 +182,7 @@
   async function hydrateLocalCache(){const state=await load();writeLocal(state);return state}
 
   window.FocadoDataStore={
-    readLocal,writeLocal,load,save,saveDomain,transitionOrder,subscribe,getConfig,setConfig,setSessionToken,getSessionToken,isRemoteReady,hydrateLocalCache,
+    readLocal,writeLocal,load,save,saveDomain,transitionOrder,getDomainV2,refreshDomainV2,getV2Consistency,getSecurityHealth,subscribe,getConfig,setConfig,setSessionToken,getSessionToken,isRemoteReady,hydrateLocalCache,
     get mode(){return isRemoteReady()?'api':'local'},
     get revision(){return revision}
   };
