@@ -6,7 +6,7 @@
   shell.id='focadoShell'; shell.className='hidden';
 
   const navGroups=[
-    ['Principal',[['dashboard','⌂','Dashboard']]],
+    ['Principal',[['dashboard','⌂','Dashboard'],['kanban','▦','Kanban Operacional']]],
     ['Comercial',[['clientes','♙','Clientes'],['oportunidades','◎','Oportunidades','soon'],['pedidos','▤','Pedidos']]],
     ['Operações',[['pcp','⌘','PCP'],['production','⚙','Produção'],['inventory','▣','Estoque'],['inputs','◇','Insumos'],['finished','□','Produtos Acabados'],['movements','↕','Movimentações'],['inventario','✓','Inventário'],['purchases','↻','Reposição']]],
     ['Logística',[['logistica','▰','Logística'],['entregas','✓','Entregas'],['transportadoras','⌁','Transportadoras','soon']]],
@@ -107,7 +107,7 @@
   }
   function navigate(id){
     setActive(id);
-    if(id==='dashboard'){showShell();return}
+    if(id==='dashboard'){showShell();return}\n    if(id==='kanban'){showShell(); if(window.FocadoKanban) window.FocadoKanban.render({q:'',brand:'TODAS'}); return}
     if(id==='clientes')return clickLegacy('hubGoCadastro');
     if(id==='pedidos'){showShell(); if(window.FocadoOrders) window.FocadoOrders.render(); return}
     if(id==='fichas')return clickLegacy('hubGoFichas');
