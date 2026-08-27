@@ -1,104 +1,189 @@
 (function(){
   'use strict';
-  const KEY='focado-operacoes-v2';
   const content=()=>document.getElementById('fxContent');
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const load=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(_){return {}}};
-  const avail=inv=>Math.max(0,Number(inv.physical||0)-Number(inv.reserved||0)-Number(inv.blocked||0));
-  const reorder=inv=>{const r=inv.reorder||{};return Math.max(0,(Number(r.avgDaily)||0)*(Number(r.leadTimeDays)||0)+(Number(r.safetyStock)||0))};
-  const fmt=(v,d=3)=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
-  function status(inv,type){
-    const a=avail(inv),b=Number(inv.blocked||0),rp=type==='input'?reorder(inv):0;
-    if(b>0)return ['Bloqueado','block'];
-    if(type==='input'&&rp>0&&a<=rp)return ['Reposição','reorder'];
+  const load=()=>window.FocadoDataStore?.readLocal?.()||{};
+  const fmt=(v,d=0)=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+  const today=()=>new Date().toISOString().slice(0,10);
+  const avail=inv=>Math.max(0,Number(inv?.physical||0)-Number(inv?.reserved||0)-Number(inv?.blocked||0));
+  let viewState={tab:'finished',q:'',filter:'TODOS'};
+
+  function catalog(ops){return window.FocadoProducts?.getCatalog?.(ops)||[]}
+  function bases(ops){
+    const found=Object.keys(ops.productionBases||{});
+    return [...new Set(['SENIR','GREENTECH','TOPLAND',...found])];
+  }
+  function productKey(p){return String(p.id||p.code||p.name)}
+  function ensureFinished(ops,p,unit='CX'){
+    ops.inventory=ops.inventory||{};
+    const exact=ops.inventory[productKey(p)];
+    if(exact)return [productKey(p),exact];
+    const found=Object.entries(ops.inventory).find(([,v])=>String(v?.code||'')===String(p.code||'')&&String(v?.brand||'')===String(p.brand||''));
+    if(found)return found;
+    const key=productKey(p);
+    ops.inventory[key]={code:p.code||'',name:p.name||'',brand:p.brand||'',unit,physical:0,reserved:0,blocked:0,bases:{}};
+    return [key,ops.inventory[key]];
+  }
+  function status(inv){
+    if(Number(inv?.blocked||0)>0)return ['Bloqueado','block'];
     return ['Normal','ok'];
   }
+  async function mutateFinished(mutator){
+    for(let attempt=0;attempt<2;attempt++){
+      if(attempt)await window.FocadoDataStore?.load?.();
+      const ops=structuredClone(load());
+      ops.inventory=ops.inventory||{};ops.stockMovements=Array.isArray(ops.stockMovements)?ops.stockMovements:[];ops.inventoryCounts=Array.isArray(ops.inventoryCounts)?ops.inventoryCounts:[];
+      const ok=mutator(ops);if(ok===false)return {ok:false,cancelled:true};
+      window.FocadoDataStore?.writeLocal?.(ops);
+      const result=window.FocadoDataStore?.isRemoteReady?.()
+        ?await window.FocadoDataStore.saveDomain('ESTOQUE',{inventory:ops.inventory,stockMovements:ops.stockMovements,inventoryCounts:ops.inventoryCounts},null)
+        :await window.FocadoDataStore?.save?.(ops);
+      if(result?.ok!==false&&result?.mode!=='conflict'){if(result?.payload)window.FocadoDataStore?.writeLocal?.(result.payload);return result||{ok:true}}
+      if(result?.mode!=='conflict')return result;
+    }
+    return {ok:false,mode:'conflict'};
+  }
+
   function render(state){
-    const ops=load(),s=state||{tab:'inputs',q:'',filter:'TODOS'};
-    const inputs=Object.entries(ops.inputInventory||{}),finished=Object.entries(ops.inventory||{});
-    const all=s.tab==='inputs'?inputs:finished;
-    const rows=all.filter(([,inv])=>{
-      const q=s.q.toLowerCase();
-      const mq=!q||[inv.name,inv.code,(inv.erpIds||[]).join(' '),inv.warehouse].some(v=>String(v||'').toLowerCase().includes(q));
-      const st=status(inv,s.tab==='inputs'?'input':'finished')[0];
-      const mf=s.filter==='TODOS'||st===s.filter;
-      return mq&&mf;
+    viewState=state||viewState;
+    const ops=load(),finished=Object.entries(ops.inventory||{});
+    const rows=finished.filter(([,inv])=>{
+      const q=String(viewState.q||'').toLowerCase();
+      return !q||[inv.name,inv.code,inv.brand,inv.warehouse].some(v=>String(v||'').toLowerCase().includes(q));
     });
-    const totalPhysical=all.reduce((x,[,i])=>x+Number(i.physical||0),0);
-    const totalReserved=all.reduce((x,[,i])=>x+Number(i.reserved||0),0);
-    const totalBlocked=all.reduce((x,[,i])=>x+Number(i.blocked||0),0);
-    const totalAvailable=all.reduce((x,[,i])=>x+avail(i),0);
-    const critical=inputs.filter(([,i])=>{const rp=reorder(i);return rp>0&&avail(i)<=rp}).length;
-    const blockedCount=all.filter(([,i])=>Number(i.blocked||0)>0).length;
+    const totalPhysical=finished.reduce((s,[,i])=>s+Number(i.physical||0),0);
+    const totalReserved=finished.reduce((s,[,i])=>s+Number(i.reserved||0),0);
+    const totalBlocked=finished.reduce((s,[,i])=>s+Number(i.blocked||0),0);
+    const totalAvailable=finished.reduce((s,[,i])=>s+avail(i),0);
     content().innerHTML='<div class="fi-page">'+
-      '<div class="fi-head"><div><h1>Estoque</h1><p>Controle físico, reservado, bloqueado e disponível</p></div><div class="fi-actions"><button class="fi-btn secondary" id="fiMov">Movimentações</button><button class="fi-btn secondary" id="fiInv">Inventário</button><button class="fi-btn primary" id="fiRepos">Reposição</button></div></div>'+
-      '<div class="fi-kpis"><div class="fi-kpi"><span>Físico</span><strong>'+fmt(totalPhysical)+'</strong><small>saldo total da visão</small></div><div class="fi-kpi"><span>Reservado</span><strong>'+fmt(totalReserved)+'</strong><small>comprometido</small></div><div class="fi-kpi"><span>Bloqueado</span><strong>'+fmt(totalBlocked)+'</strong><small>não disponível</small></div><div class="fi-kpi"><span>Disponível</span><strong>'+fmt(totalAvailable)+'</strong><small>saldo livre</small></div><div class="fi-kpi"><span>Reposição crítica</span><strong>'+critical+'</strong><small>insumos abaixo do ponto</small></div><div class="fi-kpi"><span>Itens bloqueados</span><strong>'+blockedCount+'</strong><small>exigem atenção</small></div></div>'+
-      '<div class="fi-tabs"><button class="fi-tab '+(s.tab==='inputs'?'active':'')+'" data-fi-tab="inputs">Insumos</button><button class="fi-tab '+(s.tab==='finished'?'active':'')+'" data-fi-tab="finished">Produtos Acabados</button></div>'+
-      '<div class="fi-grid"><div class="fi-panel"><h2>Alertas do estoque</h2>'+alerts(ops,s.tab)+'</div><div class="fi-panel"><h2>Resumo da operação</h2>'+summary(ops)+'</div></div>'+
-      '<div class="fi-toolbar"><input class="fi-search" id="fiSearch" placeholder="Buscar item, código, ERP ou depósito" value="'+esc(s.q)+'"><select class="fi-select" id="fiFilter"><option value="TODOS">Todos os status</option><option value="Normal" '+(s.filter==='Normal'?'selected':'')+'>Normal</option><option value="Bloqueado" '+(s.filter==='Bloqueado'?'selected':'')+'>Bloqueado</option><option value="Reposição" '+(s.filter==='Reposição'?'selected':'')+'>Reposição</option></select><span class="fi-muted">'+rows.length+' item(ns)</span></div>'+
-      '<div class="fi-table-wrap">'+table(rows,s.tab)+'</div></div>';
-    document.querySelectorAll('[data-fi-tab]').forEach(b=>b.onclick=()=>render({tab:b.dataset.fiTab,q:s.q,filter:s.filter}));
-    const q=document.getElementById('fiSearch'),fl=document.getElementById('fiFilter');
-    q.oninput=()=>render({tab:s.tab,q:q.value,filter:fl.value});fl.onchange=()=>render({tab:s.tab,q:q.value,filter:fl.value});
-    document.querySelectorAll('[data-fi-open]').forEach(b=>b.onclick=()=>openItem(s.tab,b.dataset.fiOpen));
-    document.getElementById('fiMov').onclick=()=>renderMovements();
-    document.getElementById('fiInv').onclick=()=>renderInventoryCounts(s.tab);
-    document.getElementById('fiRepos').onclick=()=>renderReplenishment();
+      '<div class="fi-head"><div><h1>Estoque</h1><p>Saldo de produto acabado: entradas + inventários − quebras − saídas de vendas</p></div><div class="fi-actions"><button class="fi-btn primary" id="fiInv">Inventário</button><button class="fi-btn primary" id="fiMov">Movimentações / Reposições</button></div></div>'+
+      '<div class="fi-kpis"><div class="fi-kpi"><span>Físico</span><strong>'+fmt(totalPhysical)+'</strong><small>saldo total</small></div><div class="fi-kpi"><span>Reservado</span><strong>'+fmt(totalReserved)+'</strong><small>comprometido com pedidos</small></div><div class="fi-kpi"><span>Bloqueado</span><strong>'+fmt(totalBlocked)+'</strong><small>não disponível</small></div><div class="fi-kpi"><span>Disponível</span><strong>'+fmt(totalAvailable)+'</strong><small>físico − reservado − bloqueado</small></div></div>'+
+      '<div class="fi-grid"><div class="fi-panel"><h2>Regra do saldo</h2><div class="fi-alert"><div class="fi-alert-icon">+</div><div><b>Entradas</b><small>produção recebida em Movimentações / Reposições e inventários realizados</small></div></div><div class="fi-alert"><div class="fi-alert-icon">−</div><div><b>Saídas</b><small>pedidos de venda, bonificações, doações e quebras</small></div></div></div><div class="fi-panel"><h2>Histórico</h2><div class="fi-alert"><div class="fi-alert-icon">↕</div><div><b>'+((ops.stockMovements||[]).length)+' movimentações</b><small>rastreabilidade completa</small></div></div><div class="fi-alert"><div class="fi-alert-icon">✓</div><div><b>'+((ops.inventoryCounts||[]).length)+' inventários</b><small>lançamentos físicos preservados</small></div></div></div></div>'+
+      '<div class="fi-toolbar"><input class="fi-search" id="fiSearch" placeholder="Buscar produto, código ou marca" value="'+esc(viewState.q||'')+'"><span class="fi-muted">'+rows.length+' produto(s) com saldo cadastrado</span></div>'+
+      '<div class="fi-table-wrap">'+stockTable(rows)+'</div></div>';
+    document.getElementById('fiInv').onclick=renderInventoryEntry;
+    document.getElementById('fiMov').onclick=renderMovementEntry;
+    document.getElementById('fiSearch').oninput=e=>render({...viewState,q:e.target.value});
+    document.querySelectorAll('[data-fi-open]').forEach(b=>b.onclick=()=>openItem(b.dataset.fiOpen));
   }
-  function alerts(ops,tab){
-    const list=tab==='inputs'?Object.values(ops.inputInventory||{}):Object.values(ops.inventory||{});
-    const a=[];
-    const blocked=list.filter(i=>Number(i.blocked||0)>0).length;if(blocked)a.push(['!',blocked+' item(ns) com saldo bloqueado','Não entram no saldo disponível']);
-    if(tab==='inputs'){const critical=list.filter(i=>{const rp=reorder(i);return rp>0&&avail(i)<=rp}).length;if(critical)a.push(['↻',critical+' insumo(s) em ponto de reposição','Revisar necessidade de compra'])}
-    const reserved=list.filter(i=>Number(i.reserved||0)>0).length;if(reserved)a.push(['▣',reserved+' item(ns) com saldo reservado','Comprometidos com pedidos']);
-    if(!a.length)return '<div class="fi-alert"><div class="fi-alert-icon">✓</div><div><b>Nenhum alerta crítico</b><small>Estoque sem exceções registradas</small></div></div>';
-    return a.map(x=>'<div class="fi-alert"><div class="fi-alert-icon">'+x[0]+'</div><div><b>'+x[1]+'</b><small>'+x[2]+'</small></div></div>').join('');
-  }
-  function summary(ops){
-    const mov=(ops.stockMovements||[]).length,counts=(ops.inventoryCounts||[]).length,lots=Object.values(ops.inputInventory||{}).reduce((s,i)=>s+(i.lots||[]).length,0);
-    return '<div class="fi-alert"><div class="fi-alert-icon">↕</div><div><b>'+mov+' movimentações registradas</b><small>Histórico auditável do estoque</small></div></div><div class="fi-alert"><div class="fi-alert-icon">✓</div><div><b>'+counts+' contagens físicas</b><small>Inventários registrados</small></div></div><div class="fi-alert"><div class="fi-alert-icon">◇</div><div><b>'+lots+' lotes cadastrados</b><small>Rastreabilidade dos insumos</small></div></div>';
-  }
-  function table(rows,tab){
-    if(!rows.length)return '<div class="fi-empty">Nenhum item encontrado para os filtros atuais.</div>';
-    return '<table class="fi-table"><thead><tr><th>Item</th><th>Unidade</th><th>Físico</th><th>Reservado</th><th>Bloqueado</th><th>Disponível</th>'+(tab==='inputs'?'<th>Ponto reposição</th><th>Lotes</th>':'')+'<th>Status</th><th></th></tr></thead><tbody>'+rows.map(([key,inv])=>{const st=status(inv,tab==='inputs'?'input':'finished');const a=avail(inv),rp=tab==='inputs'?reorder(inv):0;const cls=st[1]==='block'?'bad':st[1]==='reorder'?'warn':'good';return '<tr><td><div class="fi-item">'+esc(inv.name||key)+'</div><div class="fi-muted">'+esc(inv.code||key)+(inv.erpIds?.length?' · ERP '+esc(inv.erpIds.join(', ')):'')+(inv.warehouse?' · '+esc(inv.warehouse):'')+'</div></td><td>'+esc(inv.unit||'UNID')+'</td><td>'+fmt(inv.physical)+'</td><td>'+fmt(inv.reserved)+'</td><td>'+fmt(inv.blocked)+'</td><td><span class="fi-stock '+cls+'">'+fmt(a)+'</span></td>'+(tab==='inputs'?'<td>'+fmt(rp)+'</td><td>'+((inv.lots||[]).length)+'</td>':'')+'<td><span class="fi-chip '+st[1]+'">'+st[0]+'</span></td><td><button class="fi-open" data-fi-open="'+esc(key)+'">Abrir</button></td></tr>'}).join('')+'</tbody></table>';
-  }
-  function backButton(label='Estoque'){return '<button class="fi-btn secondary" id="fiBack">← '+label+'</button>'}
-  function bindBack(tab='inputs'){const b=document.getElementById('fiBack');if(b)b.onclick=()=>render({tab,q:'',filter:'TODOS'})}
 
-  function openItem(tab,key){
-    const ops=load(),bucket=tab==='inputs'?(ops.inputInventory||{}):(ops.inventory||{}),inv=bucket[key];
-    if(!inv){alert('Item não encontrado.');return}
-    const st=status(inv,tab==='inputs'?'input':'finished'),a=avail(inv);
+  function stockTable(rows){
+    if(!rows.length)return '<div class="fi-empty">Ainda não há saldo de produtos acabados. Use Inventário ou Movimentações / Reposições para alimentar o estoque.</div>';
+    return '<table class="fi-table"><thead><tr><th>Produto</th><th>Unidade</th><th>Físico</th><th>Reservado</th><th>Bloqueado</th><th>Disponível</th><th>Status</th><th></th></tr></thead><tbody>'+rows.map(([key,i])=>{const st=status(i);return '<tr><td><div class="fi-item">'+esc(i.name||key)+'</div><div class="fi-muted">'+esc(i.code||'')+(i.brand?' · '+esc(i.brand):'')+'</div></td><td>'+esc(i.unit||'CX')+'</td><td>'+fmt(i.physical)+'</td><td>'+fmt(i.reserved)+'</td><td>'+fmt(i.blocked)+'</td><td><span class="fi-stock good">'+fmt(avail(i))+'</span></td><td><span class="fi-chip '+st[1]+'">'+st[0]+'</span></td><td><button class="fi-open" data-fi-open="'+esc(key)+'">Abrir</button></td></tr>'}).join('')+'</tbody></table>';
+  }
+
+  function back(){return '<button class="fi-btn primary" id="fiBack">← Estoque</button>'}
+  function bindBack(){document.getElementById('fiBack').onclick=()=>render({tab:'finished',q:'',filter:'TODOS'})}
+
+  function renderInventoryEntry(){
+    const ops=load(),products=catalog(ops).slice().sort((a,b)=>String(a.brand).localeCompare(String(b.brand))||String(a.name).localeCompare(String(b.name)));
     content().innerHTML='<div class="fi-page">'+
-      '<div class="fi-head"><div>'+backButton('Estoque')+'<h1 style="margin-top:10px">'+esc(inv.name||key)+'</h1><p>'+esc(inv.code||key)+(inv.warehouse?' · '+esc(inv.warehouse):'')+'</p></div></div>'+
-      '<div class="fi-kpis"><div class="fi-kpi"><span>Físico</span><strong>'+fmt(inv.physical)+'</strong><small>'+esc(inv.unit||'UNID')+'</small></div><div class="fi-kpi"><span>Reservado</span><strong>'+fmt(inv.reserved)+'</strong><small>comprometido</small></div><div class="fi-kpi"><span>Bloqueado</span><strong>'+fmt(inv.blocked)+'</strong><small>não disponível</small></div><div class="fi-kpi"><span>Disponível</span><strong>'+fmt(a)+'</strong><small>saldo livre</small></div></div>'+
-      '<div class="fi-grid"><div class="fi-panel"><h2>Dados do item</h2><div class="fi-alert"><div class="fi-alert-icon">#</div><div><b>Código '+esc(inv.code||key)+'</b><small>ERP '+esc((inv.erpIds||[]).join(', ')||'—')+'</small></div></div><div class="fi-alert"><div class="fi-alert-icon">◇</div><div><b>Status: '+st[0]+'</b><small>Unidade '+esc(inv.unit||'UNID')+'</small></div></div></div>'+
-      '<div class="fi-panel"><h2>Rastreabilidade</h2><div class="fi-alert"><div class="fi-alert-icon">↕</div><div><b>'+((ops.stockMovements||[]).filter(m=>String(m.key)===String(key)||String(m.code)===String(inv.code)).length)+' movimentações</b><small>histórico deste item</small></div></div><div class="fi-alert"><div class="fi-alert-icon">✓</div><div><b>'+((ops.inventoryCounts||[]).filter(m=>String(m.key)===String(key)||String(m.code)===String(inv.code)).length)+' contagens</b><small>inventários físicos</small></div></div></div></div>'+
-      (tab==='inputs'?'<div class="fi-panel"><h2>Lotes</h2>'+((inv.lots||[]).length?'<div class="fi-table-wrap"><table class="fi-table"><thead><tr><th>Origem</th><th>ERP</th><th>Qtd.</th><th>Bloqueado</th><th>Depósito</th><th>Observação</th></tr></thead><tbody>'+(inv.lots||[]).map(l=>'<tr><td>'+esc(l.source||'—')+'</td><td>'+esc(l.erpId||'—')+'</td><td>'+fmt(l.qty)+'</td><td>'+fmt(l.blocked)+'</td><td>'+esc(l.warehouse||'—')+'</td><td>'+esc(l.note||'—')+'</td></tr>').join('')+'</tbody></table></div>':'<div class="fi-empty">Nenhum lote cadastrado.</div>')+'</div>':'')+
-      '</div>';
-    bindBack(tab);
+      '<div class="fi-head"><div>'+back()+'<h1 style="margin-top:12px">Inventário de Produtos Acabados</h1><p>Todo volume inventariado soma ao estoque; toda quebra informada é abatida.</p></div><button class="fi-btn primary" id="fiSaveInventory">Finalizar inventário</button></div>'+
+      '<div class="fi-panel"><div class="fi-grid"><label class="fi-field"><span>Base inventariada</span><select id="fiInvBase">'+bases(ops).map(b=>'<option>'+esc(b)+'</option>').join('')+'</select></label><label class="fi-field"><span>Data do inventário</span><input id="fiInvDate" type="date" value="'+today()+'"></label></div></div>'+
+      '<div class="fi-panel"><h2>Produtos cadastrados</h2><p class="fi-note">Preencha somente os produtos contados. Quantidade inventariada será somada; quebra será subtraída.</p><div class="fi-table-wrap"><table class="fi-table"><thead><tr><th>Código</th><th>Produto</th><th>Marca</th><th>Quantidade inventariada</th><th>Medida</th><th>Quebra</th></tr></thead><tbody>'+
+      products.map(p=>'<tr data-inv-product="'+esc(p.id)+'"><td><b>'+esc(p.code)+'</b></td><td>'+esc(p.name)+'</td><td>'+esc(p.brand||'')+'</td><td><input data-count type="number" min="0" step="1" placeholder="0"></td><td><select data-unit><option value="CX" '+((p.unit||'CX')==='CX'?'selected':'')+'>Caixas</option><option value="UN" '+((p.unit||'')==='UN'?'selected':'')+'>Unidades</option></select></td><td><input data-break type="number" min="0" step="1" placeholder="0"></td></tr>').join('')+
+      '</tbody></table></div></div>'+
+      '<div class="fi-panel"><h2>Observação geral</h2><textarea id="fiInvNote" class="fi-textarea" placeholder="Observações sobre a contagem, avarias, divergências etc."></textarea></div></div>';
+    bindBack();
+    document.getElementById('fiSaveInventory').onclick=()=>saveInventory(products);
   }
 
-  function renderMovements(){
-    const ops=load(),rows=(ops.stockMovements||[]).slice().sort((a,b)=>(b.at||0)-(a.at||0));
-    content().innerHTML='<div class="fi-page"><div class="fi-head"><div>'+backButton('Estoque')+'<h1 style="margin-top:10px">Movimentações</h1><p>Histórico auditável de entradas, saídas, reservas, liberações e ajustes</p></div></div>'+
-      '<div class="fi-table-wrap">'+(rows.length?'<table class="fi-table"><thead><tr><th>Data</th><th>Tipo</th><th>Item</th><th>Quantidade</th><th>Motivo</th><th>Usuário</th><th>Depósito</th></tr></thead><tbody>'+rows.map(m=>'<tr><td>'+new Date(m.at||0).toLocaleString('pt-BR')+'</td><td><span class="fi-chip '+(String(m.type).includes('SAIDA')?'block':'ok')+'">'+esc(m.type||'—')+'</span></td><td><b>'+esc(m.name||m.code||m.key||'—')+'</b><div class="fi-muted">'+esc(m.code||'')+'</div></td><td>'+fmt(m.qty) +' '+esc(m.unit||'')+'</td><td>'+esc(m.reason||'—')+'</td><td>'+esc(m.user||'—')+'</td><td>'+esc(m.warehouse||'—')+'</td></tr>').join('')+'</tbody></table>':'<div class="fi-empty">Nenhuma movimentação registrada.</div>')+'</div></div>';
-    bindBack('inputs');
+  async function saveInventory(products){
+    const base=document.getElementById('fiInvBase').value,date=document.getElementById('fiInvDate').value,note=document.getElementById('fiInvNote').value.trim();
+    if(!date){alert('Informe a data do inventário.');return}
+    const rows=[...document.querySelectorAll('[data-inv-product]')].map(r=>({
+      product:products.find(p=>p.id===r.dataset.invProduct),
+      qty:Math.max(0,Number(r.querySelector('[data-count]').value)||0),
+      unit:r.querySelector('[data-unit]').value,
+      breakQty:Math.max(0,Number(r.querySelector('[data-break]').value)||0)
+    })).filter(x=>x.product&&(x.qty>0||x.breakQty>0));
+    if(!rows.length){alert('Informe ao menos uma quantidade inventariada ou uma quebra.');return}
+    if(!confirm('Finalizar este inventário?\n\nOs volumes inventariados serão SOMADOS ao estoque e as quebras serão SUBTRAÍDAS.'))return;
+    const batchId='inv_'+Date.now(),user=window.FocadoAuth?.getUser?.()?.name||'Estoque';
+    const result=await mutateFinished(ops=>{
+      for(const row of rows){
+        const [key,inv]=ensureFinished(ops,row.product,row.unit);
+        inv.bases=inv.bases||{};inv.bases[base]=Number(inv.bases[base]||0)+row.qty-row.breakQty;
+        const before=Number(inv.physical||0),after=Math.max(0,before+row.qty-row.breakQty);
+        if(row.breakQty>before+row.qty){
+          alert('A quebra de '+row.product.name+' é maior que o saldo disponível após o inventário.');
+          return false;
+        }
+        inv.physical=after;inv.unit=row.unit;inv.lastInventoryDate=date;inv.lastInventoryBase=base;
+        if(row.qty>0)ops.stockMovements.unshift({id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),batchId,at:new Date(date+'T12:00:00').getTime(),kind:'finished',key,code:row.product.code,name:row.product.name,brand:row.product.brand,unit:row.unit,type:'INVENTARIO_ENTRADA',qty:row.qty,base,warehouse:base,reason:'Inventário físico',note,user,before:{physical:before},after:{physical:before+row.qty}});
+        if(row.breakQty>0)ops.stockMovements.unshift({id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),batchId,at:new Date(date+'T12:00:00').getTime(),kind:'finished',key,code:row.product.code,name:row.product.name,brand:row.product.brand,unit:row.unit,type:'QUEBRA',qty:row.breakQty,base,warehouse:base,reason:'Quebra informada no inventário',note,user,before:{physical:before+row.qty},after:{physical:after}});
+      }
+      ops.inventoryCounts.unshift({id:batchId,at:new Date(date+'T12:00:00').getTime(),date,base,note,user,mode:'ADITIVO',items:rows.map(r=>({productId:r.product.id,code:r.product.code,name:r.product.name,brand:r.product.brand,qty:r.qty,unit:r.unit,breakQty:r.breakQty}))});
+    });
+    if(result?.ok===false){alert('Não foi possível salvar o inventário. Nenhum lançamento foi perdido; tente novamente.');return}
+    alert('Inventário finalizado e estoque atualizado.');
+    render();
   }
 
-  function renderInventoryCounts(tab='inputs'){
-    const ops=load(),rows=(ops.inventoryCounts||[]).slice().sort((a,b)=>(b.at||0)-(a.at||0));
-    content().innerHTML='<div class="fi-page"><div class="fi-head"><div>'+backButton('Estoque')+'<h1 style="margin-top:10px">Inventário</h1><p>Contagens físicas e ajustes registrados</p></div></div>'+
-      '<div class="fi-table-wrap">'+(rows.length?'<table class="fi-table"><thead><tr><th>Data</th><th>Item</th><th>Sistema</th><th>Contado</th><th>Diferença</th><th>Motivo</th><th>Usuário</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+new Date(r.at||0).toLocaleString('pt-BR')+'</td><td><b>'+esc(r.name||r.code||r.key||'—')+'</b><div class="fi-muted">'+esc(r.code||'')+'</div></td><td>'+fmt(r.system)+'</td><td>'+fmt(r.counted)+'</td><td><span class="fi-stock '+(Number(r.diff||0)===0?'good':'warn')+'">'+fmt(r.diff)+'</span></td><td>'+esc(r.reason||'—')+'</td><td>'+esc(r.user||'—')+'</td></tr>').join('')+'</tbody></table>':'<div class="fi-empty">Nenhuma contagem física registrada.</div>')+'</div></div>';
-    bindBack(tab);
+  function renderMovementEntry(){
+    const ops=load(),products=catalog(ops).slice().sort((a,b)=>String(a.brand).localeCompare(String(b.brand))||String(a.name).localeCompare(String(b.name)));
+    const history=(ops.stockMovements||[]).filter(m=>m.type==='ENTRADA_PRODUCAO').slice().sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,30);
+    content().innerHTML='<div class="fi-page">'+
+      '<div class="fi-head"><div>'+back()+'<h1 style="margin-top:12px">Movimentações / Reposições</h1><p>Entrada de produtos acabados recebidos das fábricas</p></div><button class="fi-btn primary" id="fiSaveMovement">Registrar entrada</button></div>'+
+      '<div class="fi-panel"><h2>Nova entrada de produção</h2><div class="fi-form-grid">'+
+        '<label class="fi-field"><span>Data de recebimento</span><input id="fiMovDate" type="date" value="'+today()+'"></label>'+
+        '<label class="fi-field"><span>Base / fábrica de origem</span><select id="fiMovBase">'+bases(ops).map(b=>'<option>'+esc(b)+'</option>').join('')+'</select></label>'+
+        '<label class="fi-field fi-span-2"><span>Produto</span><select id="fiMovProduct"><option value="">Selecione o produto</option>'+products.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.code+' · '+p.name+' · '+p.brand)+'</option>').join('')+'</select></label>'+
+        '<label class="fi-field"><span>Volume</span><input id="fiMovQty" type="number" min="1" step="1" placeholder="0"></label>'+
+        '<label class="fi-field"><span>Medida</span><select id="fiMovUnit"><option value="CX">Caixas</option><option value="UN">Unidades</option></select></label>'+
+        '<label class="fi-field"><span>Condição do produto</span><select id="fiMovCondition"><option value="OK">OK / Conforme</option><option value="AVARIA">Com avaria</option><option value="BLOQUEADO">Bloqueado</option><option value="RESSALVA">Recebido com ressalva</option></select></label>'+
+        '<label class="fi-field"><span>Paletizado?</span><select id="fiMovPalletized"><option value="NAO">Não</option><option value="SIM">Sim</option></select></label>'+
+        '<label class="fi-field"><span>Caixas por palete</span><input id="fiMovBoxes" type="number" min="0" step="1" placeholder="0"></label>'+
+        '<label class="fi-field"><span>Chapatex?</span><select id="fiMovChapatex"><option value="NAO">Não</option><option value="SIM">Sim</option></select></label>'+
+        '<label class="fi-field"><span>Paletes calculados</span><input id="fiMovPallets" readonly value="—"></label>'+
+        '<label class="fi-field fi-span-2"><span>Observações</span><textarea id="fiMovNote" placeholder="Condições do recebimento, avarias, ressalvas, lote, veículo ou qualquer informação relevante"></textarea></label>'+
+      '</div></div>'+
+      '<div class="fi-panel"><h2>Últimas entradas</h2>'+movementHistory(history)+'</div></div>';
+    bindBack();
+    const qty=document.getElementById('fiMovQty'),pal=document.getElementById('fiMovPalletized'),boxes=document.getElementById('fiMovBoxes'),out=document.getElementById('fiMovPallets');
+    const recalc=()=>{const q=Number(qty.value)||0,b=Number(boxes.value)||0;out.value=pal.value==='SIM'&&q>0&&b>0?String(Math.ceil(q/b)):'—'};
+    qty.oninput=boxes.oninput=recalc;pal.onchange=recalc;
+    document.getElementById('fiSaveMovement').onclick=()=>saveMovement(products);
   }
 
-  function renderReplenishment(){
-    const ops=load(),rows=Object.entries(ops.inputInventory||{}).map(([key,inv])=>({key,inv,rp:reorder(inv),av:avail(inv)})).filter(x=>x.rp>0).sort((a,b)=>(a.av-a.rp)-(b.av-b.rp));
-    content().innerHTML='<div class="fi-page"><div class="fi-head"><div>'+backButton('Estoque')+'<h1 style="margin-top:10px">Reposição</h1><p>Ponto de reposição e necessidade sugerida de compra</p></div></div>'+
-      '<div class="fi-table-wrap">'+(rows.length?'<table class="fi-table"><thead><tr><th>Insumo</th><th>Disponível</th><th>Ponto reposição</th><th>Sugestão compra</th><th>Status</th></tr></thead><tbody>'+rows.map(x=>{const sug=Math.max(0,x.rp-x.av),crit=x.av<=x.rp;return '<tr><td><b>'+esc(x.inv.name||x.key)+'</b><div class="fi-muted">'+esc(x.inv.code||x.key)+'</div></td><td>'+fmt(x.av)+' '+esc(x.inv.unit||'')+'</td><td>'+fmt(x.rp)+' '+esc(x.inv.unit||'')+'</td><td>'+fmt(sug)+' '+esc(x.inv.unit||'')+'</td><td><span class="fi-chip '+(crit?'reorder':'ok')+'">'+(crit?'COMPRAR':'NORMAL')+'</span></td></tr>'}).join('')+'</tbody></table>':'<div class="fi-empty">Nenhum insumo possui ponto de reposição configurado.</div>')+'</div></div>';
-    bindBack('inputs');
+  function movementHistory(rows){
+    if(!rows.length)return '<div class="fi-empty">Nenhuma entrada de produção registrada.</div>';
+    return '<div class="fi-table-wrap"><table class="fi-table"><thead><tr><th>Data</th><th>Base</th><th>Produto</th><th>Volume</th><th>Condição</th><th>Paletização</th><th>Observação</th></tr></thead><tbody>'+rows.map(m=>'<tr><td>'+new Date(m.at||0).toLocaleDateString('pt-BR')+'</td><td>'+esc(m.base||m.warehouse||'—')+'</td><td><b>'+esc(m.name||'—')+'</b><div class="fi-muted">'+esc(m.code||'')+'</div></td><td>'+fmt(m.qty)+' '+esc(m.unit||'')+'</td><td>'+esc(m.condition||'OK')+'</td><td>'+(m.palletized?'Sim · '+fmt(m.boxesPerPallet)+' cx/pal · '+fmt(m.pallets)+' pal':'Não')+(m.chapatex?' · Chapatex':'')+'</td><td>'+esc(m.note||'—')+'</td></tr>').join('')+'</tbody></table></div>';
   }
 
-  window.FocadoInventory={render,openItem,renderMovements,renderInventoryCounts,renderReplenishment};
+  async function saveMovement(products){
+    const p=products.find(x=>x.id===document.getElementById('fiMovProduct').value);
+    const date=document.getElementById('fiMovDate').value,base=document.getElementById('fiMovBase').value,qty=Math.max(0,Number(document.getElementById('fiMovQty').value)||0),unit=document.getElementById('fiMovUnit').value;
+    const condition=document.getElementById('fiMovCondition').value,palletized=document.getElementById('fiMovPalletized').value==='SIM',boxesPerPallet=Math.max(0,Number(document.getElementById('fiMovBoxes').value)||0),chapatex=document.getElementById('fiMovChapatex').value==='SIM',note=document.getElementById('fiMovNote').value.trim();
+    if(!date||!p||!(qty>0)){alert('Informe data, produto e volume recebido.');return}
+    if(palletized&&!(boxesPerPallet>0)){alert('Informe quantas caixas há por palete.');return}
+    const pallets=palletized?Math.ceil(qty/boxesPerPallet):0,user=window.FocadoAuth?.getUser?.()?.name||'Expedição';
+    const result=await mutateFinished(ops=>{
+      const [key,inv]=ensureFinished(ops,p,unit),before=Number(inv.physical||0);
+      inv.physical=before+qty;inv.unit=unit;inv.bases=inv.bases||{};inv.bases[base]=Number(inv.bases[base]||0)+qty;inv.lastReceiptDate=date;inv.lastReceiptBase=base;
+      if(condition==='BLOQUEADO')inv.blocked=Number(inv.blocked||0)+qty;
+      ops.stockMovements.unshift({id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),at:new Date(date+'T12:00:00').getTime(),kind:'finished',key,code:p.code,name:p.name,brand:p.brand,unit,type:'ENTRADA_PRODUCAO',qty,base,warehouse:base,condition,palletized,boxesPerPallet,pallets,chapatex,note,reason:'Recebimento de produção',user,before:{physical:before},after:{physical:before+qty}});
+    });
+    if(result?.ok===false){alert('Não foi possível registrar a entrada. Tente novamente.');return}
+    alert('Entrada registrada e estoque atualizado.');
+    renderMovementEntry();
+  }
+
+  function openItem(key){
+    const ops=load(),inv=(ops.inventory||{})[key];if(!inv){alert('Item não encontrado.');return}
+    const movements=(ops.stockMovements||[]).filter(m=>String(m.key)===String(key)||String(m.code)===String(inv.code)).slice().sort((a,b)=>(b.at||0)-(a.at||0));
+    content().innerHTML='<div class="fi-page"><div class="fi-head"><div>'+back()+'<h1 style="margin-top:12px">'+esc(inv.name||key)+'</h1><p>'+esc(inv.code||'')+(inv.brand?' · '+esc(inv.brand):'')+'</p></div></div>'+
+      '<div class="fi-kpis"><div class="fi-kpi"><span>Físico</span><strong>'+fmt(inv.physical)+'</strong></div><div class="fi-kpi"><span>Reservado</span><strong>'+fmt(inv.reserved)+'</strong></div><div class="fi-kpi"><span>Bloqueado</span><strong>'+fmt(inv.blocked)+'</strong></div><div class="fi-kpi"><span>Disponível</span><strong>'+fmt(avail(inv))+'</strong></div></div>'+
+      '<div class="fi-panel"><h2>Saldo por base</h2>'+(Object.keys(inv.bases||{}).length?'<div class="fi-table-wrap"><table class="fi-table"><thead><tr><th>Base</th><th>Saldo físico atribuído</th></tr></thead><tbody>'+Object.entries(inv.bases).map(([b,v])=>'<tr><td>'+esc(b)+'</td><td>'+fmt(v)+' '+esc(inv.unit||'CX')+'</td></tr>').join('')+'</tbody></table></div>':'<div class="fi-empty">Ainda não há saldo separado por base.</div>')+'</div>'+
+      '<div class="fi-panel"><h2>Histórico do produto</h2>'+movementHistoryFull(movements)+'</div></div>';
+    bindBack();
+  }
+  function movementHistoryFull(rows){
+    if(!rows.length)return '<div class="fi-empty">Nenhuma movimentação registrada para este produto.</div>';
+    return '<div class="fi-table-wrap"><table class="fi-table"><thead><tr><th>Data</th><th>Tipo</th><th>Base</th><th>Quantidade</th><th>Motivo</th><th>Usuário</th></tr></thead><tbody>'+rows.map(m=>'<tr><td>'+new Date(m.at||0).toLocaleString('pt-BR')+'</td><td><span class="fi-chip '+(m.type==='QUEBRA'?'block':'ok')+'">'+esc(m.type||'—')+'</span></td><td>'+esc(m.base||m.warehouse||'—')+'</td><td>'+fmt(m.qty)+' '+esc(m.unit||'')+'</td><td>'+esc(m.reason||'—')+'</td><td>'+esc(m.user||'—')+'</td></tr>').join('')+'</tbody></table></div>';
+  }
+
+  function renderMovements(){renderMovementEntry()}
+  function renderInventoryCounts(){renderInventoryEntry()}
+  window.FocadoInventory={render,openItem,renderMovements,renderInventoryCounts};
 })();
