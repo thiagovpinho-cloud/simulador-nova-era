@@ -21,3 +21,9 @@
 .fo-period{display:flex;align-items:end;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid var(--fx-border);border-radius:14px;padding:12px}
 .fo-period label{display:flex;flex-direction:column;gap:4px}.fo-period label span,.fo-period>div span{font-size:8px;color:var(--fx-muted);font-weight:700}.fo-period input{border:1px solid var(--fx-border);border-radius:9px;padding:8px 9px;font-size:10px}.fo-period>div{min-width:100px;padding:0 10px}.fo-period>div strong{display:block;font-size:15px;margin-top:3px}.fo-report-table{min-width:1100px}
 @media(max-width:650px){.fo-inline-input{flex-direction:column}.fo-inline-input button{min-height:36px}.fo-period{align-items:stretch}.fo-period label{flex:1;min-width:130px}.fo-period>div{padding:4px 0}}
+
+.fo-money-input{display:flex;align-items:center;border:1px solid transparent;border-radius:7px;background:#fbfcfb;overflow:hidden;min-width:112px}
+.fo-money-input:focus-within{background:#fff;border-color:#0b6a51}
+.fo-money-input span{padding:0 0 0 8px;font-size:9px;font-weight:800;color:#52665e;white-space:nowrap}
+.fo-money-input input{border:0!important;background:transparent!important;text-align:right;min-width:72px;padding-left:5px!important;font-variant-numeric:tabular-nums}
+.fo-money-input input:focus{box-shadow:none!important;outline:0}
