@@ -36,7 +36,7 @@ ${message?`<div class="msg">${esc(message)}</div>`:""}
 <form method="post" action="/setup" autocomplete="off">
 <label>E-mail</label><input name="email" type="email" required>
 <label>Nome</label><input name="name" value="Thiago Pinho" required>
-<label>Senha</label><input name="password" type="password" minlength="10" required>
+<label>Senha</label><input name="password" type="password" minlength="12" required>
 <button type="submit">Criar administrador</button>
 </form>
 <small>Esta página funciona somente enquanto ainda não existir nenhum usuário.</small>
@@ -154,7 +154,7 @@ async function route(request,env){
       const email=String(form.get("email")||"").trim().toLowerCase();
       const name=String(form.get("name")||"").trim();
       const password=String(form.get("password")||"");
-      if(!email||!name||password.length<10)return setupPage("Confira os campos. A senha deve ter pelo menos 10 caracteres.");
+      if(!email||!name||password.length<12)return setupPage("Confira os campos. A senha deve ter pelo menos 12 caracteres.");
 
       await db.query("begin");
       try{
@@ -213,6 +213,19 @@ async function route(request,env){
       await db.query("update public.focado_sessions set revoked_at=now() where id=$1",[s.sessionId]);
       await db.query("insert into public.focado_audit_events(user_id,action,entity_type,entity_id) values($1,'LOGOUT','user',$2)",[s.userId,String(s.userId)]);
       return json({ok:true});
+    }
+    if(path==="/auth/sessions"&&request.method==="GET"){
+      const s=await requireSession(request,db);
+      const r=await db.query(`select id,created_at as "createdAt",expires_at as "expiresAt",revoked_at as "revokedAt",user_agent as "userAgent",
+        case when id=$2 then true else false end as current
+        from public.focado_sessions where user_id=$1 order by created_at desc limit 30`,[s.userId,s.sessionId]);
+      return json({sessions:r.rows});
+    }
+    if(path==="/auth/sessions/revoke-others"&&request.method==="POST"){
+      const s=await requireSession(request,db);
+      const r=await db.query("update public.focado_sessions set revoked_at=now() where user_id=$1 and id<>$2 and revoked_at is null",[s.userId,s.sessionId]);
+      await appendChange(db,{userId:String(s.userId),action:'SESSIONS_REVOKED',entityType:'user',entityId:String(s.userId),metadata:{revoked:r.rowCount}});
+      return json({ok:true,revoked:r.rowCount});
     }
 
     if(path.startsWith("/cnpj/")&&request.method==="GET"){
@@ -326,7 +339,7 @@ async function route(request,env){
     if(path==="/users"&&request.method==="POST"){
       const s=await requireSession(request,db,"users.manage"),body=await request.json();
       const email=String(body.email||"").trim().toLowerCase(),name=String(body.name||"").trim(),role=String(body.role||"").toUpperCase(),password=String(body.password||"");
-      if(!email||!name||!ROLES.has(role)||password.length<10)return json({error:"INVALID_USER"},400);
+      if(!email||!name||!ROLES.has(role)||password.length<12)return json({error:"INVALID_USER"},400);
       const p=await passwordHash(password);
       try{
         const r=await db.query("insert into public.focado_users(email,name,role,password_salt,password_hash) values($1,$2,$3,$4,$5) returning id,email,name,role,active",[email,name,role,p.salt,`pbkdf2$${p.iterations}$${p.hash}`]);
