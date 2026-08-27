@@ -10,7 +10,7 @@ for(const m of modules){
   assert.ok(!new RegExp('assets/modules/'+m+'\\.(js|css)').test(index),'Módulo '+m+' não deve ser pré-carregado no index');
 }
 for(const route of ['pedidos','pcp','production','inventory','inputs','purchases','expedicao','logistica','entregas','transportadoras','kanban','system-health']){
-  assert.ok(loader.includes(route+':')||loader.includes(route+':{alias:'),'Rota ausente no lazy loader: '+route);
+  assert.ok(loader.includes(route+':')||loader.includes("'"+route+"':"),'Rota ausente no lazy loader: '+route);
 }
 assert.ok(loader.includes('insertBefore(el,ds)'),'CSS lazy deve ser inserido antes do Design System');
 
