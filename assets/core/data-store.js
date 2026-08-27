@@ -78,6 +78,43 @@
       return {mode:'local-fallback',ok:false,error:String(err.message)};
     }
   }
+
+  async function saveDomain(domain,changes,orderId){
+    const current=readLocal();
+    if(!isRemoteReady()) return {mode:'local',ok:true,payload:current};
+    try{
+      const body=await remoteRequest('/api/domain',{
+        method:'PUT',
+        body:JSON.stringify({domain,changes,orderId,revision})
+      });
+      if(body?.payload) writeLocal(body.payload);
+      return {mode:'remote',ok:true,revision:body.revision,payload:body.payload};
+    }catch(err){
+      if(err.status===409){
+        emit({source:'remote-conflict',error:err});
+        return {mode:'conflict',ok:false,error:String(err.message),currentRevision:err.body?.currentRevision};
+      }
+      throw err;
+    }
+  }
+
+  async function transitionOrder(orderId){
+    if(!isRemoteReady()) return {mode:'local',ok:false,error:'API_REQUIRED'};
+    try{
+      const body=await remoteRequest('/api/transition',{
+        method:'POST',
+        body:JSON.stringify({orderId,revision})
+      });
+      const fresh=await load();
+      return {mode:'remote',ok:true,...body,payload:fresh};
+    }catch(err){
+      if(err.status===409){
+        emit({source:'remote-conflict',error:err});
+        return {mode:'conflict',ok:false,error:String(err.message),currentRevision:err.body?.currentRevision};
+      }
+      return {mode:'remote',ok:false,error:String(err.message),status:err.status,code:err.code};
+    }
+  }
   function emit(detail){
     listeners.forEach(fn=>{try{fn(detail)}catch(_){}});
     window.dispatchEvent(new CustomEvent('focado:data-updated',{detail}));
@@ -86,7 +123,7 @@
   async function hydrateLocalCache(){const state=await load();writeLocal(state);return state}
 
   window.FocadoDataStore={
-    readLocal,writeLocal,load,save,subscribe,getConfig,setConfig,setSessionToken,getSessionToken,isRemoteReady,hydrateLocalCache,
+    readLocal,writeLocal,load,save,saveDomain,transitionOrder,subscribe,getConfig,setConfig,setSessionToken,getSessionToken,isRemoteReady,hydrateLocalCache,
     get mode(){return isRemoteReady()?'api':'local'},
     get revision(){return revision}
   };
