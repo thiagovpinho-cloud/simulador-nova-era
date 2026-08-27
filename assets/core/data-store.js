@@ -15,7 +15,8 @@
     emit({source:'local',state:state||{}});
   }
   function getConfig(){
-    try{return JSON.parse(localStorage.getItem(CONFIG_KEY)||'{}')||{}}catch(_){return {}}
+    const defaults={apiBaseUrl:'https://focado-api.thiagovpinho.workers.dev'};
+    try{return {...defaults,...(JSON.parse(localStorage.getItem(CONFIG_KEY)||'{}')||{})}}catch(_){return defaults}
   }
   function setConfig(next){
     const merged={...getConfig(),...next};
