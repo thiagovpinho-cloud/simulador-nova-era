@@ -13,7 +13,8 @@ const DOMAIN_PERMISSION={
   LOGISTICA:'logistics.write',
   COMPRAS:'purchases.write',
   FINANCEIRO:'finance.write',
-  SOLICITACAO_PRODUCAO:'pcp.write'
+  SOLICITACAO_PRODUCAO:'pcp.write',
+  TRANSPORTADORAS:'logistics.write'
 };
 
 function pick(source,keys){
@@ -107,7 +108,7 @@ function applyLogistics(state,body){
   const o=getOrder(state,body.orderId);
   if(!o) throw Object.assign(new Error('ORDER_NOT_FOUND'),{status:404});
   o.logistics=o.logistics||{};
-  Object.assign(o.logistics,pick(body.changes?.logistics||body.changes,['freightValue','pickupDate','deliveryDate','carrier','trackingCode','vehicle','driver','notes']));
+  Object.assign(o.logistics,pick(body.changes?.logistics||body.changes,['freightValue','pickupDate','deliveryDate','carrier','carrierId','trackingCode','vehicle','driver','notes','deliveryConfirmed','deliveredOnTime','actualDeliveryDate','deliveryDelayReason','deliveryConfirmedAt','deliveryConfirmedBy']));
 }
 
 function applyInventory(state,body){
@@ -123,6 +124,17 @@ function applyPurchases(state,body){
   if(c.reorder && typeof c.reorder==='object'){
     state.purchasePlanning={...(state.purchasePlanning||{}),...c.reorder};
   }
+}
+
+function applyCarriers(state,body){
+  const changes=body.changes||{};
+  state.carriers=Array.isArray(state.carriers)?state.carriers:[];
+  if(changes.carrier&&typeof changes.carrier==='object'){
+    const incoming=structuredClone(changes.carrier);
+    const idx=state.carriers.findIndex(x=>String(x.id)===String(incoming.id));
+    if(idx>=0)state.carriers[idx]=incoming;else state.carriers.unshift(incoming);
+  }
+  if(changes.deleteId)state.carriers=state.carriers.filter(x=>String(x.id)!==String(changes.deleteId));
 }
 
 function applyProductionRequest(state,body){
@@ -143,7 +155,8 @@ const APPLY={
   LOGISTICA:applyLogistics,
   COMPRAS:applyPurchases,
   FINANCEIRO:applyFinance,
-  SOLICITACAO_PRODUCAO:applyProductionRequest
+  SOLICITACAO_PRODUCAO:applyProductionRequest,
+  TRANSPORTADORAS:applyCarriers
 };
 
 export default async function handler(req,res){
