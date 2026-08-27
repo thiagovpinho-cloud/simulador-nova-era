@@ -36,7 +36,10 @@ const pcpOrder={
 assert.equal(validateTransition(pcpOrder),null);
 
 const state={
-  orders:[pcpOrder],
+  orders:[{
+    id:'o1',number:'PED-1',status:'PCP',
+    items:[{id:'1',code:'ABC',name:'Produto',qty:10,reservedQty:0,cutQty:0,deliveryBase:'SENIR'}]
+  }],
   inventory:{ABC:{code:'ABC',name:'Produto',physical:20,reserved:0,blocked:0,unit:'CX'}},
   stockMovements:[]
 };
