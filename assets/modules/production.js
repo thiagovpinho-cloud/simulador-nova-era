@@ -29,13 +29,12 @@
     const volume=all.reduce((s,o)=>s+prodQty(o),0);
     const noDate=all.filter(o=>!o.pcp?.availableDate).length;
     content().innerHTML='<div class="fpr-page">'+
-      '<div class="fpr-head"><div><h1>Produção</h1><p>Programação, capacidade e conclusão das ordens produtivas</p></div><div class="fpr-actions"><button class="fpr-btn secondary" id="fprRefresh">Atualizar</button><button class="fpr-btn primary" id="fprLegacy">Programação detalhada</button></div></div>'+
+      '<div class="fpr-head"><div><h1>Produção</h1><p>Programação, capacidade e execução das ordens produtivas por base</p></div><div class="fpr-actions"><button class="fpr-btn secondary" id="fprRefresh">Atualizar</button></div></div>'+
       '<div class="fpr-kpis"><div class="fpr-kpi"><span>Fila PCP</span><strong>'+queued+'</strong><small>aguardando liberação</small></div><div class="fpr-kpi"><span>Em produção</span><strong>'+inProd+'</strong><small>ordens abertas</small></div><div class="fpr-kpi"><span>Volume a produzir</span><strong>'+volume+' cx</strong><small>carteira produtiva</small></div><div class="fpr-kpi"><span>Concluídas</span><strong>'+completed+'</strong><small>produto acabado gerado</small></div><div class="fpr-kpi"><span>Sem data</span><strong>'+noDate+'</strong><small>exigem programação</small></div></div>'+
       '<div class="fpr-grid"><div class="fpr-panel"><h2>Capacidade por base</h2>'+capacity(ops,all)+'</div><div class="fpr-panel"><h2>Saúde da produção</h2>'+health(all,ops)+'</div></div>'+
       '<div class="fpr-toolbar"><input class="fpr-search" id="fprSearch" placeholder="Buscar pedido ou cliente" value="'+esc(f.q)+'"><select class="fpr-select" id="fprBase"><option value="TODAS">Todas as bases</option>'+['SENIR','GREENTECH','TOPLAND'].map(b=>'<option value="'+b+'" '+(f.base===b?'selected':'')+'>'+b+'</option>').join('')+'</select><span class="fpr-muted">'+rows.length+' ordem(ns)</span></div>'+
       '<div class="fpr-table-wrap">'+table(rows,ops)+'</div></div>';
     document.getElementById('fprRefresh').onclick=()=>render(f);
-    document.getElementById('fprLegacy').onclick=()=>openLegacyProduction();
     const q=document.getElementById('fprSearch'),base=document.getElementById('fprBase');
     q.oninput=()=>render({q:q.value,base:base.value});base.onchange=()=>render({q:q.value,base:base.value});
     document.querySelectorAll('[data-fpr-open]').forEach(b=>b.onclick=()=>openOrder(b.dataset.fprOpen));
@@ -53,7 +52,34 @@
     if(!rows.length)return '<div class="fpr-empty">Nenhuma ordem produtiva encontrada.</div>';
     return '<table class="fpr-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Volume</th><th>Base</th><th>Produção</th><th>Disponível</th><th>Status</th><th></th></tr></thead><tbody>'+rows.map(o=>{const st=recipeStatus(o,ops);return '<tr><td><div class="fpr-order">'+esc(o.number)+'</div><div class="fpr-muted">'+dbr(o.orderDate)+'</div></td><td><div class="fpr-client">'+esc(o.client)+'</div><div class="fpr-muted">'+esc(o.city||'')+'</div></td><td>'+prodQty(o)+' cx<div class="fpr-muted">'+totalQty(o)+' cx no pedido</div></td><td>'+esc(o.pcp?.deliveryBase||'—')+'</td><td>'+dbr(o.pcp?.productionDate)+'</td><td>'+dbr(o.pcp?.availableDate)+'</td><td><span class="fpr-chip '+st[1]+'">'+st[0]+'</span></td><td><button class="fpr-open" data-fpr-open="'+esc(o.id)+'">Abrir ordem</button></td></tr>'}).join('')+'</tbody></table>';
   }
-  function openOrder(id){document.getElementById('focadoShell')?.classList.add('hidden');const btn=document.getElementById('hubGoOperacoes');if(!btn)return;btn.click();setTimeout(()=>document.querySelector('[data-open-order="'+CSS.escape(id)+'"]')?.click(),20)}
-  function openLegacyProduction(){document.getElementById('focadoShell')?.classList.add('hidden');const btn=document.getElementById('hubGoOperacoes');if(!btn)return;btn.click();setTimeout(()=>document.querySelector('#opsBody [data-view="production"]')?.click(),20)}
-  window.FocadoProduction={render,openOrder,openLegacyProduction};
+  function openOrder(id){
+    const ops=load(),o=(ops.orders||[]).find(x=>String(x.id)===String(id));
+    if(!o)return;
+    renderDetail(o,ops);
+  }
+  function renderDetail(o,ops){
+    const prodItems=(o.items||[]).filter(i=>i.source==='PRODUCAO');
+    const st=recipeStatus(o,ops);
+    const base=o.pcp?.deliveryBase||prodItems.map(i=>i.deliveryBase).find(Boolean)||'—';
+    content().innerHTML='<div class="fpr-page">'+
+      '<div class="fpr-head"><div><button class="fpr-btn secondary" id="fprBack">← Produção</button><h1>Ordem de Produção · '+esc(o.number)+'</h1><p>'+esc(o.client||'')+' · Base '+esc(base)+'</p></div><span class="fpr-chip '+st[1]+'">'+st[0]+'</span></div>'+
+      '<div class="fpr-grid"><div class="fpr-panel"><h2>Programação</h2>'+
+        '<div class="fpr-alert"><b>Base produtiva:</b> '+esc(base)+'</div>'+
+        '<div class="fpr-alert"><b>Data programada:</b> '+dbr(o.pcp?.productionDate)+'</div>'+
+        '<div class="fpr-alert"><b>Disponibilidade prevista:</b> '+dbr(o.pcp?.availableDate)+'</div>'+
+      '</div><div class="fpr-panel"><h2>Execução</h2>'+
+        '<div class="fpr-alert"><b>Volume a produzir:</b> '+prodQty(o)+' cx</div>'+
+        '<div class="fpr-alert"><b>Itens produtivos:</b> '+prodItems.length+'</div>'+
+        '<div class="fpr-alert"><b>Status:</b> '+esc(st[0])+'</div>'+
+      '</div></div>'+
+      '<div class="fpr-panel"><h2>Itens da ordem</h2>'+
+      (prodItems.length?'<table class="fpr-table"><thead><tr><th>Código</th><th>Produto</th><th>Quantidade</th><th>Base</th><th>Insumos</th><th>Produção</th></tr></thead><tbody>'+
+        prodItems.map(i=>'<tr><td>'+esc(i.code||'—')+'</td><td>'+esc(i.name||'—')+'</td><td>'+Number(i.qty||0)+' cx</td><td>'+esc(i.deliveryBase||base)+'</td><td>'+((i.productionRequirements||[]).length)+' requisito(s)</td><td>'+((i.productionCompleted)?'Concluída':(i.productionConsumed?'Em execução':'Pendente'))+'</td></tr>').join('')+
+      '</tbody></table>':'<div class="fpr-empty">Nenhum item deste pedido foi marcado para produção.</div>')+
+      '</div>'+
+      '<div class="fpr-panel"><h2>Função do módulo Produção</h2><div class="fpr-alert">Este módulo é a área operacional para programar e acompanhar produção por base, comparar consumo teórico x real de insumos, registrar perdas, lote produzido, início/fim e conclusão. Ele não deve abrir o simulador comercial.</div></div>'+
+      '</div>';
+    document.getElementById('fprBack').onclick=()=>render({q:'',base:'TODAS'});
+  }
+  window.FocadoProduction={render,openOrder};
 })();
