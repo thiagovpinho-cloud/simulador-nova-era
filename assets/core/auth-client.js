@@ -59,7 +59,12 @@
     try{return JSON.parse(sessionStorage.getItem(USER_KEY)||'null')}catch(_){return null}
   }
   function getRole(){
-    return String(sessionStorage.getItem(ROLE_KEY)||getUser()?.role||'').toUpperCase();
+    const modern=String(sessionStorage.getItem(ROLE_KEY)||getUser()?.role||'').toUpperCase();
+    if(modern)return modern;
+    const legacy=String(sessionStorage.getItem('nova-era-role')||'').toLowerCase();
+    if(legacy==='admin')return 'ADMIN';
+    if(legacy==='user')return 'COMERCIAL';
+    return '';
   }
   function roleLabel(role){return ROLE_LABELS[String(role||getRole()).toUpperCase()]||String(role||'Usuário')}
 
