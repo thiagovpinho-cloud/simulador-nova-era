@@ -162,12 +162,22 @@
     };
     document.querySelectorAll('[data-prod-row]').forEach(row=>{
       normalizeIntegerInput(row.querySelector('[data-qty]'));
-      normalizeIntegerInput(row.querySelector('[data-boxes]'));
+      const boxesInput=row.querySelector('[data-boxes]');
+      if(boxesInput){
+        boxesInput.disabled=false;
+        boxesInput.readOnly=false;
+        boxesInput.removeAttribute('disabled');
+        boxesInput.removeAttribute('readonly');
+        boxesInput.style.pointerEvents='auto';
+        boxesInput.style.opacity='1';
+        boxesInput.style.cursor='text';
+      }
+      normalizeIntegerInput(boxesInput);
       const recalc=()=>{
         syncFromForm(r,ops);
         const idx=Number(row.dataset.prodRow),i=r.items[idx];
         const boxes=row.querySelector('[data-boxes]'),pallets=row.querySelector('[data-pallets]');
-        boxes.disabled=false;
+        boxes.disabled=false;boxes.readOnly=false;boxes.removeAttribute('disabled');boxes.removeAttribute('readonly');
         if(!i.palletized){i.pallets=0;pallets.textContent='—'}
         else pallets.textContent=calcPallets(i)||'—';
         paintMaterialAnalysis(r,ops);
@@ -317,6 +327,7 @@
       .fpr-table td{padding:12px 11px;border-bottom:1px solid #edf1ee;vertical-align:middle;color:#2d4037}
       .fpr-table tr:last-child td{border-bottom:none}
       .fpr-table select,.fpr-table input{box-sizing:border-box;border:1px solid #d9e3dd;background:#fff;border-radius:8px;padding:7px 8px;font:inherit;font-size:11px;max-width:100%}
+      .fpr-table input[data-boxes]{background:#fff!important;color:#263a31!important;opacity:1!important;pointer-events:auto!important;cursor:text!important}
       .fpr-table [data-product]{min-width:310px}
       .fpr-open{border:1px solid #d6e3dc;background:#fff;color:#087a59;border-radius:9px;padding:7px 10px;font-size:10px;font-weight:750;cursor:pointer}
       .fpr-chip{display:inline-flex;align-items:center;border-radius:999px;padding:5px 8px;font-size:9px;font-weight:800;white-space:nowrap}
