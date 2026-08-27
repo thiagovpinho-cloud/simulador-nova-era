@@ -47,3 +47,34 @@
   #focadoShell{grid-template-columns:1fr}.fx-sidebar{position:fixed;left:0;top:0;bottom:0;width:238px;z-index:3;transform:translateX(-100%);transition:.2s}.fx-sidebar.open{transform:translateX(0)}
   .fx-topbar{padding:0 12px}.fx-user-meta{display:none}.fx-content{padding:12px}.fx-kpis{grid-template-columns:repeat(2,1fr)}.fx-grid{grid-template-columns:1fr}.fx-grid .fx-panel:first-child{grid-column:auto}.fx-search{max-width:none}.fx-footer{flex-direction:column}
 }
+
+/* FOCADO_BRAND_FIX_20260827C */
+.fx-brand{
+  min-height:92px !important;
+  padding:18px 16px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+}
+.fx-brand > img#fxBrandLogo{
+  display:block !important;
+  width:210px !important;
+  max-width:100% !important;
+  height:auto !important;
+  max-height:68px !important;
+  object-fit:contain !important;
+  object-position:center !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  padding:0 !important;
+}
+.fx-brand > div{
+  display:none !important;
+}
+@media (max-width:900px){
+  .fx-brand > img#fxBrandLogo{
+    width:190px !important;
+    max-height:62px !important;
+  }
+}
