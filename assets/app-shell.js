@@ -8,7 +8,7 @@
   const navGroups=[
     ['Principal',[['dashboard','⌂','Dashboard'],['kanban','▦','Kanban Operacional']]],
     ['Comercial',[['clientes','♙','Clientes'],['representantes','♣','Representantes'],['pedidos','▤','Pedidos Comerciais']]],
-    ['Operações',[['pcp','⌘','PCP'],['production','⚙','Produção'],['inventory','▣','Estoque'],['inputs','◇','Insumos']]],
+    ['Operações',[['pcp','⌘','PCP'],['production','⚙','Produção'],['inventory','▣','Estoque'],['inputs','◇','Insumos'],['purchases','↻','Compras'],['expedicao','⇱','Expedição']]],
     ['Logística',[['logistica','▰','Logística'],['entregas','✓','Entregas'],['transportadoras','⌁','Transportadoras']]],
     ['Cadastros',[['produtos','◫','Produtos'],['fichas','▧','Fichas Técnicas'],['bases','▦','Bases Produtivas']]],
     ['Relatórios',[['relatorios','▥','Relatórios','soon'],['indicadores','◉','Indicadores','soon']]],
@@ -151,6 +151,8 @@
     if(id==='bases')return openOps('production');
     if(id==='inventory'){open(()=>window.FocadoInventory?.render({tab:'finished',q:'',filter:'TODOS'}));return}
     if(id==='inputs'){open(()=>window.FocadoInventory?.render({tab:'inputs',q:'',filter:'TODOS'}));return}
+    if(id==='purchases'){open(()=>window.FocadoPurchases?.render());return}
+    if(id==='expedicao'){open(()=>window.FocadoExpedition?.render());return}
     if(id==='logistica'){open(()=>window.FocadoLogistics?.render({q:'',status:'TODOS'}));return}
     if(id==='entregas'){open(()=>window.FocadoLogistics?.renderDeliveries());return}
     if(id==='transportadoras'){open(()=>window.FocadoLogistics?.renderCarriers());return}
