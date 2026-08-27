@@ -128,11 +128,12 @@
     btn.click();
     if(view&&view!=='orders')setTimeout(()=>{const t=document.querySelector('#opsBody [data-view="'+view+'"]');if(t)t.click()},0);
   }
-  function navigate(id){
+  async function navigate(id){
     if(window.FocadoAuth && !window.FocadoAuth.can(id)){
       alert('Seu perfil não possui acesso a esta área.');
       return;
     }
+    try{await window.FocadoModules?.ensure?.(id)}catch(err){console.error('[FocadoModules]',err);alert('Não foi possível carregar esta área. Tente novamente.');return}
     const open=(fn)=>{
       showShell(false);
       if(typeof fn==='function')fn();
