@@ -109,7 +109,7 @@
       '</div></div>'+
       '<div class="fpcp-flowline"><span class="done">Comercial ✓</span><i>→</i><span class="'+(editable?'active':'done')+'">PCP'+(editable?'':' ✓')+'</span><i>→</i><span class="'+(!editable?'active':'')+'">Produção / Estoque</span><i>→</i><span>Logística</span></div>'+
       '<div class="fpcp-commercial-readonly"><h2>Dados recebidos do Comercial</h2><div class="fpcp-read-grid">'+read('Cliente',o.client)+read('CNPJ',o.cnpj)+read('E-mail',o.email)+read('Representante',o.representative)+read('Data do pedido',dbr(o.orderDate))+read('Entrega solicitada',dbr(o.requestedDeliveryDate))+read('Frete',o.freightType)+read('Condição de pagamento',o.paymentTerms)+read('Local de entrega',o.deliveryAddress)+'</div></div>'+
-      '<div class="fpcp-panel"><div class="fpcp-panel-head"><div><h2>Atendimento PCP dos itens</h2><p>O saldo disponível vem do estoque central do código: físico − reservado − bloqueado. Não é editável nesta tela.</p></div><span class="fpcp-status '+st[1]+'">'+st[0]+'</span></div>'+
+      '<div class="fpcp-panel"><div class="fpcp-panel-head"><div><h2>Atendimento PCP dos itens</h2><p>O saldo disponível vem do estoque central do código: físico − reservado − bloqueado. Não é editável nesta tela.</p></div><div><span class="fpcp-status '+st[1]+'">'+st[0]+'</span>'+(o.pcp?.logisticsPreRelease?'<div class="fpcp-muted" style="margin-top:6px">Logística avisada com ressalva</div>':'')+'</div></div>'+
       '<div class="fpcp-item-table-wrap"><table class="fpcp-item-table"><thead><tr><th>Código</th><th>Produto</th><th>Pedido</th><th>Disponível agora</th><th>Reservar</th><th>Saldo faltante</th><th>Decisão</th><th>Previsão do saldo</th><th>Base retirada</th></tr></thead><tbody>'+
       (o.items||[]).map((i,n)=>itemRow(i,n,stockView(ops,i),editable)).join('')+
       '</tbody></table></div>'+
@@ -174,17 +174,26 @@
     }
     return {waiting,unresolved,missingDate,missingBase};
   }
+  function latestWaitingDate(o,changes){
+    const dates=[];
+    for(const incoming of changes.items){
+      const item=(o.items||[]).find(i=>String(i.id||i.code||i.productId||'')===String(incoming.id));if(!item)continue;
+      const qty=Number(item.qty||0),covered=Number(incoming.reservedQty||0)+Number(incoming.cutQty||0),missing=Math.max(0,qty-covered);
+      if(missing>0&&incoming.pcpBalanceDecision==='AGUARDAR'&&incoming.pcpAvailabilityDate)dates.push(incoming.pcpAvailabilityDate);
+    }
+    return dates.sort().slice(-1)[0]||'';
+  }
   function updatePrimaryAction(o){
     const btn=document.getElementById('fpFinish');if(!btn)return;
     const st=currentPlanState(o);
     if(st.waiting && !st.missingDate && !st.missingBase){
-      btn.textContent='Confirmar planejamento · Aguardar estoque';
-      btn.onclick=()=>savePlanning(o,false);
-      btn.dataset.mode='wait';
+      btn.textContent=o.pcp?.logisticsPreRelease?'Atualizar ressalva da Logística':'Enviar à Logística com ressalva';
+      btn.onclick=()=>savePlanning(o,false,true);
+      btn.dataset.mode='prelogistics';
       return;
     }
     btn.textContent='Liberar PCP → Operação';
-    btn.onclick=()=>savePlanning(o,true);
+    btn.onclick=()=>savePlanning(o,true,false);
     btn.dataset.mode='release';
   }
   function collectChanges(){
@@ -208,13 +217,22 @@
     }
     return [...new Set(errors)];
   }
-  async function savePlanning(o,finish){
+  async function savePlanning(o,finish,preReleaseLogistics=false){
     const ops=load(),changes=collectChanges(),errors=validate(o,changes,finish);
+    if(preReleaseLogistics){
+      const availability=latestWaitingDate(o,changes);
+      changes.pcp.logisticsPreRelease=true;
+      changes.pcp.logisticsAvailabilityDate=availability;
+      changes.pcp.logisticsPreReleaseAt=Date.now();
+    }
     if(errors.length){alert((finish?'Antes de liberar o PCP:':'Revise o planejamento:')+'\n\n• '+errors.join('\n• '));return}
     let result;
     if(window.FocadoDataStore?.isRemoteReady?.()){
       result=await window.FocadoDataStore.saveDomain('PCP',changes,o.id);
-      if(!result?.ok){alert('Não foi possível salvar/reservar o planejamento. '+(result?.error||''));return}
+      if(!result?.ok){alert('Não foi possível salvar o planejamento. '+(result?.error||''));return}
+      if(preReleaseLogistics){
+        alert('Planejamento salvo. A Logística já pode iniciar a contratação de frete com a ressalva de disponibilidade em '+dbr(changes.pcp.logisticsAvailabilityDate)+'.');
+      }
       if(finish){
         const tr=await window.FocadoDataStore.transitionOrder(o.id);
         if(!tr?.ok){alert('O PCP não pôde ser liberado: '+(tr?.code||tr?.error||'verifique os campos obrigatórios.'));return}
@@ -232,9 +250,9 @@
         if(desired!==old)ops.stockMovements.unshift({id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),at:Date.now(),kind:'finished',key,code:item.code||'',name:item.name||'',unit:'CX',type:desired>old?'RESERVA':'LIBERACAO_RESERVA',qty:Math.abs(desired-old),reason:'PCP · pedido '+current.number,user:window.FocadoAuth?.getUser?.()?.name||'PCP',before:{reserved:before},after:{reserved:inv.reserved}});
         Object.assign(item,incoming,{source:'ESTOQUE'});
       });
-      current.pcp={...(current.pcp||{}),notes:changes.pcp.notes};
+      current.pcp={...(current.pcp||{}),...changes.pcp};
       current.pcp.deliveryBase=basesOf(current).length===1?basesOf(current)[0]:'MÚLTIPLAS';
-      current.events=current.events||[];current.events.unshift({at:Date.now(),text:finish?'PCP liberado com reservas confirmadas':'Planejamento PCP salvo e reservas atualizadas',user:window.FocadoAuth?.getUser?.()?.name||'PCP'});
+      current.events=current.events||[];current.events.unshift({at:Date.now(),text:finish?'PCP liberado com reservas confirmadas':(preReleaseLogistics?'Logística pré-liberada com ressalva de disponibilidade em '+dbr(changes.pcp.logisticsAvailabilityDate):'Planejamento PCP salvo'),user:window.FocadoAuth?.getUser?.()?.name||'PCP'});
       if(finish)current.status='ESTOQUE_PRODUCAO';
       await window.FocadoDataStore?.save?.(ops);
     }
