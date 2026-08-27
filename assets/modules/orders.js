@@ -31,6 +31,7 @@
   const stage=s=>({COMERCIAL:['Em preenchimento','comercial'],PCP:['Aguardando PCP','pcp'],ESTOQUE_PRODUCAO:['Produção / Estoque','producao'],LOGISTICA:['Logística','logistica'],ENTREGUE:['Concluído','entregue']})[s]||[s||'—','comercial'];
   let currentFilters={q:'',stage:'TODOS'};
   let editingId=null;
+  let correctionMode=false;
   function ensureOrderIds(ops){
     let changed=false;
     const used=new Set((ops.orders||[]).map(o=>String(o.id||'')).filter(Boolean));
@@ -76,6 +77,37 @@
     };
   }
   function canEdit(o){return o.status==='COMERCIAL'}
+  const CORRECTION_ROLE_LABELS={ADMIN:'Administrador',COMERCIAL:'Comercial'};
+  function correctionRoles(ops){
+    const configured=ops?.settings?.orderCorrectionRoles;
+    const roles=Array.isArray(configured)?configured.filter(r=>CORRECTION_ROLE_LABELS[r]):[];
+    return roles.length?roles:['ADMIN'];
+  }
+  function canCorrectPast(o,ops){
+    if(!o||o.status==='COMERCIAL')return false;
+    const role=window.FocadoAuth?.getRole?.()||'';
+    return correctionRoles(ops).includes(role);
+  }
+  function renderCorrectionPermissions(){
+    const ops=load(),selected=new Set(correctionRoles(ops));
+    content().innerHTML='<div class="fo-page">'+
+      '<div class="fo-head"><div><button class="fo-back" id="foBackPermissions">← Pedidos</button><h1>Permissão para editar pedidos enviados</h1><p>Defina quais perfis podem visualizar o botão “Editar pedido” depois que o Comercial já enviou o pedido para o fluxo operacional.</p></div></div>'+
+      '<div class="fo-card"><h2>Perfis autorizados</h2><div class="fo-fields">'+
+        '<label class="fo-field"><span>Administrador</span><label><input type="checkbox" checked disabled> Sempre autorizado</label></label>'+
+        '<label class="fo-field"><span>Comercial</span><label><input type="checkbox" id="foCorrectionCommercial" '+(selected.has('COMERCIAL')?'checked':'')+'> Pode corrigir pedidos já enviados</label></label>'+
+      '</div><div class="fo-cnpj-status warn">A correção mantém o status atual do pedido e não desfaz automaticamente reservas, produção ou logística já realizadas. Toda alteração fica registrada no histórico.</div>'+
+      '<div class="fo-actions" style="margin-top:16px"><button class="fo-btn primary" id="foSaveCorrectionPermissions">Salvar permissão</button></div></div></div>';
+    document.getElementById('foBackPermissions').onclick=()=>render(currentFilters);
+    document.getElementById('foSaveCorrectionPermissions').onclick=async()=>{
+      ops.settings=ops.settings||{};
+      ops.settings.orderCorrectionRoles=['ADMIN'];
+      if(document.getElementById('foCorrectionCommercial').checked)ops.settings.orderCorrectionRoles.push('COMERCIAL');
+      const result=await save(ops);
+      if(result?.mode==='conflict'){alert('As configurações foram alteradas em outro acesso. Atualize a tela e tente novamente.');return}
+      alert('Permissão de edição atualizada.');
+      render(currentFilters);
+    };
+  }
   function normalizeItems(items){
     return (items||[]).filter(i=>String(i.code||i.name||'').trim()||Number(i.qty)||Number(i.price)).map(i=>({
       productId:i.productId||'',code:String(i.code||'').trim(),name:String(i.name||'').trim(),
@@ -104,7 +136,7 @@
   }
 
   function render(filters){
-    currentFilters=filters||currentFilters;editingId=null;
+    currentFilters=filters||currentFilters;editingId=null;correctionMode=false;
     const ops=ensureOrderIds(load());ensureCatalog(ops);
     const orders=(ops.orders||[]).slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     const filtered=orders.filter(o=>{
@@ -114,7 +146,7 @@
     });
     const open=orders.filter(o=>o.status!=='ENTREGUE');
     content().innerHTML='<div class="fo-page">'+
-      '<div class="fo-head"><div><h1>Pedidos Comerciais</h1><p>Registro oficial do pedido · Comercial → PCP → Logística</p></div><div class="fo-actions"><button class="fo-btn secondary" id="foPeriod">Listagem / período</button><button class="fo-btn primary" id="foNew">+ Novo pedido</button></div></div>'+
+      '<div class="fo-head"><div><h1>Pedidos Comerciais</h1><p>Registro oficial do pedido · Comercial → PCP → Logística</p></div><div class="fo-actions">'+(window.FocadoAuth?.getRole?.()==='ADMIN'?'<button class="fo-btn secondary" id="foCorrectionPermissions">Permissão de edição</button>':'')+'<button class="fo-btn secondary" id="foPeriod">Listagem / período</button><button class="fo-btn primary" id="foNew">+ Novo pedido</button></div></div>'+
       '<div class="fo-summary">'+
         stat('Em preenchimento',orders.filter(o=>o.status==='COMERCIAL').length,'rascunhos do Comercial')+
         stat('Aguardando PCP',orders.filter(o=>o.status==='PCP').length,'enviados pelo Comercial')+
@@ -125,6 +157,8 @@
       '<div class="fo-table-wrap">'+table(filtered)+'</div></div>';
     document.getElementById('foNew').onclick=()=>openForm();
     document.getElementById('foPeriod').onclick=()=>renderReport(firstDayMonth(),today());
+    const correctionPermissions=document.getElementById('foCorrectionPermissions');
+    if(correctionPermissions)correctionPermissions.onclick=renderCorrectionPermissions;
     const q=document.getElementById('foSearch'),st=document.getElementById('foStage');let timer;
     q.oninput=()=>{clearTimeout(timer);timer=setTimeout(()=>render({q:q.value,stage:st.value}),180)};
     st.onchange=()=>render({q:q.value,stage:st.value});
@@ -140,19 +174,20 @@
   }
 
   function openForm(id){
-    const ops=load();ensureCatalog(ops);
+    const ops=load();ensureCatalog(ops);correctionMode=false;
     let order=id?(ops.orders||[]).find(o=>o.id===id):null;
     if(!order){order=createBlank(ops);editingId=null}else editingId=order.id;
     renderForm(order,ops);
   }
   function renderForm(o,ops){
-    const editable=canEdit(o),readonly=editable?'':'disabled';formEditable=editable;
+    const regularEditable=canEdit(o),correctionAllowed=canCorrectPast(o,ops);
+    const editable=regularEditable||(correctionMode&&correctionAllowed),readonly=editable?'':'disabled';formEditable=editable;
     const items=(o.items&&o.items.length?o.items:[{code:'',name:'',qty:'',price:''}]);
     const s=stage(o.status),cat=catalog(ops);
     content().innerHTML='<div class="fo-page">'+
       '<div class="fo-head"><div><button class="fo-back" id="foBack">← Histórico</button><h1>'+esc(o.number)+'</h1><p>Pedido comercial · <span class="fo-stage '+s[1]+'">'+s[0]+'</span></p></div><div class="fo-actions">'+
-        (editable?'<button class="fo-btn secondary" id="foSave">Salvar rascunho</button><button class="fo-btn primary" id="foFinalize">Finalizar Comercial → PCP</button>':'')+
-      '</div></div>'+
+        (editable?(correctionMode?'<button class="fo-btn secondary" id="foCancelCorrection">Cancelar correção</button><button class="fo-btn primary" id="foSave">Salvar correção</button>':'<button class="fo-btn secondary" id="foSave">Salvar rascunho</button><button class="fo-btn primary" id="foFinalize">Finalizar Comercial → PCP</button>'):(correctionAllowed?'<button class="fo-btn primary" id="foEditPast">Editar pedido</button>':''))+
+      '</div></div>'+(correctionMode?'<div class="fo-cnpj-status warn" style="margin-bottom:14px">Modo de correção ativado. O pedido permanecerá na etapa atual. Revise PCP, estoque/produção e logística se a alteração impactar quantidade, produto, preço, frete ou data.</div>':'')+
       '<div class="fo-flowline"><span class="'+(o.status==='COMERCIAL'?'active':'done')+'">1. Comercial</span><i>→</i><span class="'+(o.status==='PCP'?'active':(['ESTOQUE_PRODUCAO','LOGISTICA','ENTREGUE'].includes(o.status)?'done':'') )+'">2. PCP</span><i>→</i><span class="'+(['ESTOQUE_PRODUCAO','LOGISTICA'].includes(o.status)?'active':(o.status==='ENTREGUE'?'done':''))+'">3. Logística</span><i>→</i><span class="'+(o.status==='ENTREGUE'?'done':'')+'">4. Concluído</span></div>'+
       '<form id="foOrderForm" class="fo-form">'+
         '<div class="fo-card"><h2>Dados do pedido</h2><div class="fo-fields">'+
@@ -182,6 +217,11 @@
         '<div class="fo-card"><h2>Observações comerciais</h2><textarea name="notes" '+readonly+' placeholder="Observações do pedido, particularidades do cliente, entrega ou negociação">'+esc(o.notes||'')+'</textarea></div>'+
       '</form>'+history(o)+'</div>';
     document.getElementById('foBack').onclick=()=>render(currentFilters);
+    const editPast=document.getElementById('foEditPast');
+    if(editPast)editPast.onclick=()=>{
+      if(!confirm('Editar este pedido já enviado?\n\nA etapa atual será mantida e a correção ficará registrada no histórico.'))return;
+      correctionMode=true;renderForm(o,ops);
+    };
     if(editable){
       bindItemEvents(ops);
       document.getElementById('foAddItem').onclick=()=>addItemRow(ops);
@@ -189,7 +229,10 @@
       const repManage=document.getElementById('foRepManage');
       if(repManage)repManage.onclick=async()=>{const ok=await persist(false,true);if(ok!==false)window.FocadoShell?.navigate?.('representantes')};
       document.getElementById('foSave').onclick=()=>persist(false);
-      document.getElementById('foFinalize').onclick=()=>persist(true);
+      const finalizeBtn=document.getElementById('foFinalize');
+      if(finalizeBtn)finalizeBtn.onclick=()=>persist(true);
+      const cancelCorrection=document.getElementById('foCancelCorrection');
+      if(cancelCorrection)cancelCorrection.onclick=()=>{correctionMode=false;renderForm(o,ops)};
       bindCnpjLookup(ops,o);
       const salesChannel=document.getElementById('foSalesChannel');
       const repSelect=document.querySelector('[name="representative"]');
@@ -335,15 +378,17 @@
   }
   async function persist(finalize,silentNavigate=false){
     const ops=load();ensureCatalog(ops);ops.orders=ops.orders||[];const data=collect();let o=editingId?ops.orders.find(x=>x.id===editingId):null;
+    const isCorrection=Boolean(o&&correctionMode&&o.status!=='COMERCIAL');
     if(!o){o=createBlank(ops);o.id='op_'+Date.now();o.createdAt=Date.now();ops.orders.unshift(o);editingId=o.id;addEvent(o,'Pedido criado pelo Comercial')}
     const previousItems=o.items||[];Object.assign(o,data);
     o.items=normalizeItems(data.items).map((i,idx)=>Object.assign({},previousItems[idx]||{},i,{source:(previousItems[idx]||{}).source||'',reservedQty:Number((previousItems[idx]||{}).reservedQty)||0,productionConsumed:Boolean((previousItems[idx]||{}).productionConsumed)}));
     o.status=o.status||'COMERCIAL';o.commercial=o.commercial||{completedAt:null,completedBy:null};o.pcp=o.pcp||{deliveryBase:'',productionDate:'',availableDate:'',separated:false,scheduledQty:0,autoScheduled:false};o.logistics=o.logistics||{freightValue:'',pickupDate:'',deliveryDate:'',carrier:''};
     if(finalize){const errors=validateCommercial(o);if(errors.length){alert('Antes de finalizar o Comercial, preencha:\n\n• '+errors.join('\n• '));return}o.status='PCP';o.commercial.completedAt=Date.now();o.commercial.completedBy=window.FocadoAuth?.getUser?.()?.name||'Comercial';addEvent(o,'Comercial finalizado · pedido enviado ao PCP')}
+    else if(isCorrection){o.lastCorrection={at:Date.now(),by:window.FocadoAuth?.getUser?.()?.name||window.FocadoAuth?.roleLabel?.()||'Usuário',status:o.status};addEvent(o,'Pedido corrigido após envio · etapa mantida em '+stage(o.status)[0])}
     else addEvent(o,'Rascunho comercial salvo');
     const result=await save(ops);window.dispatchEvent(new CustomEvent('focado:ops-updated',{detail:{key:KEY}}));
     if(result?.mode==='conflict'){alert('O pedido foi alterado em outro acesso. Atualize a tela antes de tentar novamente.');return false}
-    if(!silentNavigate){if(finalize)render({q:'',stage:'PCP'});else renderForm(o,ops)}
+    if(!silentNavigate){if(finalize)render({q:'',stage:'PCP'});else{if(isCorrection)correctionMode=false;renderForm(o,ops)}}
     return true;
   }
   function history(o){
