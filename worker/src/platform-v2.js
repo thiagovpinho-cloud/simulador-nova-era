@@ -60,8 +60,195 @@ export async function ensurePlatformV2(db){
     `create index if not exists focado_v2_orders_status_idx on public.focado_v2_orders(status)`,
     `create index if not exists focado_v2_order_items_code_idx on public.focado_v2_order_items(code)`,
     `create index if not exists focado_v2_change_log_entity_idx on public.focado_v2_change_log(entity_type,entity_id,occurred_at desc)`,
-    `create or replace function public.focado_v2_change_log_immutable() returns trigger language plpgsql as $ begin raise exception 'FOCADO_AUDIT_IMMUTABLE'; end $`,
-    `do $ begin if not exists (select 1 from pg_trigger where tgname='focado_v2_change_log_no_update') then create trigger focado_v2_change_log_no_update before update or delete on public.focado_v2_change_log for each row execute function public.focado_v2_change_log_immutable(); end if; end $`
+    `create or replace function public.focado_v2_change_log_immutable() returns trigger language plpgsql as $audit$ begin raise exception 'FOCADO_AUDIT_IMMUTABLE'; end $auditlet schemaReady=false;
+
+export async function ensurePlatformV2(db){
+  if(schemaReady)return;
+  const ddl=[
+    `create table if not exists public.focado_v2_customers(
+      id text primary key, name text, cnpj text, email text, phone text, city text, uf text,
+      active boolean default true, data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now()
+    )`,
+    `create table if not exists public.focado_v2_orders(
+      id text primary key, number text, status text, customer_id text, client text,
+      order_date date, requested_delivery_date date, representative text,
+      data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now()
+    )`,
+    `create table if not exists public.focado_v2_order_items(
+      order_id text not null, item_key text not null, code text, name text,
+      qty numeric, reserved_qty numeric, cut_qty numeric, delivery_base text,
+      data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now(),
+      primary key(order_id,item_key)
+    )`,
+    `create table if not exists public.focado_v2_inventory_items(
+      kind text not null, item_key text not null, code text, name text, unit text,
+      physical numeric not null default 0, reserved numeric not null default 0, blocked numeric not null default 0,
+      data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now(),
+      primary key(kind,item_key)
+    )`,
+    `create table if not exists public.focado_v2_inventory_movements(
+      id text primary key, at timestamptz, kind text, item_key text, code text, name text,
+      movement_type text, qty numeric, reason text, actor text,
+      data jsonb not null default '{}'::jsonb
+    )`,
+    `create table if not exists public.focado_v2_production_requests(
+      id text primary key, number text, status text, base text, request_date date, need_by_date date,
+      material_status text, data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now()
+    )`,
+    `create table if not exists public.focado_v2_purchase_requests(
+      id text primary key, number text, status text, code text, material text, supplier_id text,
+      qty numeric, unit text, expected_date date, data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now()
+    )`,
+    `create table if not exists public.focado_v2_suppliers(
+      id text primary key, name text, cnpj text, email text, phone text, active boolean default true,
+      data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now()
+    )`,
+    `create table if not exists public.focado_v2_carriers(
+      id text primary key, name text, cnpj text, email text, phone text, active boolean default true,
+      data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now()
+    )`,
+    `create table if not exists public.focado_v2_change_log(
+      id bigserial primary key, occurred_at timestamptz not null default now(), user_id text,
+      action text not null, entity_type text not null, entity_id text,
+      revision bigint, reason text, before_data jsonb, after_data jsonb, metadata jsonb not null default '{}'::jsonb
+    )`,
+    `create table if not exists public.focado_login_attempts(
+      id bigserial primary key, attempted_at timestamptz not null default now(), email text not null,
+      ip_hash text, success boolean not null default false
+    )`,
+    `alter table public.focado_v2_change_log alter column user_id type text using user_id::text`,
+    `create index if not exists focado_login_attempts_email_time_idx on public.focado_login_attempts(email,attempted_at desc)`,
+    `create index if not exists focado_v2_orders_status_idx on public.focado_v2_orders(status)`,
+    `create index if not exists focado_v2_order_items_code_idx on public.focado_v2_order_items(code)`,
+    `create index if not exists focado_v2_change_log_entity_idx on public.focado_v2_change_log(entity_type,entity_id,occurred_at desc)`,
+    ,
+    `do $audit$ begin if not exists (select 1 from pg_trigger where tgname='focado_v2_change_log_no_update') then create trigger focado_v2_change_log_no_update before update or delete on public.focado_v2_change_log for each row execute function public.focado_v2_change_log_immutable(); end if; end $auditlet schemaReady=false;
+
+export async function ensurePlatformV2(db){
+  if(schemaReady)return;
+  const ddl=[
+    `create table if not exists public.focado_v2_customers(
+      id text primary key, name text, cnpj text, email text, phone text, city text, uf text,
+      active boolean default true, data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now()
+    )`,
+    `create table if not exists public.focado_v2_orders(
+      id text primary key, number text, status text, customer_id text, client text,
+      order_date date, requested_delivery_date date, representative text,
+      data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now()
+    )`,
+    `create table if not exists public.focado_v2_order_items(
+      order_id text not null, item_key text not null, code text, name text,
+      qty numeric, reserved_qty numeric, cut_qty numeric, delivery_base text,
+      data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now(),
+      primary key(order_id,item_key)
+    )`,
+    `create table if not exists public.focado_v2_inventory_items(
+      kind text not null, item_key text not null, code text, name text, unit text,
+      physical numeric not null default 0, reserved numeric not null default 0, blocked numeric not null default 0,
+      data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now(),
+      primary key(kind,item_key)
+    )`,
+    `create table if not exists public.focado_v2_inventory_movements(
+      id text primary key, at timestamptz, kind text, item_key text, code text, name text,
+      movement_type text, qty numeric, reason text, actor text,
+      data jsonb not null default '{}'::jsonb
+    )`,
+    `create table if not exists public.focado_v2_production_requests(
+      id text primary key, number text, status text, base text, request_date date, need_by_date date,
+      material_status text, data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now()
+    )`,
+    `create table if not exists public.focado_v2_purchase_requests(
+      id text primary key, number text, status text, code text, material text, supplier_id text,
+      qty numeric, unit text, expected_date date, data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now()
+    )`,
+    `create table if not exists public.focado_v2_suppliers(
+      id text primary key, name text, cnpj text, email text, phone text, active boolean default true,
+      data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now()
+    )`,
+    `create table if not exists public.focado_v2_carriers(
+      id text primary key, name text, cnpj text, email text, phone text, active boolean default true,
+      data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now()
+    )`,
+    `create table if not exists public.focado_v2_change_log(
+      id bigserial primary key, occurred_at timestamptz not null default now(), user_id text,
+      action text not null, entity_type text not null, entity_id text,
+      revision bigint, reason text, before_data jsonb, after_data jsonb, metadata jsonb not null default '{}'::jsonb
+    )`,
+    `create table if not exists public.focado_login_attempts(
+      id bigserial primary key, attempted_at timestamptz not null default now(), email text not null,
+      ip_hash text, success boolean not null default false
+    )`,
+    `alter table public.focado_v2_change_log alter column user_id type text using user_id::text`,
+    `create index if not exists focado_login_attempts_email_time_idx on public.focado_login_attempts(email,attempted_at desc)`,
+    `create index if not exists focado_v2_orders_status_idx on public.focado_v2_orders(status)`,
+    `create index if not exists focado_v2_order_items_code_idx on public.focado_v2_order_items(code)`,
+    `create index if not exists focado_v2_change_log_entity_idx on public.focado_v2_change_log(entity_type,entity_id,occurred_at desc)`,
+    `create or replace function public.focado_v2_change_log_immutable() returns trigger language plpgsql as $audit$ begin raise exception 'FOCADO_AUDIT_IMMUTABLE'; end $auditlet schemaReady=false;
+
+export async function ensurePlatformV2(db){
+  if(schemaReady)return;
+  const ddl=[
+    `create table if not exists public.focado_v2_customers(
+      id text primary key, name text, cnpj text, email text, phone text, city text, uf text,
+      active boolean default true, data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now()
+    )`,
+    `create table if not exists public.focado_v2_orders(
+      id text primary key, number text, status text, customer_id text, client text,
+      order_date date, requested_delivery_date date, representative text,
+      data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now()
+    )`,
+    `create table if not exists public.focado_v2_order_items(
+      order_id text not null, item_key text not null, code text, name text,
+      qty numeric, reserved_qty numeric, cut_qty numeric, delivery_base text,
+      data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now(),
+      primary key(order_id,item_key)
+    )`,
+    `create table if not exists public.focado_v2_inventory_items(
+      kind text not null, item_key text not null, code text, name text, unit text,
+      physical numeric not null default 0, reserved numeric not null default 0, blocked numeric not null default 0,
+      data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now(),
+      primary key(kind,item_key)
+    )`,
+    `create table if not exists public.focado_v2_inventory_movements(
+      id text primary key, at timestamptz, kind text, item_key text, code text, name text,
+      movement_type text, qty numeric, reason text, actor text,
+      data jsonb not null default '{}'::jsonb
+    )`,
+    `create table if not exists public.focado_v2_production_requests(
+      id text primary key, number text, status text, base text, request_date date, need_by_date date,
+      material_status text, data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now()
+    )`,
+    `create table if not exists public.focado_v2_purchase_requests(
+      id text primary key, number text, status text, code text, material text, supplier_id text,
+      qty numeric, unit text, expected_date date, data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now()
+    )`,
+    `create table if not exists public.focado_v2_suppliers(
+      id text primary key, name text, cnpj text, email text, phone text, active boolean default true,
+      data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now()
+    )`,
+    `create table if not exists public.focado_v2_carriers(
+      id text primary key, name text, cnpj text, email text, phone text, active boolean default true,
+      data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now()
+    )`,
+    `create table if not exists public.focado_v2_change_log(
+      id bigserial primary key, occurred_at timestamptz not null default now(), user_id text,
+      action text not null, entity_type text not null, entity_id text,
+      revision bigint, reason text, before_data jsonb, after_data jsonb, metadata jsonb not null default '{}'::jsonb
+    )`,
+    `create table if not exists public.focado_login_attempts(
+      id bigserial primary key, attempted_at timestamptz not null default now(), email text not null,
+      ip_hash text, success boolean not null default false
+    )`,
+    `alter table public.focado_v2_change_log alter column user_id type text using user_id::text`,
+    `create index if not exists focado_login_attempts_email_time_idx on public.focado_login_attempts(email,attempted_at desc)`,
+    `create index if not exists focado_v2_orders_status_idx on public.focado_v2_orders(status)`,
+    `create index if not exists focado_v2_order_items_code_idx on public.focado_v2_order_items(code)`,
+    `create index if not exists focado_v2_change_log_entity_idx on public.focado_v2_change_log(entity_type,entity_id,occurred_at desc)`,
+    ,
+    
   ];
   for(const sql of ddl)await db.query(sql);
   schemaReady=true;
