@@ -28,8 +28,17 @@
     menu.innerHTML=navHtml();
     bindNav();
   }
-  shell.innerHTML='<aside class="fx-sidebar" id="fxSidebar"><div class="fx-brand"><img src="focado-icon.svg" alt="Focado"><div><b>Focado</b><small>Gestão Comercial e Operacional</small></div></div><div class="fx-menu">'+navHtml()+'</div><div class="fx-version">Versão 1.0 · Novo Frontend</div></aside><main class="fx-main"><header class="fx-topbar"><button class="fx-menu-toggle" id="fxMenuToggle">☰</button><div class="fx-search"><span>⌕</span><input id="fxSearch" placeholder="Buscar pedidos, clientes, produtos, insumos..."></div><div class="fx-user"><div class="fx-avatar" id="fxAvatar">A</div><div class="fx-user-meta"><b id="fxUserName">Administrador</b><small id="fxUserRole">Administrador</small></div><button class="fx-logout" id="fxLogout">Sair</button></div></header><section class="fx-content" id="fxContent"></section></main>';
+  shell.innerHTML='<aside class="fx-sidebar" id="fxSidebar"><div class="fx-brand"><img id="fxBrandLogo" src="" alt="Focado"><div><b>Focado</b><small>Gestão Comercial e Operacional</small></div></div><div class="fx-menu">'+navHtml()+'</div><div class="fx-version">Versão 1.0 · Novo Frontend</div></aside><main class="fx-main"><header class="fx-topbar"><button class="fx-menu-toggle" id="fxMenuToggle">☰</button><div class="fx-search"><span>⌕</span><input id="fxSearch" placeholder="Buscar pedidos, clientes, produtos, insumos..."></div><div class="fx-user"><div class="fx-avatar" id="fxAvatar">A</div><div class="fx-user-meta"><b id="fxUserName">Administrador</b><small id="fxUserRole">Administrador</small></div><button class="fx-logout" id="fxLogout">Sair</button></div></header><section class="fx-content" id="fxContent"></section></main>';
   document.body.appendChild(shell);
+
+  function syncBrandLogo(){
+    const source=document.getElementById('loginLogo')?.src || document.getElementById('hubLogo')?.src || '';
+    const target=document.getElementById('fxBrandLogo');
+    if(target && source) target.src=source;
+  }
+  syncBrandLogo();
+  window.addEventListener('load',syncBrandLogo);
+
 
   function loadOps(){try{return JSON.parse(localStorage.getItem(OPS_KEY)||'{}')||{}}catch(_){return {}}}
   function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
@@ -99,6 +108,7 @@
 
   function showShell(){
     if(!sessionStorage.getItem('nova-era-role'))return;
+    syncBrandLogo();
     const hub=$('#hubScreen'); if(hub)hub.classList.add('hidden');
     shell.classList.remove('hidden');
     const user=window.FocadoAuth?.getUser?.();
