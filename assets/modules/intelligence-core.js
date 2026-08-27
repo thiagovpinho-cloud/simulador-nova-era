@@ -71,7 +71,7 @@
     for(const r of ops.productionRequests||[]){
       if(r.status==='FINALIZADA'&&r.materialStatus==='COMPRAR')out.push(item('prod_'+r.id,'ALTO','PCP','Produção '+(r.number||r.id)+' depende de compra',
         'A análise de materiais da solicitação identificou insumo insuficiente.',
-        (r.materials||[]).filter(m=>n(m.shortage)>0).map(m=>(m.code||m.name)+': '+n(m.shortage).toFixed(2)).slice(0,3).join(' · '),
+        (((r.snapshot||r).materials)||r.materials||[]).filter(m=>n(m.shortage)>0).map(m=>(m.code||m.name)+': '+n(m.shortage).toFixed(2)).slice(0,3).join(' · ')||'Solicitação marcada como COMPRAR',
         'Abrir Compras','purchases',r.id));
     }
     return out.sort((a,b)=>severityRank[b.severity]-severityRank[a.severity]||String(a.title).localeCompare(String(b.title)));
