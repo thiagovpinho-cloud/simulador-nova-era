@@ -6,13 +6,13 @@
   shell.id='focadoShell'; shell.className='hidden';
 
   const navGroups=[
-    ['Principal',[['dashboard','⌂','Dashboard'],['kanban','▦','Kanban Operacional']]],
+    ['Principal',[['dashboard','⌂','Dashboard'],['cockpit','◉','Cockpit Operacional'],['kanban','▦','Kanban Operacional']]],
     ['Comercial',[['clientes','♙','Clientes'],['representantes','♣','Representantes'],['pedidos','▤','Pedidos Comerciais']]],
     ['Operações',[['pcp','⌘','PCP'],['production','⚙','Produção'],['inventory','▣','Estoque'],['inputs','◇','Insumos'],['purchases','↻','Compras'],['expedicao','⇱','Expedição']]],
     ['Logística',[['logistica','▰','Logística'],['entregas','✓','Entregas'],['transportadoras','⌁','Transportadoras']]],
     ['Cadastros',[['produtos','◫','Produtos'],['fichas','▧','Fichas Técnicas'],['bases','▦','Bases Produtivas']]],
     ['Relatórios',[['relatorios','▥','Relatórios','soon'],['indicadores','◉','Indicadores','soon']]],
-    ['Configurações',[['system-health','◎','Saúde & Auditoria'],['config','⚙','Configurações','soon'],['usuarios','♚','Usuários e Perfis','soon']]]
+    ['Configurações',[['corpo-auditor','◇','Corpo Auditor'],['system-health','◎','Saúde & Auditoria'],['config','⚙','Configurações','soon'],['usuarios','♚','Usuários e Perfis','soon']]]
   ];
 
   function navHtml(){
@@ -163,6 +163,8 @@
     if(id==='inputs'){open(()=>window.FocadoInventory?.render({tab:'inputs',q:'',filter:'TODOS'}));return}
     if(id==='purchases'){open(()=>window.FocadoPurchases?.render());return}
     if(id==='expedicao'){open(()=>window.FocadoExpedition?.render());return}
+    if(id==='cockpit'){open(()=>window.FocadoIntelligenceUI?.renderCockpit());return}
+    if(id==='corpo-auditor'){open(()=>window.FocadoIntelligenceUI?.renderAuditor());return}
     if(id==='system-health'){open(()=>window.FocadoSystemHealth?.render());return}
     if(id==='logistica'){open(()=>window.FocadoLogistics?.render({q:'',status:'TODOS'}));return}
     if(id==='entregas'){open(()=>window.FocadoLogistics?.renderDeliveries());return}
