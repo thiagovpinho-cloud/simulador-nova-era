@@ -20,6 +20,7 @@
   const stage=s=>({COMERCIAL:['Em preenchimento','comercial'],PCP:['Aguardando PCP','pcp'],ESTOQUE_PRODUCAO:['Produção / Estoque','producao'],LOGISTICA:['Logística','logistica'],ENTREGUE:['Concluído','entregue']})[s]||[s||'—','comercial'];
   let currentFilters={q:'',stage:'TODOS'};
   let editingId=null;
+  let formEditable=true;
 
   function apiBase(){return String(window.FocadoDataStore?.getConfig?.().apiBaseUrl||'').replace(/\/$/,'')}
   function token(){return window.FocadoDataStore?.getSessionToken?.()||''}
@@ -115,7 +116,7 @@
     renderForm(order,ops);
   }
   function renderForm(o,ops){
-    const editable=canEdit(o),readonly=editable?'':'disabled';
+    const editable=canEdit(o),readonly=editable?'':'disabled';formEditable=editable;
     const items=(o.items&&o.items.length?o.items:[{code:'',name:'',qty:'',price:''}]);
     const s=stage(o.status),cat=catalog(ops);
     content().innerHTML='<div class="fo-page">'+
@@ -151,17 +152,17 @@
     if(editable){
       bindItemEvents(ops);
       document.getElementById('foAddItem').onclick=()=>addItemRow(ops);
-      document.getElementById('foProducts').onclick=()=>window.FocadoShell?.navigate?.('produtos');
+      document.getElementById('foProducts').onclick=async()=>{const ok=await persist(false,true);if(ok!==false)window.FocadoShell?.navigate?.('produtos')};
       document.getElementById('foSave').onclick=()=>persist(false);
       document.getElementById('foFinalize').onclick=()=>persist(true);
       bindCnpjLookup(ops,o);
     }
   }
   function field(label,name,val,type='text',forceDisabled=false,cls=''){
-    return '<label class="fo-field '+cls+'"><span>'+label+'</span><input name="'+name+'" type="'+type+'" value="'+esc(val||'')+'" '+(forceDisabled?'disabled':'')+'></label>';
+    return '<label class="fo-field '+cls+'"><span>'+label+'</span><input name="'+name+'" type="'+type+'" value="'+esc(val||'')+'" '+((forceDisabled||!formEditable)?'disabled':'')+'></label>';
   }
   function selectField(label,name,val,options){
-    return '<label class="fo-field"><span>'+label+'</span><select name="'+name+'">'+options.map(x=>'<option value="'+esc(x)+'" '+(String(val||'')===x?'selected':'')+'>'+esc(x)+'</option>').join('')+'</select></label>';
+    return '<label class="fo-field"><span>'+label+'</span><select name="'+name+'" '+(!formEditable?'disabled':'')+'>'+options.map(x=>'<option value="'+esc(x)+'" '+(String(val||'')===x?'selected':'')+'>'+esc(x)+'</option>').join('')+'</select></label>';
   }
   function cnpjField(val,editable){
     return '<label class="fo-field"><span>CNPJ</span><div class="fo-inline-input"><input name="cnpj" id="foCnpj" value="'+esc(formatCnpj(val))+'" inputmode="numeric" '+(editable?'':'disabled')+'><button type="button" id="foCnpjLookup" '+(editable?'':'disabled')+'>Buscar</button></div></label>';
@@ -219,7 +220,7 @@
       const cnpj=normalizeCnpj(input.value);input.value=formatCnpj(cnpj);
       if(cnpj.length!==14){status.textContent='Informe os 14 dígitos do CNPJ.';status.className='fo-cnpj-status bad';return}
       if(busy||cnpj===last)return;busy=true;last=cnpj;btn.disabled=true;status.textContent='Consultando CNPJ...';status.className='fo-cnpj-status';
-      const prev=previousOrderByCnpj(cnpj,ops,o.id);const reused=applyPrevious(prev);
+      const prev=previousOrderByCnpj(cnpj,ops,o.id);
       try{
         const b=await fetchCnpj(cnpj);
         setForm('client',b.razaoSocial||b.nomeFantasia);
@@ -230,10 +231,12 @@
         setForm('email',b.email);
         setForm('phone',b.dddTelefone1);
         const address=[b.logradouro,b.numero,b.complemento,b.bairro].filter(Boolean).join(', ');
-        if(!prev?.deliveryAddress)setForm('deliveryAddress',address);
-        status.textContent=(reused?'Cliente recorrente: dados comerciais do último pedido reaproveitados. ':'')+'Dados cadastrais preenchidos pela BrasilAPI.';
+        setForm('deliveryAddress',address);
+        const reused=applyPrevious(prev);
+        status.textContent=(reused?'Cliente recorrente: dados comerciais e de entrega do último pedido reaproveitados. ':'')+'Dados cadastrais consultados pela BrasilAPI.';
         status.className='fo-cnpj-status ok';
       }catch(err){
+        const reused=applyPrevious(prev);
         if(reused){status.textContent='Cliente recorrente: dados do último pedido reaproveitados. A consulta cadastral externa não respondeu.';status.className='fo-cnpj-status warn'}
         else{status.textContent=err.status===404?'CNPJ não encontrado.':'Não foi possível consultar o CNPJ agora.';status.className='fo-cnpj-status bad'}
       }finally{busy=false;btn.disabled=false}
@@ -255,7 +258,7 @@
       })
     };
   }
-  async function persist(finalize){
+  async function persist(finalize,silentNavigate=false){
     const ops=load();ensureCatalog(ops);ops.orders=ops.orders||[];const data=collect();let o=editingId?ops.orders.find(x=>x.id===editingId):null;
     if(!o){o=createBlank(ops);o.id='op_'+Date.now();o.createdAt=Date.now();ops.orders.unshift(o);editingId=o.id;addEvent(o,'Pedido criado pelo Comercial')}
     const previousItems=o.items||[];Object.assign(o,data);
@@ -264,8 +267,9 @@
     if(finalize){const errors=validateCommercial(o);if(errors.length){alert('Antes de finalizar o Comercial, preencha:\n\n• '+errors.join('\n• '));return}o.status='PCP';o.commercial.completedAt=Date.now();o.commercial.completedBy=window.FocadoAuth?.getUser?.()?.name||'Comercial';addEvent(o,'Comercial finalizado · pedido enviado ao PCP')}
     else addEvent(o,'Rascunho comercial salvo');
     const result=await save(ops);window.dispatchEvent(new CustomEvent('focado:ops-updated',{detail:{key:KEY}}));
-    if(result?.mode==='conflict'){alert('O pedido foi alterado em outro acesso. Atualize a tela antes de tentar novamente.');return}
-    if(finalize)render({q:'',stage:'PCP'});else renderForm(o,ops);
+    if(result?.mode==='conflict'){alert('O pedido foi alterado em outro acesso. Atualize a tela antes de tentar novamente.');return false}
+    if(!silentNavigate){if(finalize)render({q:'',stage:'PCP'});else renderForm(o,ops)}
+    return true;
   }
   function history(o){
     const events=(o.events||[]).slice(0,12);
