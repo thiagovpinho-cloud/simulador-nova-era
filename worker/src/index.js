@@ -10,7 +10,8 @@ const DOMAIN_PERMISSION = {
   ESTOQUE:"inventory.write",
   LOGISTICA:"logistics.write",
   COMPRAS:"purchases.write",
-  FINANCEIRO:"finance.write"
+  FINANCEIRO:"finance.write",
+  SOLICITACAO_PRODUCAO:"pcp.write"
 };
 const FLOW = {
   COMERCIAL:{to:"PCP",permission:"orders.write"},
@@ -185,7 +186,17 @@ function applyLogistics(state,body){
 }
 function applyPurchases(state,body){state.purchasePlanning={...(state.purchasePlanning||{}),...(body.changes?.reorder||{})}}
 function applyFinance(state,body){state.finance={...(state.finance||{}),...pick(body.changes||{},["approvedFreight","paymentStatus","invoiceStatus","creditStatus","notes"])}}
-const APPLY={COMERCIAL:applyCommercial,PCP:applyPCP,PRODUCAO:applyProduction,ESTOQUE:applyInventory,LOGISTICA:applyLogistics,COMPRAS:applyPurchases,FINANCEIRO:applyFinance};
+function applyProductionRequest(state,body){
+  const c=body.changes||{};
+  state.productionRequests=Array.isArray(state.productionRequests)?state.productionRequests:[];
+  if(c.request&&typeof c.request==="object"){
+    const incoming=structuredClone(c.request);
+    const idx=state.productionRequests.findIndex(r=>String(r.id)===String(incoming.id));
+    if(idx>=0)state.productionRequests[idx]=incoming;
+    else state.productionRequests.unshift(incoming);
+  }
+}
+const APPLY={COMERCIAL:applyCommercial,PCP:applyPCP,PRODUCAO:applyProduction,ESTOQUE:applyInventory,LOGISTICA:applyLogistics,COMPRAS:applyPurchases,FINANCEIRO:applyFinance,SOLICITACAO_PRODUCAO:applyProductionRequest};
 
 function validateTransition(order){
   switch(order.status){
