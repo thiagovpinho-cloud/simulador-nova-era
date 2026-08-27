@@ -46,7 +46,17 @@
     return 'SP-'+String(Math.max(0,...nums)+1).padStart(5,'0');
   }
   async function persist(ops){
-    return await window.FocadoDataStore?.save?.(ops);
+    const first=await window.FocadoDataStore?.save?.(ops);
+    if(first?.mode!=='conflict')return first;
+
+    const localRequests=JSON.parse(JSON.stringify(ops.productionRequests||[]));
+    const fresh=await window.FocadoDataStore?.load?.();
+    const merged=fresh&&typeof fresh==='object'?fresh:{};
+    const byId=new Map((merged.productionRequests||[]).map(r=>[String(r.id),r]));
+    localRequests.forEach(r=>byId.set(String(r.id),r));
+    merged.productionRequests=[...byId.values()];
+    window.FocadoDataStore?.writeLocal?.(merged);
+    return await window.FocadoDataStore?.save?.(merged);
   }
   function requestStatus(r){
     if(r.status==='FINALIZADA')return r.materialStatus==='COMPRAR'?['Finalizada · compra necessária','block']:['Finalizada','ready'];
@@ -108,7 +118,7 @@
     document.getElementById('fprBack').onclick=()=>render(currentFilter);
     document.getElementById('fprSave').onclick=()=>saveDraft(r,ops,false);
     document.getElementById('fprFinalize').onclick=()=>saveDraft(r,ops,true);
-    document.getElementById('fprAddItem').onclick=()=>{r.items=r.items||[];r.items.push({product:null,qty:0,palletized:false,chapatex:false,boxesPerPallet:0});renderEditor(r,ops)};
+    document.getElementById('fprAddItem').onclick=()=>{r.items=r.items||[];r.items.push({product:null,qty:'',palletized:false,chapatex:false,boxesPerPallet:''});renderEditor(r,ops)};
     bindEditor(r,ops,products);
     paintMaterialAnalysis(r,ops);
   }
@@ -118,7 +128,7 @@
   }
   function editorRow(i,n,products){
     const p=i.product||{};
-    return '<tr data-prod-row="'+n+'"><td><select data-product><option value="">Selecione</option>'+products.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===p.id?'selected':'')+'>'+esc(x.code+' · '+x.name+' · '+x.brand)+'</option>').join('')+'</select></td><td><input data-qty type="number" min="0" step="1" value="'+Number(i.qty||0)+'" style="width:85px"></td><td><select data-palletized><option value="NAO" '+(!i.palletized?'selected':'')+'>Não</option><option value="SIM" '+(i.palletized?'selected':'')+'>Sim</option></select></td><td><select data-chapatex><option value="NAO" '+(!i.chapatex?'selected':'')+'>Não</option><option value="SIM" '+(i.chapatex?'selected':'')+'>Sim</option></select></td><td><input data-boxes type="number" min="0" step="1" value="'+Number(i.boxesPerPallet||0)+'" style="width:90px"></td><td><span data-pallets>'+calcPallets(i)+'</span></td><td><button class="fpr-open" data-remove="'+n+'">Remover</button></td></tr>';
+    return '<tr data-prod-row="'+n+'"><td><select data-product><option value="">Selecione</option>'+products.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===p.id?'selected':'')+'>'+esc(x.code+' · '+x.name+' · '+x.brand)+'</option>').join('')+'</select></td><td><input data-qty type="number" min="0" step="1" value="'+(Number(i.qty||0)>0?Number(i.qty):'')+'" placeholder="0" style="width:85px"></td><td><select data-palletized><option value="NAO" '+(!i.palletized?'selected':'')+'>Não</option><option value="SIM" '+(i.palletized?'selected':'')+'>Sim</option></select></td><td><select data-chapatex><option value="NAO" '+(!i.chapatex?'selected':'')+'>Não</option><option value="SIM" '+(i.chapatex?'selected':'')+'>Sim</option></select></td><td><input data-boxes type="number" min="0" step="1" value="'+(Number(i.boxesPerPallet||0)>0?Number(i.boxesPerPallet):'')+'" placeholder="0" style="width:90px"></td><td><span data-pallets>'+calcPallets(i)+'</span></td><td><button class="fpr-open" data-remove="'+n+'">Remover</button></td></tr>';
   }
   function calcPallets(i){return i.palletized&&Number(i.boxesPerPallet)>0?Math.ceil(Number(i.qty||0)/Number(i.boxesPerPallet||0)):0}
   function syncFromForm(r,ops){
@@ -140,7 +150,22 @@
     r.materialStatus=r.materials.some(m=>m.shortage>1e-9)?'COMPRAR':'OK';
   }
   function bindEditor(r,ops){
+    const normalizeIntegerInput=el=>{
+      if(!el)return;
+      el.addEventListener('focus',()=>{
+        if(String(el.value)==='0')el.select();
+      });
+      el.addEventListener('input',()=>{
+        const raw=String(el.value||'');
+        if(/^0\d+/.test(raw))el.value=String(parseInt(raw,10)||0);
+      });
+      el.addEventListener('blur',()=>{
+        if(el.value!=='')el.value=String(Math.max(0,parseInt(el.value,10)||0));
+      });
+    };
     document.querySelectorAll('[data-prod-row]').forEach(row=>{
+      normalizeIntegerInput(row.querySelector('[data-qty]'));
+      normalizeIntegerInput(row.querySelector('[data-boxes]'));
       row.querySelectorAll('select,input').forEach(el=>el.onchange=el.oninput=()=>{syncFromForm(r,ops);const idx=Number(row.dataset.prodRow),i=r.items[idx];row.querySelector('[data-pallets]').textContent=calcPallets(i);paintMaterialAnalysis(r,ops)});
     });
     document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{syncFromForm(r,ops);r.items.splice(Number(b.dataset.remove),1);renderEditor(r,ops)});
@@ -166,7 +191,14 @@
       r.snapshot={base:r.base,requestDate:r.requestDate,needByDate:r.needByDate,requestedBy:r.requestedBy,notes:r.notes,items:JSON.parse(JSON.stringify(r.items)),materials:JSON.parse(JSON.stringify(r.materials)),materialStatus:r.materialStatus};
     }
     const result=await persist(ops);
-    if(result?.mode==='conflict'||result?.ok===false){alert('Não foi possível salvar a solicitação. Atualize a tela e tente novamente.');return}
+    if(result?.mode==='conflict'){
+      alert('A solicitação não pôde ser sincronizada porque houve outra alteração simultânea. Tente salvar novamente.');
+      return;
+    }
+    if(result?.ok===false){
+      alert('A solicitação foi preservada neste dispositivo, mas não conseguiu sincronizar com o servidor. Verifique a conexão e tente novamente.');
+      return;
+    }
     if(finalize){renderViewer(r,true)}else{alert('Rascunho salvo.');render(currentFilter)}
   }
   function openRequest(id){
