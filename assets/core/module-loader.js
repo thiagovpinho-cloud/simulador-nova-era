@@ -4,6 +4,8 @@
   const loaded=new Map();
   const defs={
     produtos:{css:'products.css',js:'products.js'},
+    fichas:{css:'technical-sheets.css',js:'technical-sheets.js'},
+    bases:{css:'bases.css',js:'bases.js'},
     representantes:{css:'representatives.css',js:'representatives.js'},
     clientes:{css:'customers.css',js:'customers.js'},
     'intelligence-core':{js:'intelligence-core.js'},
@@ -24,6 +26,8 @@
   };
   const contracts={
     produtos:()=>typeof window.FocadoProducts?.render==='function',
+    fichas:()=>typeof window.FocadoTechnicalSheets?.render==='function',
+    bases:()=>typeof window.FocadoBases?.render==='function',
     representantes:()=>typeof window.FocadoRepresentatives?.render==='function',
     clientes:()=>typeof window.FocadoCustomers?.render==='function',
     pedidos:()=>typeof window.FocadoOrders?.render==='function'&&typeof window.FocadoOrders?.openOrder==='function',
