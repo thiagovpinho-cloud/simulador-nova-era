@@ -66,8 +66,8 @@
   function createBlank(ops){
     return {
       id:'op_'+Date.now(),number:nextNumber(ops),status:'COMERCIAL',createdAt:Date.now(),
-      brand:'Nova Era',client:'',cnpj:'',representative:'',city:'',uf:'',cep:'',bairro:'',email:'',phone:'',
-      orderDate:today(),requestedDeliveryDate:'',suggestedPickup:'',freightType:'CIF',paymentTerms:'',deliveryAddress:'',notes:'',
+      brand:'Nova Era',client:'',cnpj:'',representative:'',salesChannel:'REPRESENTANTE',salesJustification:'',city:'',uf:'',cep:'',bairro:'',email:'',phone:'',
+      orderDate:today(),requestedDeliveryDate:'',suggestedPickup:'',freightType:'CIF',paymentTerms:'',logisticsBudget:0,deliveryAddress:'',notes:'',
       commercial:{completedAt:null,completedBy:null},
       pcp:{deliveryBase:'',productionDate:'',availableDate:'',separated:false,scheduledQty:0,autoScheduled:false},
       logistics:{freightValue:'',pickupDate:'',deliveryDate:'',carrier:''},
@@ -89,6 +89,12 @@
     if(!String(o.client||'').trim())errors.push('Cliente');
     if(!String(o.orderDate||'').trim())errors.push('Data do pedido');
     if(!String(o.city||'').trim())errors.push('Cidade');
+    if(!String(o.requestedDeliveryDate||'').trim())errors.push('Data de entrega solicitada pelo cliente');
+    if(!String(o.paymentTerms||'').trim())errors.push('Condição de pagamento');
+    if(!(Number(o.logisticsBudget)>0))errors.push('Orçamento de logística');
+    const channel=String(o.salesChannel||'REPRESENTANTE');
+    if(channel==='REPRESENTANTE'&&!String(o.representative||'').trim())errors.push('Representante');
+    if(['VENDAS_INTERNAS','BONIFICACAO'].includes(channel)&&!String(o.salesJustification||'').trim())errors.push('Justificativa da venda');
     if(!String(o.uf||'').trim())errors.push('UF');
     if(!['CIF','FOB','Redespacho'].includes(o.freightType))errors.push('Tipo de frete');
     const items=normalizeItems(o.items);
@@ -153,7 +159,9 @@
           field('Número do pedido','number',o.number,'text',true)+
           cnpjField(o.cnpj,editable)+
           field('Data do pedido','orderDate',o.orderDate,'date')+
+          salesChannelField(o.salesChannel||'REPRESENTANTE')+
           representativeField(o.representative,ops)+
+          salesJustificationField(o.salesJustification||'',o.salesChannel||'REPRESENTANTE')+
           field('Cliente / Razão social','client',o.client,'text',false,'wide')+
           selectField('Marca / Empresa','brand',o.brand,['Nova Era','New Green'])+
           field('E-mail','email',o.email,'email')+
@@ -164,6 +172,7 @@
           field('Data solicitada pelo cliente','requestedDeliveryDate',o.requestedDeliveryDate,'date')+
           selectField('Tipo de frete','freightType',o.freightType||'CIF',['CIF','FOB','Redespacho'])+
           field('Condição de pagamento','paymentTerms',o.paymentTerms)+
+          moneyField('Orçamento de logística','logisticsBudget',o.logisticsBudget)+
           field('Endereço / local de entrega','deliveryAddress',o.deliveryAddress,'text',false,'wide')+
         '</div></div>'+
         '<div class="fo-card"><div class="fo-card-head"><div><h2>Itens do pedido</h2><p>Digite o código ou o nome; o produto será identificado automaticamente na base.</p></div>'+(editable?'<div class="fo-actions"><button class="fo-btn secondary" type="button" id="foProducts">Cadastrar produto</button><button class="fo-btn secondary" type="button" id="foAddItem">+ Linha</button></div>':'')+'</div>'+
@@ -182,6 +191,21 @@
       document.getElementById('foSave').onclick=()=>persist(false);
       document.getElementById('foFinalize').onclick=()=>persist(true);
       bindCnpjLookup(ops,o);
+      const salesChannel=document.getElementById('foSalesChannel');
+      const repSelect=document.querySelector('[name="representative"]');
+      const justWrap=document.getElementById('foSalesJustificationWrap');
+      if(salesChannel)salesChannel.onchange=()=>{
+        const special=['VENDAS_INTERNAS','BONIFICACAO'].includes(salesChannel.value);
+        if(justWrap)justWrap.style.display=special?'flex':'none';
+        if(repSelect)repSelect.disabled=special;
+        if(special&&repSelect)repSelect.value='';
+      };
+      if(repSelect&&['VENDAS_INTERNAS','BONIFICACAO'].includes(salesChannel?.value||''))repSelect.disabled=true;
+      const budget=document.querySelector('[name="logisticsBudget"]');
+      if(budget){
+        budget.onfocus=()=>budget.select();
+        budget.onblur=()=>{budget.value=moneyInput(parseMoneyInput(budget.value))};
+      }
     }
   }
   function field(label,name,val,type='text',forceDisabled=false,cls=''){
@@ -195,6 +219,17 @@
     const options=['<option value="">Selecione</option>'].concat(reps.map(r=>'<option value="'+esc(r.name)+'" '+(String(val||'')===String(r.name)?'selected':'')+'>'+esc(r.name)+'</option>'));
     if(val && !reps.some(r=>String(r.name)===String(val)))options.push('<option value="'+esc(val)+'" selected>'+esc(val)+' (histórico)</option>');
     return '<label class="fo-field"><span>Representante</span><div class="fo-rep-select"><select name="representative" '+(!formEditable?'disabled':'')+'>'+options.join('')+'</select>'+(formEditable?'<button type="button" id="foRepManage" title="Cadastrar representante">+</button>':'')+'</div></label>';
+  }
+  function salesChannelField(val){
+    const options=[['REPRESENTANTE','Representante'],['VENDAS_INTERNAS','Vendas internas'],['BONIFICACAO','Bonificação']];
+    return '<label class="fo-field"><span>Origem da venda</span><select name="salesChannel" id="foSalesChannel" '+(!formEditable?'disabled':'')+'>'+options.map(([v,l])=>'<option value="'+v+'" '+(String(val)===v?'selected':'')+'>'+l+'</option>').join('')+'</select></label>';
+  }
+  function salesJustificationField(val,channel){
+    const required=['VENDAS_INTERNAS','BONIFICACAO'].includes(channel);
+    return '<label class="fo-field wide" id="foSalesJustificationWrap" style="display:'+(required?'flex':'none')+'"><span>Justificativa *</span><input name="salesJustification" value="'+esc(val||'')+'" '+(!formEditable?'disabled':'')+' placeholder="Informe o motivo da venda interna ou bonificação"></label>';
+  }
+  function moneyField(label,name,val){
+    return '<label class="fo-field"><span>'+label+'</span><div class="fo-money-input"><span>R$</span><input name="'+name+'" type="text" inputmode="decimal" value="'+esc(moneyInput(val))+'" '+(!formEditable?'disabled':'')+'></div></label>';
   }
   function cnpjField(val,editable){
     return '<label class="fo-field"><span>CNPJ</span><div class="fo-inline-input"><input name="cnpj" id="foCnpj" value="'+esc(formatCnpj(val))+'" inputmode="numeric" '+(editable?'':'disabled')+'><button type="button" id="foCnpjLookup" '+(editable?'':'disabled')+'>Buscar</button></div></label>';
@@ -237,7 +272,7 @@
   }
   function applyPrevious(prev){
     if(!prev)return false;
-    ['representative','brand','freightType','paymentTerms','deliveryAddress','city','uf','cep','bairro','email','phone'].forEach(k=>setForm(k,prev[k]));
+    ['representative','salesChannel','brand','freightType','paymentTerms','deliveryAddress','city','uf','cep','bairro','email','phone'].forEach(k=>setForm(k,prev[k]));
     return true;
   }
   async function fetchCnpj(cnpj){
@@ -286,9 +321,11 @@
     const form=document.getElementById('foOrderForm'),fd=new FormData(form),ops=load(),brand=fd.get('brand')||'';
     return {
       number:document.querySelector('[name="number"]')?.value||'',orderDate:fd.get('orderDate')||'',representative:fd.get('representative')||'',
+      salesChannel:fd.get('salesChannel')||'REPRESENTANTE',salesJustification:fd.get('salesJustification')||'',
       client:fd.get('client')||'',cnpj:normalizeCnpj(fd.get('cnpj')),brand,city:fd.get('city')||'',uf:String(fd.get('uf')||'').toUpperCase().slice(0,2),
       cep:fd.get('cep')||'',bairro:fd.get('bairro')||'',email:fd.get('email')||'',phone:fd.get('phone')||'',
       requestedDeliveryDate:fd.get('requestedDeliveryDate')||'',freightType:fd.get('freightType')||'CIF',paymentTerms:fd.get('paymentTerms')||'',
+      logisticsBudget:parseMoneyInput(fd.get('logisticsBudget')),
       deliveryAddress:fd.get('deliveryAddress')||'',notes:fd.get('notes')||'',
       items:[...document.querySelectorAll('[data-item-row]')].map(r=>{
         const code=r.querySelector('[data-k="code"]').value,name=r.querySelector('[data-k="name"]').value,p=findProduct(code||name,brand,ops);
@@ -330,10 +367,10 @@
   }
   function reportTable(rows){
     if(!rows.length)return '<div class="fo-empty">Nenhum pedido no período selecionado.</div>';
-    return '<table class="fo-table fo-report-table"><thead><tr><th>Data</th><th>Pedido</th><th>CNPJ</th><th>Cliente</th><th>Representante</th><th>Frete</th><th>Status</th><th>Itens</th><th>Valor</th></tr></thead><tbody>'+rows.map(o=>'<tr><td>'+dbr(o.orderDate)+'</td><td><b>'+esc(o.number)+'</b></td><td>'+esc(formatCnpj(o.cnpj))+'</td><td>'+esc(o.client)+'</td><td>'+esc(o.representative||'—')+'</td><td>'+esc(o.freightType||'—')+'</td><td>'+esc(stage(o.status)[0])+'</td><td>'+((o.items||[]).map(i=>esc(i.code+' - '+i.name+' ('+i.qty+')')).join('<br>'))+'</td><td>'+money(value(o))+'</td></tr>').join('')+'</tbody></table>';
+    return '<table class="fo-table fo-report-table"><thead><tr><th>Data</th><th>Pedido</th><th>CNPJ</th><th>Cliente</th><th>Representante</th><th>Frete</th><th>Orç. logística</th><th>Status</th><th>Itens</th><th>Valor</th></tr></thead><tbody>'+rows.map(o=>'<tr><td>'+dbr(o.orderDate)+'</td><td><b>'+esc(o.number)+'</b></td><td>'+esc(formatCnpj(o.cnpj))+'</td><td>'+esc(o.client)+'</td><td>'+esc(o.representative||'—')+'</td><td>'+esc(o.freightType||'—')+'</td><td>'+money(o.logisticsBudget)+'</td><td>'+esc(stage(o.status)[0])+'</td><td>'+((o.items||[]).map(i=>esc(i.code+' - '+i.name+' ('+i.qty+')')).join('<br>'))+'</td><td>'+money(value(o))+'</td></tr>').join('')+'</tbody></table>';
   }
   function reportWorkbook(rows,from,to){
-    const table='<table><tr><th>Data</th><th>Pedido</th><th>CNPJ</th><th>Cliente</th><th>Representante</th><th>Cidade</th><th>UF</th><th>Frete</th><th>Status</th><th>Itens</th><th>Valor</th></tr>'+rows.map(o=>'<tr><td>'+esc(o.orderDate)+'</td><td>'+esc(o.number)+'</td><td>'+esc(formatCnpj(o.cnpj))+'</td><td>'+esc(o.client)+'</td><td>'+esc(o.representative||'')+'</td><td>'+esc(o.city||'')+'</td><td>'+esc(o.uf||'')+'</td><td>'+esc(o.freightType||'')+'</td><td>'+esc(stage(o.status)[0])+'</td><td>'+esc((o.items||[]).map(i=>i.code+' - '+i.name+' x '+i.qty).join(' | '))+'</td><td>'+value(o).toFixed(2)+'</td></tr>').join('')+'</table>';
+    const table='<table><tr><th>Data</th><th>Pedido</th><th>CNPJ</th><th>Cliente</th><th>Representante</th><th>Cidade</th><th>UF</th><th>Frete</th><th>Orçamento logística</th><th>Status</th><th>Itens</th><th>Valor</th></tr>'+rows.map(o=>'<tr><td>'+esc(o.orderDate)+'</td><td>'+esc(o.number)+'</td><td>'+esc(formatCnpj(o.cnpj))+'</td><td>'+esc(o.client)+'</td><td>'+esc(o.representative||'')+'</td><td>'+esc(o.city||'')+'</td><td>'+esc(o.uf||'')+'</td><td>'+esc(o.freightType||'')+'</td><td>'+Number(o.logisticsBudget||0).toFixed(2)+'</td><td>'+esc(stage(o.status)[0])+'</td><td>'+esc((o.items||[]).map(i=>i.code+' - '+i.name+' x '+i.qty).join(' | '))+'</td><td>'+value(o).toFixed(2)+'</td></tr>').join('')+'</table>';
     return '<html><head><meta charset="UTF-8"></head><body><h2>Focado - Pedidos '+esc(from)+' a '+esc(to)+'</h2>'+table+'</body></html>';
   }
   function reportFile(rows,from,to){
