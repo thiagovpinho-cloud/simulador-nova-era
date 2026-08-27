@@ -2,22 +2,22 @@
   'use strict';
   const KEY='focado-operacoes-v2';
   const seeds=[
-    {id:'novaera_93968',code:'93968',name:'Álcool + Bicarbonato 12x1L',brand:'Nova Era',unit:'CX',source:'simulator'},
-    {id:'novaera_59997',code:'59997',name:'Álcool 46° INPM 12x1L',brand:'Nova Era',unit:'CX',source:'simulator'},
-    {id:'novaera_135379',code:'135379',name:'Álcool 46° INPM Bactericida 12x1L',brand:'Nova Era',unit:'CX',source:'simulator'},
-    {id:'novaera_59894',code:'59894',name:'Álcool 70° INPM 12x1L',brand:'Nova Era',unit:'CX',source:'simulator'},
-    {id:'novaera_92277',code:'92277',name:'Álcool 70° INPM 3x5L',brand:'Nova Era',unit:'CX',source:'simulator'},
-    {id:'novaera_59950',code:'59950',name:'Álcool Gel 70° INPM 12x440g Pump',brand:'Nova Era',unit:'CX',source:'simulator'},
-    {id:'novaera_88742',code:'88742',name:'Álcool Gel 70° INPM 3x4,3kg',brand:'Nova Era',unit:'CX',source:'simulator'},
-    {id:'novaera_89394',code:'89394',name:'Álcool Gel 80° Acendedor Barrica 10kg',brand:'Nova Era',unit:'CX',source:'simulator'},
-    {id:'newgreen_93968',code:'93968',name:'Álcool + Bicarbonato 12x1L',brand:'New Green',unit:'CX',source:'simulator'},
-    {id:'newgreen_160441',code:'160441',name:'Álcool 46° INPM 12x1L',brand:'New Green',unit:'CX',source:'simulator'},
-    {id:'newgreen_135379',code:'135379',name:'Álcool 46° INPM Fragrâncias 12x1L',brand:'New Green',unit:'CX',source:'simulator'},
-    {id:'newgreen_59950',code:'59950',name:'Álcool Gel Acendedor 80° INPM 425g',brand:'New Green',unit:'CX',source:'simulator'},
-    {id:'newgreen_59961',code:'59961',name:'Álcool 92° INPM 12x1L',brand:'New Green',unit:'CX',source:'simulator'},
-    {id:'newgreen_88742',code:'88742',name:'Álcool Gel 80° Acendedor Galão 4,4kg',brand:'New Green',unit:'CX',source:'simulator'},
-    {id:'newgreen_89394',code:'89394',name:'Álcool Gel 80° Acendedor Barrica 10kg',brand:'New Green',unit:'CX',source:'simulator'},
-    {id:'newgreen_89394_13',code:'89394-13',name:'Álcool Gel 80° Acendedor Barrica 13kg',brand:'New Green',unit:'CX',source:'simulator'}
+    {id:'novaera_93968',simulatorId:'bicarbonato',code:'93968',name:'Álcool + Bicarbonato 12x1L',brand:'Nova Era',unit:'CX',source:'simulator'},
+    {id:'novaera_59997',simulatorId:'inpm46',code:'59997',name:'Álcool 46° INPM 12x1L',brand:'Nova Era',unit:'CX',source:'simulator'},
+    {id:'novaera_135379',simulatorId:'inpm46bact',code:'135379',name:'Álcool 46° INPM Bactericida 12x1L',brand:'Nova Era',unit:'CX',source:'simulator'},
+    {id:'novaera_59894',simulatorId:'inpm70',code:'59894',name:'Álcool 70° INPM 12x1L',brand:'Nova Era',unit:'CX',source:'simulator'},
+    {id:'novaera_92277',simulatorId:'inpm70_3x5',code:'92277',name:'Álcool 70° INPM 3x5L',brand:'Nova Era',unit:'CX',source:'simulator'},
+    {id:'novaera_59950',simulatorId:'gel70_440',code:'59950',name:'Álcool Gel 70° INPM 12x440g Pump',brand:'Nova Era',unit:'CX',source:'simulator'},
+    {id:'novaera_88742',simulatorId:'gel70_43kg',code:'88742',name:'Álcool Gel 70° INPM 3x4,3kg',brand:'Nova Era',unit:'CX',source:'simulator'},
+    {id:'novaera_89394',simulatorId:'gel80_barrica',code:'89394',name:'Álcool Gel 80° Acendedor Barrica 10kg',brand:'Nova Era',unit:'CX',source:'simulator'},
+    {id:'newgreen_93968',simulatorId:'ng_bicarbonato',code:'93968',name:'Álcool + Bicarbonato 12x1L',brand:'New Green',unit:'CX',source:'simulator'},
+    {id:'newgreen_160441',simulatorId:'ng_inpm46',code:'160441',name:'Álcool 46° INPM 12x1L',brand:'New Green',unit:'CX',source:'simulator'},
+    {id:'newgreen_135379',simulatorId:'ng_frag46',code:'135379',name:'Álcool 46° INPM Fragrâncias 12x1L',brand:'New Green',unit:'CX',source:'simulator'},
+    {id:'newgreen_59950',simulatorId:'ng_gel425',code:'59950',name:'Álcool Gel Acendedor 80° INPM 425g',brand:'New Green',unit:'CX',source:'simulator'},
+    {id:'newgreen_59961',simulatorId:'ng_inpm92',code:'59961',name:'Álcool 92° INPM 12x1L',brand:'New Green',unit:'CX',source:'simulator'},
+    {id:'newgreen_88742',simulatorId:'ng_gel44kg',code:'88742',name:'Álcool Gel 80° Acendedor Galão 4,4kg',brand:'New Green',unit:'CX',source:'simulator'},
+    {id:'newgreen_89394',simulatorId:'ng_barrica10',code:'89394',name:'Álcool Gel 80° Acendedor Barrica 10kg',brand:'New Green',unit:'CX',source:'simulator'},
+    {id:'newgreen_89394_13',simulatorId:'ng_barrica13',code:'89394-13',name:'Álcool Gel 80° Acendedor Barrica 13kg',brand:'New Green',unit:'CX',source:'simulator'}
   ];
   const load=()=>window.FocadoDataStore?.readLocal?.()||(()=>{try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(_){return {}}})();
   const save=async ops=>{
@@ -68,7 +68,7 @@
       const code=document.getElementById('fpCode').value.trim(),name=document.getElementById('fpName').value.trim(),b=document.getElementById('fpProductBrand').value,unit=document.getElementById('fpUnit').value;
       if(!code||!name){alert('Informe código e nome do produto.');return}
       if(catalog.some(p=>p.active!==false&&p.code===code&&p.brand===b)){alert('Já existe um produto ativo com este código para esta marca.');return}
-      catalog.push({id:'manual_'+Date.now(),code,name,brand:b,unit,source:'manual',active:true,createdAt:Date.now()});
+      catalog.push({id:'manual_'+Date.now(),simulatorId:'',code,name,brand:b,unit,source:'manual',active:true,createdAt:Date.now()});
       ops.productCatalog=catalog;
       await save(ops);modal.classList.add('hidden');render();
     };
