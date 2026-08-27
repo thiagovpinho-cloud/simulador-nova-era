@@ -1,4 +1,4 @@
-import { neon } from '@neondatabase/serverless';
+import { db } from './db.js';
 
 class StoreNotConfiguredError extends Error{
   constructor(){super('DATABASE_URL não configurada para a API do Focado.');this.code='STORE_NOT_CONFIGURED'}
@@ -11,7 +11,7 @@ function sqlClient(){
 }
 
 export async function readWorkspace(workspaceKey){
-  const sql=sqlClient();
+  const sql=db();
   const rows=await sql`
     select workspace_key as "workspaceKey",
            payload,
@@ -26,7 +26,7 @@ export async function readWorkspace(workspaceKey){
 }
 
 export async function writeWorkspace(workspaceKey,payload,expectedRevision){
-  const sql=sqlClient();
+  const sql=db();
 
   if(expectedRevision===null){
     const rows=await sql`
