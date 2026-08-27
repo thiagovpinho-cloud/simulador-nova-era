@@ -169,3 +169,42 @@ export function auditSnapshot(state,domain,orderId){
   if(d==='FINANCEIRO')return state.finance||{};
   return null;
 }
+
+export async function readDomainV2(db,domain){
+  const d=String(domain||'').toLowerCase();
+  if(d==='customers'){
+    const r=await db.query('select data from public.focado_v2_customers order by coalesce(name,\'\'),id');
+    return r.rows.map(x=>x.data||{});
+  }
+  if(d==='orders'){
+    const r=await db.query('select data from public.focado_v2_orders order by updated_at desc,id');
+    return r.rows.map(x=>x.data||{});
+  }
+  throw Object.assign(new Error('INVALID_V2_DOMAIN'),{status:400,code:'INVALID_V2_DOMAIN'});
+}
+
+export async function consistencyV2(db,state){
+  const counts={};
+  const q=async(table)=>Number((await db.query('select count(*)::int as n from public.'+table)).rows[0]?.n||0);
+  counts.customers={legacy:(state.customers||[]).length,v2:await q('focado_v2_customers')};
+  counts.orders={legacy:(state.orders||[]).length,v2:await q('focado_v2_orders')};
+  counts.orderItems={legacy:(state.orders||[]).reduce((n,o)=>n+(o.items||[]).length,0),v2:await q('focado_v2_order_items')};
+  counts.inventory={legacy:Object.keys(state.inventory||{}).length+Object.keys(state.inputInventory||{}).length,v2:await q('focado_v2_inventory_items')};
+  counts.movements={legacy:(state.stockMovements||[]).length,v2:await q('focado_v2_inventory_movements')};
+  counts.productionRequests={legacy:(state.productionRequests||[]).length,v2:await q('focado_v2_production_requests')};
+  counts.purchaseRequests={legacy:(state.purchaseRequests||[]).length,v2:await q('focado_v2_purchase_requests')};
+  counts.suppliers={legacy:(state.suppliers||[]).length,v2:await q('focado_v2_suppliers')};
+  counts.carriers={legacy:(state.carriers||[]).length,v2:await q('focado_v2_carriers')};
+  const mismatches=Object.entries(counts).filter(([,v])=>v.legacy!==v.v2).map(([k,v])=>({domain:k,...v}));
+  return {ok:mismatches.length===0,counts,mismatches,checkedAt:new Date().toISOString()};
+}
+
+export function passwordPolicy(password){
+  const s=String(password||'');
+  const problems=[];
+  if(s.length<12)problems.push('MIN_LENGTH');
+  if(!/[a-z]/.test(s))problems.push('LOWERCASE');
+  if(!/[A-Z]/.test(s))problems.push('UPPERCASE');
+  if(!/[0-9]/.test(s))problems.push('NUMBER');
+  return {ok:problems.length===0,problems};
+}
