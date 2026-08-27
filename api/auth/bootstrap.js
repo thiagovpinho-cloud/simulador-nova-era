@@ -1,3 +1,4 @@
+import { applyCors } from '../_lib/http.js';
 import crypto from 'node:crypto';
 import { db } from '../_lib/db.js';
 import { hashPassword } from '../_lib/password.js';
@@ -7,6 +8,7 @@ function safe(a,b){
   return aa.length===bb.length&&crypto.timingSafeEqual(aa,bb);
 }
 export default async function handler(req,res){
+  if(applyCors(req,res))return;
   res.setHeader('Cache-Control','no-store');
   if(req.method!=='POST')return res.status(405).json({error:'METHOD_NOT_ALLOWED'});
   try{
