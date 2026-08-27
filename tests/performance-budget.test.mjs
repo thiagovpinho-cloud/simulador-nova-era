@@ -3,7 +3,7 @@ import fs from 'node:fs';
 const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const index=read('index.html');
 const loader=read('assets/core/module-loader.js');
-const modules=['orders','pcp','production','inventory','logistics','purchases','expedition','customers','products','representatives','kanban','system-health','intelligence-core','intelligence'];
+const modules=['orders','pcp','production','inventory','logistics','purchases','expedition','customers','products','representatives','system-health'];
 
 assert.ok(index.includes('assets/core/module-loader.js'),'Loader de módulos deve estar no index');
 for(const m of modules){
@@ -23,3 +23,7 @@ for(const [file,size] of Object.entries(sizes))assert.ok(size<=50000,file+' exce
 assert.ok(Buffer.byteLength(index,'utf8')<=360000,'index.html excedeu orçamento transitório de 360 KB');
 
 console.log('performance-budget: ok');
+
+for(const critical of ['intelligence-core.js','intelligence.js','kanban.js']){
+  assert.ok(index.includes('assets/modules/'+critical+'?v=20260827-critical-v1'),'Módulo crítico deve ser pré-carregado: '+critical);
+}
