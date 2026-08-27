@@ -1,13 +1,16 @@
 import { applyCors } from './_lib/http.js';
 import { requireSession } from './_lib/auth.js';
 import { readWorkspace, writeWorkspace } from './_lib/store.js';
+import { db } from './_lib/db.js';
 
 const WORKSPACE='default';
 
 export default async function handler(req,res){
   if(applyCors(req,res))return;
   res.setHeader('Cache-Control','no-store');
-  const permission=req.method==='GET'?'workspace.read':'workspace.write';\n  const session=await requireSession(req,res,permission);\n  if(!session)return;
+  const permission=req.method==='GET'?'workspace.read':'workspace.write';
+  const session=await requireSession(req,res,permission);
+  if(!session)return;
 
   try{
     if(req.method==='GET'){
@@ -26,6 +29,8 @@ export default async function handler(req,res){
       const expected=raw==null?null:Number(String(raw).replace(/"/g,''));
       if(raw!=null&&!Number.isFinite(expected)) return res.status(400).json({error:'INVALID_REVISION'});
       const saved=await writeWorkspace(WORKSPACE,body.payload,expected);
+      const sql=db();
+      await sql`insert into public.focado_audit_events(user_id,action,entity_type,entity_id,metadata) values(${session.userId},'WORKSPACE_WRITE','workspace',${WORKSPACE},${JSON.stringify({revision:saved.revision})}::jsonb)`;
       res.setHeader('ETag','"'+saved.revision+'"');
       return res.status(200).json(saved);
     }
