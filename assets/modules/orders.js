@@ -120,6 +120,7 @@
     if(normalizeCnpj(o.cnpj).length!==14)errors.push('CNPJ válido');
     if(!String(o.client||'').trim())errors.push('Cliente');
     if(!String(o.orderDate||'').trim())errors.push('Data do pedido');
+    if(!/^\S+@\S+\.\S+$/.test(String(o.email||'').trim()))errors.push('E-mail válido do cliente');
     if(!String(o.city||'').trim())errors.push('Cidade');
     if(!String(o.requestedDeliveryDate||'').trim())errors.push('Data de entrega solicitada pelo cliente');
     if(!String(o.paymentTerms||'').trim())errors.push('Condição de pagamento');
