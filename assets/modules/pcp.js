@@ -73,6 +73,65 @@
   }
   function basesOf(o){return [...new Set((o.items||[]).map(i=>i.deliveryBase).filter(Boolean))]}
 
+  function productIdentity(i){return String(i.code||i.productId||i.name||'')}
+  function productionRequestedByProduct(ops){
+    const map={};
+    for(const r of ops.productionRequests||[]){
+      if(!['RASCUNHO','FINALIZADA'].includes(r.status))continue;
+      const snap=r.snapshot||r;
+      for(const it of snap.items||[]){
+        const p=it.product||{},key=String(p.code||p.id||p.name||'');
+        if(!key)continue;
+        map[key]=map[key]||{qty:0,bases:new Set(),requests:[]};
+        map[key].qty+=Number(it.qty||0);
+        if(snap.base)map[key].bases.add(snap.base);
+        map[key].requests.push(r.number||r.id);
+      }
+    }
+    return map;
+  }
+  function consolidatedRows(ops){
+    const prodReq=productionRequestedByProduct(ops),agg={};
+    const active=(ops.orders||[]).filter(o=>o.status==='PCP');
+    for(const o of active){
+      for(const i of o.items||[]){
+        const key=productIdentity(i);if(!key)continue;
+        const sv=stockView(ops,i);
+        if(!agg[key])agg[key]={
+          key,code:i.code||'',name:i.name||'',productId:i.productId||'',
+          demand:0,reserved:0,cut:0,orders:new Set(),bases:new Set(),dates:[],
+          stockPhysical:sv.physical,stockReserved:sv.reserved,stockBlocked:sv.blocked,stockAvailable:sv.available
+        };
+        const a=agg[key];
+        a.demand+=Number(i.qty||0);
+        a.reserved+=Number(i.reservedQty||0);
+        a.cut+=Number(i.cutQty||0);
+        a.orders.add(o.number||o.id);
+        if(i.deliveryBase)a.bases.add(i.deliveryBase);
+        if(i.pcpAvailabilityDate)a.dates.push(i.pcpAvailabilityDate);
+        if(o.requestedDeliveryDate)a.dates.push(o.requestedDeliveryDate);
+      }
+    }
+    return Object.values(agg).map(a=>{
+      const remainingAfterReserveCut=Math.max(0,a.demand-a.reserved-a.cut);
+      const stockCanCover=Math.min(a.stockAvailable,remainingAfterReserveCut);
+      const productionNeed=Math.max(0,remainingAfterReserveCut-stockCanCover);
+      const pr=prodReq[a.code]||prodReq[a.productId]||prodReq[a.key]||{qty:0,bases:new Set(),requests:[]};
+      const requestedProduction=Number(pr.qty||0);
+      const toRequest=Math.max(0,productionNeed-requestedProduction);
+      return {...a,
+        orderCount:a.orders.size,bases:[...a.bases],criticalDate:a.dates.filter(Boolean).sort()[0]||'',
+        productionNeed,requestedProduction,toRequest,productionBases:[...(pr.bases||[])],productionRequests:pr.requests||[]
+      };
+    }).sort((a,b)=>b.toRequest-a.toRequest||b.productionNeed-a.productionNeed||String(a.name).localeCompare(String(b.name)));
+  }
+  function consolidatedTotals(rows){
+    return rows.reduce((t,r)=>({
+      demand:t.demand+r.demand,reserved:t.reserved+r.reserved,cut:t.cut+r.cut,
+      productionNeed:t.productionNeed+r.productionNeed,requested:t.requested+r.requestedProduction,toRequest:t.toRequest+r.toRequest
+    }),{demand:0,reserved:0,cut:0,productionNeed:0,requested:0,toRequest:0});
+  }
+
   function render(state){
     filters=state||filters;
     const ops=ensureOrderIds(load());
@@ -91,7 +150,7 @@
     const done=(ops.orders||[]).filter(o=>['LOGISTICA','ENTREGUE'].includes(o.status)).length;
     const reserved=all.reduce((s,o)=>s+(o.items||[]).reduce((a,i)=>a+Number(i.reservedQty||0),0),0);
     content().innerHTML='<div class="fpcp-page">'+
-      '<div class="fpcp-head"><div><h1>PCP</h1><p>Estoque real por código · reserva · disponibilidade · base de retirada</p></div></div>'+
+      '<div class="fpcp-head"><div><h1>PCP</h1><p>Estoque real por código · reserva · disponibilidade · base de retirada</p></div><div class="fpcp-actions"><button class="fpcp-btn primary" id="fpConsolidated">Planejamento consolidado</button></div></div>'+
       '<div class="fpcp-kpis">'+
         kpiFilter('Aguardando análise',awaiting,'pedidos ainda não trabalhados','AGUARDANDO')+
         kpiFilter('Em planejamento',planning,'PCP já iniciou o atendimento','PLANEJAMENTO')+
@@ -102,6 +161,7 @@
       '<div class="fpcp-guide"><b>Como operar:</b><span>1. Abra o pedido</span><span>2. Confira o saldo atual</span><span>3. Reserve total ou parcialmente</span><span>4. Informe previsão do saldo ou corte</span><span>5. Defina a base por item e libere</span></div>'+
       '<div class="fpcp-toolbar"><input class="fpcp-search" id="fpSearch" placeholder="Buscar pedido, cliente, CNPJ, representante ou produto" value="'+esc(filters.q)+'"><select class="fpcp-select" id="fpBase"><option value="TODAS">Todas as bases</option>'+knownBases.map(b=>'<option value="'+b+'" '+(filters.base===b?'selected':'')+'>'+b+'</option>').join('')+'</select><span class="fpcp-muted">'+rows.length+' pedido(s)</span></div>'+
       '<div class="fpcp-table-wrap">'+table(rows)+'</div></div>';
+    document.getElementById('fpConsolidated').onclick=()=>renderConsolidated();
     const q=document.getElementById('fpSearch'),base=document.getElementById('fpBase');let t;
     q.oninput=()=>{clearTimeout(t);t=setTimeout(()=>render({q:q.value,base:base.value,stage:filters.stage}),180)};
     base.onchange=()=>render({q:q.value,base:base.value,stage:filters.stage});
@@ -119,6 +179,87 @@
       const st=planningStatus(o);
       return '<tr><td><div class="fpcp-order">'+esc(o.number)+'</div></td><td><div class="fpcp-client">'+esc(o.client||'—')+'</div><div class="fpcp-muted">'+esc([o.city,o.uf].filter(Boolean).join('/'))+'</div></td><td>'+dbr(o.orderDate)+'</td><td>'+((o.items||[]).length)+'<div class="fpcp-muted">'+totalQty(o)+' cx</div></td><td>'+money(orderValue(o))+'</td><td>'+esc(basesOf(o).join(', ')||'—')+'</td><td><span class="fpcp-status '+st[1]+'">'+st[0]+'</span></td><td><button class="fpcp-open" data-fpcp-open="'+esc(o.id||o.number)+'" data-fpcp-number="'+esc(o.number||'')+'">'+(o.status==='PCP'?'Planejar':'Consultar')+'</button></td></tr>';
     }).join('')+'</tbody></table>';
+  }
+
+  function renderConsolidated(){
+    const ops=ensureOrderIds(load()),rows=consolidatedRows(ops),tot=consolidatedTotals(rows);
+    const shortageProducts=rows.filter(r=>r.toRequest>0).length;
+    content().innerHTML='<div class="fpcp-page">'+
+      '<div class="fpcp-head"><div><button class="fpcp-btn primary" id="fpcBack">← PCP</button><h1>Planejamento consolidado</h1><p>Demanda total dos pedidos em PCP cruzada com estoque e solicitações de produção</p></div></div>'+
+      '<div class="fpcp-kpis">'+
+        kpi('Demanda em PCP',tot.demand+' cx','todos os itens dos pedidos em aberto')+
+        kpi('Já reservado',tot.reserved+' cx','estoque comprometido')+
+        kpi('Necessidade produção',tot.productionNeed+' cx','após reserva, corte e estoque livre')+
+        kpi('Produção solicitada',tot.requested+' cx','rascunhos + solicitações finalizadas')+
+        kpi('Ainda solicitar',tot.toRequest+' cx',shortageProducts+' produto(s) pendente(s)')+
+      '</div>'+
+      '<div class="fpcp-guide"><b>Leitura:</b><span>Demanda = pedidos ainda no PCP</span><span>Estoque livre é considerado uma única vez por código</span><span>Produção solicitada evita duplicidade de solicitação</span><span>Prazo crítico = menor data relacionada aos pedidos</span></div>'+
+      '<div class="fpcp-panel"><div class="fpcp-panel-head"><div><h2>Demanda consolidada por produto</h2><p>Prioridade automática pelo maior saldo ainda não solicitado para produção.</p></div></div>'+
+      '<div class="fpcp-table-wrap">'+consolidatedTable(rows)+'</div></div>'+
+      '<div class="fpcp-panel"><h2>Visão por base</h2>'+baseSummary(rows)+'</div>'+
+      '</div>';
+    document.getElementById('fpcBack').onclick=()=>render(filters);
+    document.querySelectorAll('[data-fpc-prod]').forEach(b=>b.onclick=()=>createProductionFromRow(b.dataset.fpcProd,rows,ops));
+    document.querySelectorAll('[data-fpc-orders]').forEach(b=>b.onclick=()=>showProductOrders(b.dataset.fpcOrders,ops));
+  }
+  function consolidatedTable(rows){
+    if(!rows.length)return '<div class="fpcp-empty">Não há demanda aberta no PCP.</div>';
+    return '<table class="fpcp-table fpcp-consolidated"><thead><tr><th>Produto</th><th>Pedidos</th><th>Demanda</th><th>Reservado</th><th>Corte</th><th>Estoque livre</th><th>Produção necessária</th><th>Já solicitada</th><th>A solicitar</th><th>Base(s)</th><th>Prazo crítico</th><th></th></tr></thead><tbody>'+
+      rows.map(r=>'<tr>'+
+        '<td><div class="fpcp-client">'+esc(r.name||'—')+'</div><div class="fpcp-muted">'+esc(r.code||r.productId||'')+'</div></td>'+
+        '<td><button class="fpcp-open" data-fpc-orders="'+esc(r.key)+'">'+r.orderCount+'</button></td>'+
+        '<td><b>'+r.demand+' cx</b></td>'+
+        '<td>'+r.reserved+' cx</td><td>'+r.cut+' cx</td>'+
+        '<td><span class="fpcp-stock '+(r.stockAvailable>0?'ok':'low')+'">'+r.stockAvailable+' cx</span></td>'+
+        '<td><b>'+r.productionNeed+' cx</b></td>'+
+        '<td>'+r.requestedProduction+' cx'+(r.productionRequests.length?'<div class="fpcp-muted">'+esc(r.productionRequests.join(', '))+'</div>':'')+'</td>'+
+        '<td><span class="fpcp-status '+(r.toRequest>0?'attention':'ready')+'">'+r.toRequest+' cx</span></td>'+
+        '<td>'+esc(r.bases.join(', ')||'A definir')+'</td>'+
+        '<td>'+dbr(r.criticalDate)+'</td>'+
+        '<td>'+(r.toRequest>0?'<button class="fpcp-btn primary" data-fpc-prod="'+esc(r.key)+'">Criar solicitação</button>':'<span class="fpcp-status ready">Coberto</span>')+'</td>'+
+      '</tr>').join('')+'</tbody></table>';
+  }
+  function baseSummary(rows){
+    const summary={};
+    for(const r of rows){
+      const targets=r.bases.length?r.bases:['A DEFINIR'];
+      for(const b of targets){
+        summary[b]=summary[b]||{demand:0,productionNeed:0,toRequest:0,products:0};
+        summary[b].demand+=r.demand/targets.length;
+        summary[b].productionNeed+=r.productionNeed/targets.length;
+        summary[b].toRequest+=r.toRequest/targets.length;
+        if(r.toRequest>0)summary[b].products++;
+      }
+    }
+    const entries=Object.entries(summary);
+    if(!entries.length)return '<div class="fpcp-empty">Nenhuma base associada à demanda.</div>';
+    return '<div class="fpcp-base-grid">'+entries.map(([b,v])=>'<div class="fpcp-base-card"><span>'+esc(b)+'</span><strong>'+Math.round(v.demand)+' cx</strong><small>Produzir '+Math.round(v.productionNeed)+' · Solicitar '+Math.round(v.toRequest)+' · '+v.products+' produto(s) pendente(s)</small></div>').join('')+'</div>';
+  }
+  function createProductionFromRow(key,rows,ops){
+    const r=rows.find(x=>String(x.key)===String(key));if(!r||r.toRequest<=0)return;
+    const product=(window.FocadoProducts?.getCatalog?.(ops)||[]).find(p=>String(p.code||p.id||p.name)===String(r.code||r.productId||r.key));
+    const base=r.bases.length===1?r.bases[0]:'SENIR';
+    const seed={
+      base,
+      needByDate:r.criticalDate||'',
+      notes:'Gerado pelo Planejamento Consolidado do PCP. Pedidos: '+[...r.orders].join(', '),
+      items:[{product:product||{id:r.productId||r.key,code:r.code,name:r.name,brand:'',unit:'CX'},qty:r.toRequest,palletized:false,chapatex:false,boxesPerPallet:''}]
+    };
+    if(window.FocadoProduction?.createFromPlan){
+      window.FocadoProduction.createFromPlan(seed);
+    }else{
+      alert('Módulo Produção não está pronto para receber o planejamento consolidado.');
+    }
+  }
+  function showProductOrders(key,ops){
+    const orders=(ops.orders||[]).filter(o=>o.status==='PCP'&&(o.items||[]).some(i=>productIdentity(i)===String(key)));
+    const rows=orders.map(o=>{
+      const its=(o.items||[]).filter(i=>productIdentity(i)===String(key));
+      return '<tr><td>'+esc(o.number||'')+'</td><td>'+esc(o.client||'')+'</td><td>'+its.reduce((s,i)=>s+Number(i.qty||0),0)+' cx</td><td>'+its.reduce((s,i)=>s+Number(i.reservedQty||0),0)+' cx</td><td>'+esc(its.map(i=>i.deliveryBase).filter(Boolean).join(', ')||'—')+'</td><td>'+dbr(o.requestedDeliveryDate)+'</td><td><button class="fpcp-open" data-open-order="'+esc(o.id)+'">Abrir pedido</button></td></tr>';
+    }).join('');
+    content().innerHTML='<div class="fpcp-page"><div class="fpcp-head"><div><button class="fpcp-btn primary" id="fpoBack">← Consolidado</button><h1>Pedidos do produto</h1><p>Detalhamento da demanda consolidada</p></div></div><div class="fpcp-table-wrap"><table class="fpcp-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Quantidade</th><th>Reservado</th><th>Base</th><th>Entrega solicitada</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+    document.getElementById('fpoBack').onclick=renderConsolidated;
+    document.querySelectorAll('[data-open-order]').forEach(b=>b.onclick=()=>openOrder(b.dataset.openOrder));
   }
 
   function openOrder(id){
