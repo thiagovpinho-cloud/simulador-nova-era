@@ -67,6 +67,15 @@ export default async function handler(req,res){
     if(problem)return res.status(422).json({error:'TRANSITION_BLOCKED',message:problem});
 
     const from=order.status;
+    if(from==='PCP'){
+      for(const item of order.items||[]){
+        const cut=Math.max(0,Number(item.cutQty||0));
+        if(cut>0){
+          if(item.originalRequestedQty==null)item.originalRequestedQty=Number(item.qty||0);
+          item.qty=Math.max(0,Number(item.qty||0)-cut);
+        }
+      }
+    }
     order.status=rule.to;
     order.events=Array.isArray(order.events)?order.events:[];
     order.events.unshift({at:Date.now(),type:'STATUS_TRANSITION',from,to:rule.to,user:session.name||session.email});
