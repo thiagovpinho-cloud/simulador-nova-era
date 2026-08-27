@@ -1,11 +1,11 @@
-import { requireApiAuth } from './_lib/auth.js';
+import { requireSession } from './_lib/auth.js';
 import { readWorkspace, writeWorkspace } from './_lib/store.js';
 
 const WORKSPACE='default';
 
 export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
-  if(!requireApiAuth(req,res)) return;
+  const permission=req.method==='GET'?'workspace.read':'workspace.write';\n  const session=await requireSession(req,res,permission);\n  if(!session)return;
 
   try{
     if(req.method==='GET'){
