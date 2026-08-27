@@ -7,7 +7,7 @@
   const load=()=>window.FocadoDataStore?.readLocal?.()||{};
   const totalQty=o=>(o.items||[]).reduce((s,i)=>s+(Number(i.qty)||0),0);
   const orderValue=o=>(o.items||[]).reduce((s,i)=>s+(Number(i.qty)||0)*(Number(i.price)||0),0);
-  let filters={q:'',base:'TODAS'};
+  let filters={q:'',base:'TODAS',stage:'TODOS'};
 
   function ensureOrderIds(ops){
     let changed=false;
@@ -58,6 +58,19 @@
     if(items.some(i=>remaining(i)>0))return ['Aguardando decisão','attention'];
     return ['Pronto para liberar','ready'];
   }
+  function pcpStage(o){
+    if(o.status!=='PCP')return 'CONCLUIDO';
+    const items=o.items||[];
+    const untouched=items.every(i=>
+      !i.deliveryBase &&
+      Number(i.reservedQty||0)===0 &&
+      Number(i.cutQty||0)===0 &&
+      !i.pcpAvailabilityDate
+    ) && !String(o.pcp?.notes||'').trim() && !o.pcp?.logisticsPreRelease;
+    if(untouched)return 'AGUARDANDO';
+    if(planningStatus(o)[1]==='ready')return 'PRONTO';
+    return 'PLANEJAMENTO';
+  }
   function basesOf(o){return [...new Set((o.items||[]).map(i=>i.deliveryBase).filter(Boolean))]}
 
   function render(state){
@@ -69,24 +82,37 @@
       const q=filters.q.toLowerCase();
       const match=!q||[o.number,o.client,o.cnpj,o.city,o.representative,(o.items||[]).map(i=>i.name+' '+i.code).join(' ')].some(v=>String(v||'').toLowerCase().includes(q));
       const byBase=filters.base==='TODAS'||basesOf(o).includes(filters.base);
-      return match&&byBase;
+      const byStage=filters.stage==='TODOS'||pcpStage(o)===filters.stage;
+      return match&&byBase&&byStage;
     });
-    const awaiting=all.filter(o=>o.status==='PCP').length;
-    const ready=all.filter(o=>o.status==='PCP'&&planningStatus(o)[1]==='ready').length;
+    const awaiting=all.filter(o=>pcpStage(o)==='AGUARDANDO').length;
+    const planning=all.filter(o=>pcpStage(o)==='PLANEJAMENTO').length;
+    const ready=all.filter(o=>pcpStage(o)==='PRONTO').length;
     const done=(ops.orders||[]).filter(o=>['LOGISTICA','ENTREGUE'].includes(o.status)).length;
     const reserved=all.reduce((s,o)=>s+(o.items||[]).reduce((a,i)=>a+Number(i.reservedQty||0),0),0);
     content().innerHTML='<div class="fpcp-page">'+
       '<div class="fpcp-head"><div><h1>PCP</h1><p>Estoque real por código · reserva · disponibilidade · base de retirada</p></div></div>'+
-      '<div class="fpcp-kpis">'+kpi('Aguardando análise',awaiting,'pedidos recebidos do Comercial')+kpi('Prontos para liberar',ready,'itens atendidos ou cortados')+kpi('PCP concluído',done,'enviados para Logística')+kpi('Reservado',reserved+' cx','estoque comprometido com pedidos')+'</div>'+
+      '<div class="fpcp-kpis">'+
+        kpiFilter('Aguardando análise',awaiting,'pedidos ainda não trabalhados','AGUARDANDO')+
+        kpiFilter('Em planejamento',planning,'PCP já iniciou o atendimento','PLANEJAMENTO')+
+        kpiFilter('Prontos para liberar',ready,'itens totalmente resolvidos','PRONTO')+
+        kpi('PCP concluído',done,'enviados para Logística')+
+        kpi('Reservado',reserved+' cx','estoque comprometido com pedidos')+
+      '</div>'+
       '<div class="fpcp-guide"><b>Como operar:</b><span>1. Abra o pedido</span><span>2. Confira o saldo atual</span><span>3. Reserve total ou parcialmente</span><span>4. Informe previsão do saldo ou corte</span><span>5. Defina a base por item e libere</span></div>'+
       '<div class="fpcp-toolbar"><input class="fpcp-search" id="fpSearch" placeholder="Buscar pedido, cliente, CNPJ, representante ou produto" value="'+esc(filters.q)+'"><select class="fpcp-select" id="fpBase"><option value="TODAS">Todas as bases</option>'+knownBases.map(b=>'<option value="'+b+'" '+(filters.base===b?'selected':'')+'>'+b+'</option>').join('')+'</select><span class="fpcp-muted">'+rows.length+' pedido(s)</span></div>'+
       '<div class="fpcp-table-wrap">'+table(rows)+'</div></div>';
     const q=document.getElementById('fpSearch'),base=document.getElementById('fpBase');let t;
-    q.oninput=()=>{clearTimeout(t);t=setTimeout(()=>render({q:q.value,base:base.value}),180)};
-    base.onchange=()=>render({q:q.value,base:base.value});
+    q.oninput=()=>{clearTimeout(t);t=setTimeout(()=>render({q:q.value,base:base.value,stage:filters.stage}),180)};
+    base.onchange=()=>render({q:q.value,base:base.value,stage:filters.stage});
+    document.querySelectorAll('[data-pcp-stage]').forEach(card=>card.onclick=()=>{
+      const stage=card.dataset.pcpStage;
+      render({q:filters.q,base:filters.base,stage:filters.stage===stage?'TODOS':stage});
+    });
     document.querySelectorAll('[data-fpcp-open]').forEach(b=>b.onclick=()=>openOrder(b.dataset.fpcpOpen||b.dataset.fpcpNumber));
   }
   function kpi(a,b,c){return '<div class="fpcp-kpi"><span>'+a+'</span><strong>'+b+'</strong><small>'+c+'</small></div>'}
+  function kpiFilter(a,b,c,stage){return '<button class="fpcp-kpi fpcp-kpi-filter '+(filters.stage===stage?'selected':'')+'" data-pcp-stage="'+stage+'"><span>'+a+'</span><strong>'+b+'</strong><small>'+c+'</small></button>'}
   function table(rows){
     if(!rows.length)return '<div class="fpcp-empty">Nenhum pedido aguardando PCP para os filtros atuais.</div>';
     return '<table class="fpcp-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Data</th><th>Itens</th><th>Valor</th><th>Base(s)</th><th>Status PCP</th><th></th></tr></thead><tbody>'+rows.map(o=>{
