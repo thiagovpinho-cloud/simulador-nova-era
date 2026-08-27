@@ -15,8 +15,7 @@ const DOMAIN_PERMISSION = {
 };
 const FLOW = {
   COMERCIAL:{to:"PCP",permission:"orders.write"},
-  PCP:{to:"ESTOQUE_PRODUCAO",permission:"pcp.write"},
-  ESTOQUE_PRODUCAO:{to:"LOGISTICA",permission:"production.write"},
+  PCP:{to:"LOGISTICA",permission:"pcp.write"},
   LOGISTICA:{to:"ENTREGUE",permission:"logistics.write"}
 };
 
@@ -212,8 +211,6 @@ function validateTransition(order){
       if(!order.pcp?.deliveryBase)return "Defina a base de entrega/produção.";
       if((order.items||[]).some(i=>!["ESTOQUE","PRODUCAO"].includes(i.source)))return "Defina Estoque ou Produção para todos os itens.";
       if((order.items||[]).some(i=>i.source==="PRODUCAO")&&!order.pcp?.availableDate)return "Produção sem data disponível.";break;
-    case "ESTOQUE_PRODUCAO":
-      if((order.items||[]).some(i=>i.source==="PRODUCAO"&&!i.productionCompleted))return "Há item de produção ainda não concluído.";break;
     case "LOGISTICA":
       if(!order.logistics?.deliveryDate)return "Registre a data de entrega.";break;
     default:return "Etapa não possui transição automática.";
