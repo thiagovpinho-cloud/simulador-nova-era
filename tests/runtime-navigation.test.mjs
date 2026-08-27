@@ -34,3 +34,8 @@ assert.ok(shell.includes("route:'pedidos'"),'Dashboard deve usar id real da rota
 assert.ok(!shell.includes("route:'orders'"),'Rota inexistente orders não pode voltar');
 
 console.log('runtime-navigation: ok');
+
+assert.ok(index.includes('assets/modules/intelligence-core.js?v=20260827-critical-v1'),'Cockpit core deve ser pré-carregado');
+assert.ok(index.includes('assets/modules/intelligence.js?v=20260827-critical-v1'),'Cockpit UI deve ser pré-carregado');
+assert.ok(index.includes('assets/modules/kanban.js?v=20260827-critical-v1'),'Kanban deve ser pré-carregado');
+assert.ok(kanban.includes("ensure?.('pedidos')"),'Kanban deve carregar Pedidos sob demanda ao abrir card');
