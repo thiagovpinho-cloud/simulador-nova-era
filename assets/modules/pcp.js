@@ -70,7 +70,7 @@
     const q=document.getElementById('fpSearch'),base=document.getElementById('fpBase');let t;
     q.oninput=()=>{clearTimeout(t);t=setTimeout(()=>render({q:q.value,base:base.value}),180)};
     base.onchange=()=>render({q:q.value,base:base.value});
-    document.querySelectorAll('[data-fpcp-open]').forEach(b=>b.onclick=()=>openOrder(b.dataset.fpOpen));
+    document.querySelectorAll('[data-fpcp-open]').forEach(b=>b.onclick=()=>openOrder(b.dataset.fpcpOpen||b.dataset.fpcpNumber));
   }
   function kpi(a,b,c){return '<div class="fpcp-kpi"><span>'+a+'</span><strong>'+b+'</strong><small>'+c+'</small></div>'}
   function table(rows){
