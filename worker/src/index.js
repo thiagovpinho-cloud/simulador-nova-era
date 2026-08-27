@@ -1,25 +1,9 @@
 import pg from "pg";
+import { DOMAIN_PERMISSION, FLOW, RULES_VERSION, applyDomain, applyTransitionSideEffects, getOrder, validateTransition } from "../../shared/domain-rules.js";
 const { Client } = pg;
 
 const WORKSPACE = "default";
 const ROLES = new Set(["ADMIN","COMERCIAL","PCP","PRODUCAO","ESTOQUE","LOGISTICA","COMPRAS","FINANCEIRO"]);
-const DOMAIN_PERMISSION = {
-  COMERCIAL:"orders.write",
-  PCP:"pcp.write",
-  PRODUCAO:"production.write",
-  ESTOQUE:"inventory.write",
-  LOGISTICA:"logistics.write",
-  COMPRAS:"purchases.write",
-  FINANCEIRO:"finance.write",
-  SOLICITACAO_PRODUCAO:"pcp.write",
-  TRANSPORTADORAS:"logistics.write",
-  CLIENTES:"commercial.write"
-};
-const FLOW = {
-  COMERCIAL:{to:"PCP",permission:"orders.write"},
-  PCP:{to:"LOGISTICA",permission:"pcp.write"},
-  LOGISTICA:{to:"ENTREGUE",permission:"logistics.write"}
-};
 
 function json(data,status=200,extra={}){
   return new Response(JSON.stringify(data),{
@@ -76,10 +60,6 @@ function withCors(response,request,env){
 function pick(source,keys){
   const out={}; for(const k of keys)if(Object.prototype.hasOwnProperty.call(source||{},k))out[k]=source[k];
   return out;
-}
-function getOrder(state,id){
-  const orders=Array.isArray(state.orders)?state.orders:[];
-  return orders.find(o=>String(o.id)===String(id));
 }
 function b64url(bytes){
   let s=""; for(const b of bytes)s+=String.fromCharCode(b);
@@ -151,144 +131,6 @@ async function writeWorkspace(db,payload,expectedRevision){
   }
   return {payload:r.rows[0].payload,revision:Number(r.rows[0].revision),updatedAt:r.rows[0].updatedAt};
 }
-function applyCommercial(state,body){
-  const o=getOrder(state,body.orderId);if(!o)throw Object.assign(new Error("ORDER_NOT_FOUND"),{status:404});
-  Object.assign(o,pick(body.changes,["client","cnpj","city","state","orderDate","suggestedPickupDate","freightType","observation","brand","representative","salesChannel","salesJustification","requestedDeliveryDate","paymentTerms","logisticsBudget","deliveryAddress"]));
-  if(Array.isArray(body.changes?.items)){
-    const map=new Map((o.items||[]).map(i=>[String(i.id||i.code||i.productId),i]));
-    for(const incoming of body.changes.items){const item=map.get(String(incoming.id||incoming.code||incoming.productId||""));if(item)Object.assign(item,pick(incoming,["qty","price","ipi","st","finalPrice","name","code","productId"]))}
-  }
-}
-function applyPCP(state,body){
-  const o=getOrder(state,body.orderId);
-  if(!o)throw Object.assign(new Error("ORDER_NOT_FOUND"),{status:404});
-  o.pcp=o.pcp||{};
-  Object.assign(o.pcp,pick(body.changes?.pcp||body.changes,["notes","logisticsPreRelease","logisticsAvailabilityDate","logisticsPreReleaseAt"]));
-  state.inventory=state.inventory||{};
-  state.stockMovements=Array.isArray(state.stockMovements)?state.stockMovements:[];
-  const map=new Map((o.items||[]).map(i=>[String(i.id||i.code||i.productId),i]));
-  const findInventory=item=>{
-    const keys=[item.code,item.productId,item.name].map(v=>String(v||"")).filter(Boolean);
-    for(const k of keys)if(state.inventory[k])return [k,state.inventory[k]];
-    const found=Object.entries(state.inventory).find(([,v])=>String(v?.code||"")===String(item.code||""));
-    if(found)return found;
-    const key=String(item.code||item.productId||item.name||"");
-    const inv={code:item.code||"",name:item.name||"",unit:"CX",physical:0,reserved:0,blocked:0};
-    state.inventory[key]=inv;return [key,inv];
-  };
-  for(const incoming of body.changes?.items||[]){
-    const item=map.get(String(incoming.id||incoming.code||incoming.productId||""));if(!item)continue;
-    const [invKey,inv]=findInventory(item);
-    const oldReserved=Math.max(0,Number(item.reservedQty||0));
-    const desired=Math.max(0,Number(incoming.reservedQty||0));
-    const free=Math.max(0,Number(inv.physical||0)-Number(inv.reserved||0)-Number(inv.blocked||0));
-    if(desired>oldReserved+free)throw Object.assign(new Error("INSUFFICIENT_STOCK"),{status:422});
-    const beforeReserved=Math.max(0,Number(inv.reserved||0));
-    inv.reserved=Math.max(0,beforeReserved-oldReserved+desired);
-    if(desired!==oldReserved){
-      state.stockMovements.unshift({
-        id:"mov_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),at:Date.now(),kind:"finished",key:invKey,
-        code:item.code||"",name:item.name||"",unit:"CX",type:desired>oldReserved?"RESERVA":"LIBERACAO_RESERVA",
-        qty:Math.abs(desired-oldReserved),reason:"PCP · pedido "+o.number,user:"Sistema",
-        before:{physical:Number(inv.physical||0),reserved:beforeReserved,blocked:Number(inv.blocked||0)},
-        after:{physical:Number(inv.physical||0),reserved:Number(inv.reserved||0),blocked:Number(inv.blocked||0)}
-      });
-    }
-    Object.assign(item,pick(incoming,["reservedQty","cutQty","pcpAvailabilityDate","deliveryBase","pcpBalanceDecision"]));
-    item.source="ESTOQUE";
-  }
-  const bases=[...new Set((o.items||[]).map(i=>i.deliveryBase).filter(Boolean))];
-  o.pcp.deliveryBase=bases.length===1?bases[0]:(bases.length?"MÚLTIPLAS":"");
-  if(body.changes?.pcp?.logisticsPreRelease){
-    o.events=Array.isArray(o.events)?o.events:[];
-    o.events.unshift({at:Date.now(),text:"Logística pré-liberada com ressalva de disponibilidade em "+String(o.pcp.logisticsAvailabilityDate||""),user:"PCP"});
-  }
-}
-function applyProduction(state,body){
-  const o=getOrder(state,body.orderId);if(!o)throw Object.assign(new Error("ORDER_NOT_FOUND"),{status:404});
-  if(Array.isArray(body.changes?.items)){
-    const map=new Map((o.items||[]).map(i=>[String(i.id||i.code||i.productId),i]));
-    for(const incoming of body.changes.items){const item=map.get(String(incoming.id||incoming.code||incoming.productId||""));if(item)Object.assign(item,pick(incoming,["productionConsumed","productionCompleted","productionRequirements","productionActualQty","productionLot"]))}
-  }
-}
-function applyInventory(state,body){
-  const c=body.changes||{};
-  if(c.inventory&&typeof c.inventory==="object")state.inventory=c.inventory;
-  if(c.inputInventory&&typeof c.inputInventory==="object")state.inputInventory=c.inputInventory;
-  if(Array.isArray(c.stockMovements))state.stockMovements=c.stockMovements;
-  if(Array.isArray(c.inventoryCounts))state.inventoryCounts=c.inventoryCounts;
-}
-function applyLogistics(state,body){
-  const o=getOrder(state,body.orderId);if(!o)throw Object.assign(new Error("ORDER_NOT_FOUND"),{status:404});
-  o.logistics=o.logistics||{};
-  Object.assign(o.logistics,pick(body.changes?.logistics||body.changes,[
-    "freightValue","pickupDate","deliveryDate","carrier","carrierId","trackingCode","vehicle","driver","notes",
-    "deliveryConfirmed","deliveredOnTime","actualDeliveryDate","deliveryDelayReason","deliveryConfirmedAt","deliveryConfirmedBy"
-  ]));
-}
-function applyPurchases(state,body){state.purchasePlanning={...(state.purchasePlanning||{}),...(body.changes?.reorder||{})}}
-function applyFinance(state,body){state.finance={...(state.finance||{}),...pick(body.changes||{},["approvedFreight","paymentStatus","invoiceStatus","creditStatus","notes"])}}
-function applyCustomers(state,body){
-  const changes=body.changes||{};
-  state.customers=Array.isArray(state.customers)?state.customers:[];
-  if(changes.customer&&typeof changes.customer==="object"){
-    const incoming=structuredClone(changes.customer);
-    const idx=state.customers.findIndex(x=>String(x.id)===String(incoming.id));
-    if(idx>=0)state.customers[idx]=incoming;else state.customers.unshift(incoming);
-  }
-}
-function applyCarriers(state,body){
-  const changes=body.changes||{};
-  state.carriers=Array.isArray(state.carriers)?state.carriers:[];
-  if(changes.carrier&&typeof changes.carrier==="object"){
-    const incoming=structuredClone(changes.carrier);
-    const idx=state.carriers.findIndex(x=>String(x.id)===String(incoming.id));
-    if(idx>=0)state.carriers[idx]=incoming;else state.carriers.unshift(incoming);
-  }
-  if(changes.deleteId)state.carriers=state.carriers.filter(x=>String(x.id)!==String(changes.deleteId));
-}
-
-function applyProductionRequest(state,body){
-  const c=body.changes||{};
-  state.productionRequests=Array.isArray(state.productionRequests)?state.productionRequests:[];
-  if(c.request&&typeof c.request==="object"){
-    const incoming=structuredClone(c.request);
-    const idx=state.productionRequests.findIndex(r=>String(r.id)===String(incoming.id));
-    if(idx>=0)state.productionRequests[idx]=incoming;
-    else state.productionRequests.unshift(incoming);
-  }
-}
-const APPLY={COMERCIAL:applyCommercial,PCP:applyPCP,PRODUCAO:applyProduction,ESTOQUE:applyInventory,LOGISTICA:applyLogistics,COMPRAS:applyPurchases,FINANCEIRO:applyFinance,SOLICITACAO_PRODUCAO:applyProductionRequest,TRANSPORTADORAS:applyCarriers,CLIENTES:applyCustomers};
-
-function validateTransition(order){
-  switch(order.status){
-    case "COMERCIAL":
-      if(!order.client||!(order.items||[]).length)return "Pedido incompleto para finalizar Comercial.";
-      if(!order.requestedDeliveryDate)return "Informe a data de entrega solicitada pelo cliente.";
-      if(!order.paymentTerms)return "Informe a condição de pagamento.";
-      if(!(Number(order.logisticsBudget)>0))return "Informe o orçamento de logística.";
-      if((order.salesChannel||"REPRESENTANTE")==="REPRESENTANTE"&&!order.representative)return "Informe o representante.";
-      if(["VENDAS_INTERNAS","BONIFICACAO"].includes(order.salesChannel)&&!String(order.salesJustification||"").trim())return "Informe a justificativa da venda.";
-      return null;
-    case "PCP":
-      for(const item of order.items||[]){
-        if(!item.deliveryBase)return "Defina a base de retirada de todos os itens.";
-        const qty=Math.max(0,Number(item.qty||0));
-        const reserved=Math.max(0,Number(item.reservedQty||0));
-        const cut=Math.max(0,Number(item.cutQty||0));
-        const missing=Math.max(0,qty-reserved-cut);
-        if(missing>0){
-          if(item.pcpBalanceDecision==="AGUARDAR"&&!item.pcpAvailabilityDate)return "Há item sem previsão de estoque disponível.";
-          return "Há item ainda não atendido. Reserve o saldo ou libere com corte.";
-        }
-      }
-      return null;
-    case "LOGISTICA":
-      if(!order.logistics?.deliveryDate)return "Registre a data de entrega.";
-      return null;
-    default:return "Etapa não possui transição automática.";
-  }
-}
 async function route(request,env){
   const url=new URL(request.url);
   let path=url.pathname.replace(/\/+$/,"")||"/";
@@ -296,7 +138,7 @@ async function route(request,env){
   else if(path.startsWith("/api/")) path=path.slice(4);
   if(request.method==="OPTIONS")return new Response(null,{status:204,headers:corsHeaders(request,env)});
   if(path==="/health"&&request.method==="GET"){
-    return json({service:"focado-api",runtime:"cloudflare-workers",version:"1",status:"ok",storage:Boolean(env.HYPERDRIVE)});
+    return json({service:"focado-api",runtime:"cloudflare-workers",version:"1",rulesVersion:RULES_VERSION,status:"ok",storage:Boolean(env.HYPERDRIVE)});
   }
   if(path==="/setup"&&request.method==="GET"){
     return setupPage();
@@ -422,7 +264,7 @@ async function route(request,env){
       try{
         const row=await readWorkspace(db,true),revision=row?.revision||0,state=structuredClone(row?.payload||{});
         if(body.revision!=null&&Number(body.revision)!==revision)throw Object.assign(new Error("REVISION_CONFLICT"),{status:409,currentRevision:revision});
-        APPLY[domain](state,body);
+        applyDomain(domain,state,body);
         const saved=await writeWorkspace(db,state,revision);
         await db.query("insert into public.focado_audit_events(user_id,action,entity_type,entity_id,metadata) values($1,'DOMAIN_WRITE',$2,$3,$4::jsonb)",[s.userId,domain.toLowerCase(),String(body.orderId||WORKSPACE),JSON.stringify({domain,revision:saved.revision})]);
         await db.query("commit");
@@ -441,7 +283,9 @@ async function route(request,env){
         const s=await requireSession(request,db);
         if(s.role!=="ADMIN"&&!(await hasPermission(db,s.role,rule.permission)))throw Object.assign(new Error("FORBIDDEN"),{status:403});
         const problem=validateTransition(order);if(problem)throw Object.assign(new Error(problem),{status:422,code:"TRANSITION_BLOCKED"});
-        const from=order.status;order.status=rule.to;order.events=Array.isArray(order.events)?order.events:[];
+        const from=order.status;
+        applyTransitionSideEffects(order,from);
+        order.status=rule.to;order.events=Array.isArray(order.events)?order.events:[];
         order.events.unshift({at:Date.now(),type:"STATUS_TRANSITION",from,to:rule.to,user:s.name||s.email});
         const saved=await writeWorkspace(db,state,revision);
         await db.query("insert into public.focado_audit_events(user_id,action,entity_type,entity_id,metadata) values($1,'STATUS_TRANSITION','order',$2,$3::jsonb)",[s.userId,String(order.id),JSON.stringify({from,to:rule.to,revision:saved.revision})]);
