@@ -9,7 +9,7 @@
     ['Principal',[['dashboard','⌂','Dashboard'],['kanban','▦','Kanban Operacional']]],
     ['Comercial',[['clientes','♙','Clientes'],['representantes','♣','Representantes'],['oportunidades','◎','Oportunidades','soon'],['pedidos','▤','Pedidos Comerciais']]],
     ['Operações',[['pcp','⌘','PCP'],['production','⚙','Produção'],['inventory','▣','Estoque'],['inputs','◇','Insumos']]],
-    ['Logística',[['logistica','▰','Logística'],['entregas','✓','Entregas'],['transportadoras','⌁','Transportadoras','soon']]],
+    ['Logística',[['logistica','▰','Logística'],['entregas','✓','Entregas'],['transportadoras','⌁','Transportadoras']]],
     ['Cadastros',[['produtos','◫','Produtos'],['fichas','▧','Fichas Técnicas'],['bases','▦','Bases Produtivas']]],
     ['Relatórios',[['relatorios','▥','Relatórios','soon'],['indicadores','◉','Indicadores','soon']]],
     ['Configurações',[['config','⚙','Configurações','soon'],['usuarios','♚','Usuários e Perfis','soon']]]
@@ -104,7 +104,7 @@
   }
   function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
-  function showShell(){
+  function showShell(openDashboard=true){
     if(!sessionStorage.getItem('nova-era-role'))return;
     syncBrandLogo();
     const hub=$('#hubScreen'); if(hub)hub.classList.add('hidden');
@@ -116,7 +116,7 @@
     $('#fxUserName').textContent=label;
     $('#fxUserRole').textContent=window.FocadoAuth?.roleLabel?.(role)||role;
     $('#fxAvatar').textContent=label.charAt(0).toUpperCase();
-    dashboard(); setActive('dashboard');
+    if(openDashboard){dashboard();setActive('dashboard')}
   }
   function hideShell(){shell.classList.add('hidden')}
   function setActive(id){document.querySelectorAll('[data-fx-nav]').forEach(b=>b.classList.toggle('active',b.dataset.fxNav===id))}
@@ -133,20 +133,27 @@
       alert('Seu perfil não possui acesso a esta área.');
       return;
     }
-    setActive(id);
-    if(id==='dashboard'){showShell();return}
-    if(id==='kanban'){showShell(); if(window.FocadoKanban) window.FocadoKanban.render({q:'',brand:'TODAS'}); return}
+    const open=(fn)=>{
+      showShell(false);
+      if(typeof fn==='function')fn();
+      setActive(id);
+      document.getElementById('fxSidebar')?.classList.remove('open');
+    };
+    if(id==='dashboard'){showShell(true);return}
+    if(id==='kanban'){open(()=>window.FocadoKanban?.render({q:'',brand:'TODAS'}));return}
     if(id==='clientes')return clickLegacy('hubGoCadastro');
-    if(id==='representantes'){showShell(); if(window.FocadoRepresentatives) window.FocadoRepresentatives.render(); return}
-    if(id==='pedidos'){showShell(); if(window.FocadoOrders) window.FocadoOrders.render(); return}
+    if(id==='representantes'){open(()=>window.FocadoRepresentatives?.render());return}
+    if(id==='pedidos'){open(()=>window.FocadoOrders?.render());return}
     if(id==='fichas')return clickLegacy('hubGoFichas');
-    if(id==='produtos'){showShell(); if(window.FocadoProducts) window.FocadoProducts.render(); return}
-    if(id==='pcp'){showShell(); if(window.FocadoPCP) window.FocadoPCP.render(); return}
-    if(id==='production'){showShell(); if(window.FocadoProduction) window.FocadoProduction.render(); return}
+    if(id==='produtos'){open(()=>window.FocadoProducts?.render());return}
+    if(id==='pcp'){open(()=>window.FocadoPCP?.render());return}
+    if(id==='production'){open(()=>window.FocadoProduction?.render());return}
     if(id==='bases')return openOps('production');
-    if(id==='inventory'){showShell(); if(window.FocadoInventory) window.FocadoInventory.render({tab:'finished',q:'',filter:'TODOS'}); return}
-    if(id==='inputs'){showShell(); if(window.FocadoInventory) window.FocadoInventory.render({tab:'inputs',q:'',filter:'TODOS'}); return}
-    if(id==='logistica'||id==='entregas'){showShell(); if(window.FocadoLogistics) window.FocadoLogistics.render({q:'',status:id==='entregas'?'Entregue':'TODOS'}); return}
+    if(id==='inventory'){open(()=>window.FocadoInventory?.render({tab:'finished',q:'',filter:'TODOS'}));return}
+    if(id==='inputs'){open(()=>window.FocadoInventory?.render({tab:'inputs',q:'',filter:'TODOS'}));return}
+    if(id==='logistica'){open(()=>window.FocadoLogistics?.render({q:'',status:'TODOS'}));return}
+    if(id==='entregas'){open(()=>window.FocadoLogistics?.renderDeliveries());return}
+    if(id==='transportadoras'){open(()=>window.FocadoLogistics?.renderCarriers());return}
   }
   function bindDashboardLinks(){document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>navigate(b.dataset.open))}
   function bindNav(){document.querySelectorAll('[data-fx-nav]').forEach(b=>b.onclick=()=>{if(!b.querySelector('.fx-nav-soon'))navigate(b.dataset.fxNav)})}
