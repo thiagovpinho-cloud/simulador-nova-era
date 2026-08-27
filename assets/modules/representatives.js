@@ -121,8 +121,11 @@
     document.getElementById('frNew').onclick=()=>openModal(null);
     const docInput=document.getElementById('frDoc'),docStatus=document.getElementById('frDocStatus');
     function setAutoFields(readonly){
-      ['frName','frPhone','frEmail','frCity','frUf'].forEach(id=>{
+      ['frName','frCity','frUf'].forEach(id=>{
         const el=document.getElementById(id);if(el)el.readOnly=Boolean(readonly);
+      });
+      ['frPhone','frEmail'].forEach(id=>{
+        const el=document.getElementById(id);if(el)el.readOnly=false;
       });
     }
     function applyCnpjData(d){
