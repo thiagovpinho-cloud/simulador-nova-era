@@ -41,14 +41,14 @@
 
   function loadOps(){try{return JSON.parse(localStorage.getItem(OPS_KEY)||'{}')||{}}catch(_){return {}}}
   function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
-  function stageLabel(s){return ({COMERCIAL:'Comercial',PCP:'PCP',ESTOQUE_PRODUCAO:'Produção',LOGISTICA:'Logística',ENTREGUE:'Entrega'})[s]||s||'—'}
+  function stageLabel(s){return ({COMERCIAL:'Comercial',PCP:'PCP',LOGISTICA:'Logística',ENTREGUE:'Entrega'})[s]||s||'—'}
   function orderValue(o){return (o.items||[]).reduce((a,i)=>a+(Number(i.qty)||0)*(Number(i.price)||0),0)}
   function inputAvailable(inv){return Math.max(0,Number(inv.physical||0)-Number(inv.reserved||0)-Number(inv.blocked||0))}
   function reorderPoint(inv){const r=inv.reorder||{};return Math.max(0,(Number(r.avgDaily)||0)*(Number(r.leadTimeDays)||0)+(Number(r.safetyStock)||0))}
 
   function dashboard(){
     const ops=loadOps(),orders=ops.orders||[],inputs=ops.inputInventory||{},bases=ops.productionBases||{};
-    const counts={COMERCIAL:0,PCP:0,ESTOQUE_PRODUCAO:0,LOGISTICA:0,ENTREGUE:0}; orders.forEach(o=>{if(counts[o.status]!==undefined)counts[o.status]++});
+    const counts={COMERCIAL:0,PCP:0,LOGISTICA:0,ENTREGUE:0}; orders.forEach(o=>{if(counts[o.status]!==undefined)counts[o.status]++});
     const open=orders.filter(o=>o.status!=='ENTREGUE'),today=new Date().toISOString().slice(0,10);
     const deliveredToday=orders.filter(o=>o.status==='ENTREGUE'&&o.logistics?.deliveryDate===today).length;
     const late=orders.filter(o=>o.status!=='ENTREGUE'&&o.logistics?.deliveryDate&&o.logistics.deliveryDate<today).length;
@@ -59,7 +59,7 @@
 
     const baseRows=Object.entries(bases).map(([name,cfg])=>{
       const cap=Number(cfg.capacityPerDay)||0;
-      const committed=orders.filter(o=>o.status==='ESTOQUE_PRODUCAO'&&o.pcp?.deliveryBase===name).reduce((s,o)=>s+(Number(o.pcp?.scheduledQty)||0),0);
+      const committed=(ops.productionRequests||[]).filter(r=>r.status==='FINALIZADA'&&r.base===name).reduce((s,r)=>s+(r.items||[]).reduce((a,i)=>a+(Number(i.qty)||0),0),0);
       const pct=cap?Math.min(100,Math.round(committed/cap*100)):0;
       return '<div class="fx-bar-row"><div class="fx-bar-meta"><b>'+name+'</b><span>'+pct+'% · '+committed+' / '+cap+' cx/dia</span></div><div class="fx-bar"><i style="width:'+pct+'%"></i></div></div>';
     }).join('')||'<div class="fx-empty">Capacidades ainda não configuradas.</div>';
@@ -76,13 +76,12 @@
       '<div class="fx-kpis">'+
         kpi('▤','Pedidos em aberto',open.length,money(totalOpen),'')+
         kpi('⌘','Em PCP',counts.PCP,'aguardando planejamento','purple')+
-        kpi('⚙','Aguardando produção',counts.ESTOQUE_PRODUCAO,'em estoque/produção','warn')+
         kpi('▰','Liberados p/ logística',counts.LOGISTICA,'aguardando entrega','blue')+
         kpi('✓','Entregas hoje',deliveredToday,'registradas hoje','')+
         kpi('!','Atrasos',late,'atenção necessária','danger')+
       '</div>'+
       '<div class="fx-grid">'+
-        '<div class="fx-panel"><div class="fx-panel-head"><h2>Fluxo de Pedidos</h2><button class="fx-link" data-open="orders">Ver pedidos</button></div><div class="fx-flow">'+flow('Comercial',counts.COMERCIAL)+flow('PCP',counts.PCP)+flow('Produção',counts.ESTOQUE_PRODUCAO)+flow('Logística',counts.LOGISTICA)+flow('Entrega',counts.ENTREGUE)+'</div></div>'+
+        '<div class="fx-panel"><div class="fx-panel-head"><h2>Fluxo de Pedidos</h2><button class="fx-link" data-open="orders">Ver pedidos</button></div><div class="fx-flow">'+flow('Comercial',counts.COMERCIAL)+flow('PCP',counts.PCP)+flow('Logística',counts.LOGISTICA)+flow('Entrega',counts.ENTREGUE)+'</div></div>'+
         '<div class="fx-panel"><div class="fx-panel-head"><h2>Produção · Capacidade</h2><button class="fx-link" data-open="production">Ver programação</button></div>'+baseRows+'</div>'+
         '<div class="fx-panel"><div class="fx-panel-head"><h2>Alertas Operacionais</h2></div>'+alertRows.map(a=>'<div class="fx-alert"><div class="fx-alert-icon">'+a[0]+'</div><div><b>'+a[1]+'</b><small>'+a[2]+'</small></div></div>').join('')+'</div>'+
       '</div>'+
