@@ -3,13 +3,13 @@ import fs from 'node:fs';
 const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const index=read('index.html');
 const loader=read('assets/core/module-loader.js');
-const modules=['orders','pcp','production','inventory','logistics','purchases','expedition','customers','products','representatives','kanban'];
+const modules=['orders','pcp','production','inventory','logistics','purchases','expedition','customers','products','representatives','kanban','system-health'];
 
 assert.ok(index.includes('assets/core/module-loader.js'),'Loader de módulos deve estar no index');
 for(const m of modules){
   assert.ok(!new RegExp('assets/modules/'+m+'\\.(js|css)').test(index),'Módulo '+m+' não deve ser pré-carregado no index');
 }
-for(const route of ['pedidos','pcp','production','inventory','inputs','purchases','expedicao','logistica','entregas','transportadoras','kanban']){
+for(const route of ['pedidos','pcp','production','inventory','inputs','purchases','expedicao','logistica','entregas','transportadoras','kanban','system-health']){
   assert.ok(loader.includes(route+':')||loader.includes(route+':{alias:'),'Rota ausente no lazy loader: '+route);
 }
 assert.ok(loader.includes('insertBefore(el,ds)'),'CSS lazy deve ser inserido antes do Design System');
