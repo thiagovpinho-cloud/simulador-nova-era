@@ -153,7 +153,7 @@
           field('Número do pedido','number',o.number,'text',true)+
           cnpjField(o.cnpj,editable)+
           field('Data do pedido','orderDate',o.orderDate,'date')+
-          field('Representante','representative',o.representative)+
+          representativeField(o.representative,ops)+
           field('Cliente / Razão social','client',o.client,'text',false,'wide')+
           selectField('Marca / Empresa','brand',o.brand,['Nova Era','New Green'])+
           field('E-mail','email',o.email,'email')+
@@ -177,6 +177,8 @@
       bindItemEvents(ops);
       document.getElementById('foAddItem').onclick=()=>addItemRow(ops);
       document.getElementById('foProducts').onclick=async()=>{const ok=await persist(false,true);if(ok!==false)window.FocadoShell?.navigate?.('produtos')};
+      const repManage=document.getElementById('foRepManage');
+      if(repManage)repManage.onclick=async()=>{const ok=await persist(false,true);if(ok!==false)window.FocadoShell?.navigate?.('representantes')};
       document.getElementById('foSave').onclick=()=>persist(false);
       document.getElementById('foFinalize').onclick=()=>persist(true);
       bindCnpjLookup(ops,o);
@@ -187,6 +189,12 @@
   }
   function selectField(label,name,val,options){
     return '<label class="fo-field"><span>'+label+'</span><select name="'+name+'" '+(!formEditable?'disabled':'')+'>'+options.map(x=>'<option value="'+esc(x)+'" '+(String(val||'')===x?'selected':'')+'>'+esc(x)+'</option>').join('')+'</select></label>';
+  }
+  function representativeField(val,ops){
+    const reps=window.FocadoRepresentatives?.activeList?.(ops)||[];
+    const options=['<option value="">Selecione</option>'].concat(reps.map(r=>'<option value="'+esc(r.name)+'" '+(String(val||'')===String(r.name)?'selected':'')+'>'+esc(r.name)+'</option>'));
+    if(val && !reps.some(r=>String(r.name)===String(val)))options.push('<option value="'+esc(val)+'" selected>'+esc(val)+' (histórico)</option>');
+    return '<label class="fo-field"><span>Representante</span><div class="fo-rep-select"><select name="representative" '+(!formEditable?'disabled':'')+'>'+options.join('')+'</select>'+(formEditable?'<button type="button" id="foRepManage" title="Cadastrar representante">+</button>':'')+'</div></label>';
   }
   function cnpjField(val,editable){
     return '<label class="fo-field"><span>CNPJ</span><div class="fo-inline-input"><input name="cnpj" id="foCnpj" value="'+esc(formatCnpj(val))+'" inputmode="numeric" '+(editable?'':'disabled')+'><button type="button" id="foCnpjLookup" '+(editable?'':'disabled')+'>Buscar</button></div></label>';
