@@ -125,7 +125,7 @@
   }
   function editorRow(i,n,products){
     const p=i.product||{};
-    return '<tr data-prod-row="'+n+'"><td><select data-product><option value="">Selecione</option>'+products.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===p.id?'selected':'')+'>'+esc(x.code+' · '+x.name+' · '+x.brand)+'</option>').join('')+'</select></td><td><input data-qty type="number" min="0" step="1" value="'+(Number(i.qty||0)>0?Number(i.qty):'')+'" placeholder="0" style="width:85px"></td><td><select data-palletized><option value="NAO" '+(!i.palletized?'selected':'')+'>Não</option><option value="SIM" '+(i.palletized?'selected':'')+'>Sim</option></select></td><td><select data-chapatex><option value="NAO" '+(!i.chapatex?'selected':'')+'>Não</option><option value="SIM" '+(i.chapatex?'selected':'')+'>Sim</option></select></td><td><input data-boxes type="number" min="0" step="1" value="'+(Number(i.boxesPerPallet||0)>0?Number(i.boxesPerPallet):'')+'" placeholder="0" style="width:90px" '+(!i.palletized?'disabled':'')+'></td><td><span data-pallets>'+(i.palletized?calcPallets(i):'—')+'</span></td><td><button class="fpr-open" data-remove="'+n+'">Remover</button></td></tr>';
+    return '<tr data-prod-row="'+n+'"><td><select data-product><option value="">Selecione</option>'+products.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===p.id?'selected':'')+'>'+esc(x.code+' · '+x.name+' · '+x.brand)+'</option>').join('')+'</select></td><td><input data-qty type="number" min="0" step="1" value="'+(Number(i.qty||0)>0?Number(i.qty):'')+'" placeholder="0" style="width:85px"></td><td><select data-palletized><option value="NAO" '+(!i.palletized?'selected':'')+'>Não</option><option value="SIM" '+(i.palletized?'selected':'')+'>Sim</option></select></td><td><select data-chapatex><option value="NAO" '+(!i.chapatex?'selected':'')+'>Não</option><option value="SIM" '+(i.chapatex?'selected':'')+'>Sim</option></select></td><td><input data-boxes type="number" min="0" step="1" value="'+(Number(i.boxesPerPallet||0)>0?Number(i.boxesPerPallet):'')+'" placeholder="0" style="width:90px"></td><td><span data-pallets>'+(i.palletized?calcPallets(i):'—')+'</span></td><td><button class="fpr-open" data-remove="'+n+'">Remover</button></td></tr>';
   }
   function calcPallets(i){return i.palletized&&Number(i.qty)>0&&Number(i.boxesPerPallet)>0?Math.ceil(Number(i.qty)/Number(i.boxesPerPallet)):0}
   function syncFromForm(r,ops){
@@ -167,8 +167,8 @@
         syncFromForm(r,ops);
         const idx=Number(row.dataset.prodRow),i=r.items[idx];
         const boxes=row.querySelector('[data-boxes]'),pallets=row.querySelector('[data-pallets]');
-        boxes.disabled=!i.palletized;
-        if(!i.palletized){boxes.value='';i.boxesPerPallet=0;i.pallets=0;pallets.textContent='—'}
+        boxes.disabled=false;
+        if(!i.palletized){i.pallets=0;pallets.textContent='—'}
         else pallets.textContent=calcPallets(i)||'—';
         paintMaterialAnalysis(r,ops);
       };
