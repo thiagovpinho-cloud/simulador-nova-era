@@ -41,12 +41,26 @@
     if(d.length===11)return {ok:validCPF(d),type:'CPF'};
     if(d.length!==14||!validCNPJChecksum(d))return {ok:false,type:'CNPJ'};
     const base=apiBase();
-    if(!base)return {ok:true,type:'CNPJ',verified:false};
+    if(base){
+      try{
+        const res=await fetch(base+'/api/cnpj/'+encodeURIComponent(d),{headers:{Authorization:'Bearer '+token(),accept:'application/json'},cache:'no-store'});
+        if(res.ok)return {ok:true,type:'CNPJ',verified:true,data:await res.json()};
+        if(res.status===404)return {ok:false,type:'CNPJ',status:404};
+      }catch(_){}
+    }
     try{
-      const res=await fetch(base+'/api/cnpj/'+encodeURIComponent(d),{headers:{Authorization:'Bearer '+token(),accept:'application/json'},cache:'no-store'});
+      const res=await fetch('https://brasilapi.com.br/api/cnpj/v1/'+encodeURIComponent(d),{headers:{accept:'application/json'},cache:'no-store'});
       if(!res.ok)return {ok:false,type:'CNPJ',status:res.status};
-      const data=await res.json();
-      return {ok:true,type:'CNPJ',verified:true,data};
+      const b=await res.json();
+      return {ok:true,type:'CNPJ',verified:true,data:{
+        cnpj:b.cnpj||d,
+        razaoSocial:b.razao_social||'',
+        nomeFantasia:b.nome_fantasia||'',
+        municipio:b.municipio||'',
+        uf:b.uf||'',
+        dddTelefone1:b.ddd_telefone_1||'',
+        email:b.email||''
+      }};
     }catch(_){
       return {ok:true,type:'CNPJ',verified:false};
     }
@@ -67,8 +81,11 @@
       '<div class="fr-card"><div class="fr-toolbar"><input id="frSearch" placeholder="Buscar por nome, CPF/CNPJ, cidade ou telefone"><select id="frStatus"><option value="TODOS">Todos</option><option value="ATIVOS">Ativos</option><option value="INATIVOS">Inativos</option></select></div>'+
       '<div class="fr-table-wrap"><table class="fr-table"><thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Telefone</th><th>E-mail</th><th>Cidade/UF</th><th>Comissão</th><th>Status</th><th></th></tr></thead><tbody id="frBody"></tbody></table></div></div>'+
       '<div class="fr-modal hidden" id="frModal"><div class="fr-modal-card"><h2 id="frTitle">Novo representante</h2><div class="fr-grid">'+
-        field('Nome completo','frName')+'<label><span>CPF/CNPJ</span><div class="fr-doc-wrap"><input id="frDoc" inputmode="numeric"><button type="button" id="frValidateDoc">Validar</button></div><small class="fr-doc-status" id="frDocStatus"></small></label>'+field('Telefone','frPhone')+field('E-mail','frEmail','email')+
-        field('Cidade','frCity')+field('UF','frUf')+field('Comissão (%)','frCommission','number')+field('Observações','frNotes')+
+        '<label class="fr-doc-field"><span>CPF/CNPJ</span><div class="fr-doc-wrap"><input id="frDoc" inputmode="numeric" placeholder="Digite o documento"><button type="button" id="frValidateDoc">Validar</button></div><small class="fr-doc-status" id="frDocStatus"></small></label>'+
+        field('Nome / Razão social','frName')+field('Telefone','frPhone')+field('E-mail','frEmail','email')+
+        field('Cidade','frCity')+field('UF','frUf')+
+        '<label><span>Comissão</span><div class="fr-percent-wrap"><input id="frCommission" type="number" min="0" max="4" step="0.01" inputmode="decimal"><strong>%</strong></div><small class="fr-commission-hint">Máximo permitido: 4,00%</small></label>'+
+        field('Observações','frNotes')+
       '</div><div class="fr-actions"><button class="fr-btn" id="frCancel">Cancelar</button><button class="fr-btn primary" id="frSave">Salvar representante</button></div></div></div>'+
       '</div>';
     const q=document.getElementById('frSearch'), status=document.getElementById('frStatus'), body=document.getElementById('frBody');
@@ -98,19 +115,44 @@
       document.getElementById('frUf').value=r?.uf||'';
       document.getElementById('frCommission').value=r?.commission??'';
       document.getElementById('frNotes').value=r?.notes||'';
+      ['frName','frPhone','frEmail','frCity','frUf'].forEach(id=>{const el=document.getElementById(id);if(el)el.readOnly=false});
       modal.classList.remove('hidden');
     }
     document.getElementById('frNew').onclick=()=>openModal(null);
     const docInput=document.getElementById('frDoc'),docStatus=document.getElementById('frDocStatus');
+    function setAutoFields(readonly){
+      ['frName','frPhone','frEmail','frCity','frUf'].forEach(id=>{
+        const el=document.getElementById(id);if(el)el.readOnly=Boolean(readonly);
+      });
+    }
+    function applyCnpjData(d){
+      if(!d)return;
+      document.getElementById('frName').value=d.razaoSocial||d.nomeFantasia||'';
+      document.getElementById('frPhone').value=d.dddTelefone1||'';
+      document.getElementById('frEmail').value=d.email||'';
+      document.getElementById('frCity').value=d.municipio||'';
+      document.getElementById('frUf').value=(d.uf||'').toUpperCase();
+      setAutoFields(true);
+    }
     async function runDocumentValidation(){
       const raw=digits(docInput.value);docInput.value=formatDocument(raw);
-      if(!raw){docStatus.textContent='';return {ok:true,empty:true}}
+      if(!raw){docStatus.textContent='';setAutoFields(false);return {ok:true,empty:true}}
       docStatus.textContent='Validando documento...';docStatus.className='fr-doc-status';
       const result=await validateDocument(raw);
       if(result.ok){
-        docStatus.textContent=result.type==='CNPJ'?(result.verified?'CNPJ válido e confirmado.':'CNPJ válido.'):'CPF válido.';
+        if(result.type==='CNPJ'&&result.data){
+          applyCnpjData(result.data);
+          docStatus.textContent='CNPJ válido. Dados preenchidos automaticamente.';
+        }else if(result.type==='CNPJ'){
+          setAutoFields(false);
+          docStatus.textContent='CNPJ válido, mas a consulta cadastral não respondeu. Tente validar novamente.';
+        }else{
+          setAutoFields(false);
+          docStatus.textContent='CPF válido. Preencha os dados do representante.';
+        }
         docStatus.className='fr-doc-status ok';
       }else{
+        setAutoFields(false);
         docStatus.textContent=result.type==='CPF'?'CPF inválido.':'CNPJ inválido ou não encontrado.';
         docStatus.className='fr-doc-status bad';
       }
@@ -119,18 +161,22 @@
     docInput.oninput=()=>{docInput.value=formatDocument(docInput.value);docStatus.textContent=''};
     docInput.onblur=()=>{if(digits(docInput.value))runDocumentValidation()};
     document.getElementById('frValidateDoc').onclick=runDocumentValidation;
+    const commissionInput=document.getElementById('frCommission');
+    commissionInput.oninput=()=>{
+      const n=Number(commissionInput.value);
+      if(Number.isFinite(n)&&n>4)commissionInput.value='4';
+      if(Number.isFinite(n)&&n<0)commissionInput.value='0';
+    };
     document.getElementById('frCancel').onclick=()=>modal.classList.add('hidden');
     document.getElementById('frSave').onclick=async()=>{
-      const name=document.getElementById('frName').value.trim();
-      if(!name){alert('Informe o nome do representante.');return}
       const docValidation=await runDocumentValidation();
       if(!docValidation.ok){alert('Corrija o CPF/CNPJ do representante antes de salvar.');return}
-      if(docValidation.type==='CNPJ'&&docValidation.data){
-        const d=docValidation.data;
-        if(!document.getElementById('frCity').value&&d.municipio)document.getElementById('frCity').value=d.municipio;
-        if(!document.getElementById('frUf').value&&d.uf)document.getElementById('frUf').value=d.uf;
-        if(!document.getElementById('frPhone').value&&d.dddTelefone1)document.getElementById('frPhone').value=d.dddTelefone1;
-        if(!document.getElementById('frEmail').value&&d.email)document.getElementById('frEmail').value=d.email;
+      const name=document.getElementById('frName').value.trim();
+      if(!name){alert('Não foi possível identificar o nome/razão social do representante.');return}
+      const commission=Number(document.getElementById('frCommission').value);
+      if(!Number.isFinite(commission)||commission<0||commission>4){
+        alert('A comissão deve estar entre 0,00% e 4,00%.');
+        return;
       }
       const data={
         name,
@@ -139,7 +185,7 @@
         email:document.getElementById('frEmail').value.trim(),
         city:document.getElementById('frCity').value.trim(),
         uf:document.getElementById('frUf').value.trim().toUpperCase().slice(0,2),
-        commission:Number(document.getElementById('frCommission').value)||0,
+        commission,
         notes:document.getElementById('frNotes').value.trim()
       };
       if(editing)Object.assign(editing,data,{updatedAt:Date.now()});
