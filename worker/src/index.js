@@ -47,7 +47,6 @@ small{display:block;margin-top:16px;color:#6f817a}
 <h1>Focado</h1><p class="muted">Criação do primeiro administrador</p>
 ${message?`<div class="msg">${esc(message)}</div>`:""}
 <form method="post" action="/setup" autocomplete="off">
-<label>Token de bootstrap</label><input name="bootstrapToken" type="password" required>
 <label>E-mail</label><input name="email" type="email" required>
 <label>Nome</label><input name="name" value="Thiago Pinho" required>
 <label>Senha</label><input name="password" type="password" minlength="10" required>
@@ -221,38 +220,34 @@ async function route(request,env){
   return withDb(env,async db=>{
     if(path==="/setup"&&request.method==="POST"){
       const form=await request.formData();
-      const expected=String(env.FOCADO_BOOTSTRAP_TOKEN||"");
-      const supplied=String(form.get("bootstrapToken")||"");
-      if(!expected||!constEq(expected,supplied))return setupPage("Token de bootstrap inválido.");
-      const count=await db.query("select count(*)::int as n from public.focado_users");
-      if(Number(count.rows[0]?.n||0)>0)return setupPage("O administrador inicial já foi criado.",true);
       const email=String(form.get("email")||"").trim().toLowerCase();
       const name=String(form.get("name")||"").trim();
       const password=String(form.get("password")||"");
       if(!email||!name||password.length<10)return setupPage("Confira os campos. A senha deve ter pelo menos 10 caracteres.");
-      const p=await passwordHash(password);
-      const r=await db.query(`
-        insert into public.focado_users(email,name,role,password_salt,password_hash)
-        values($1,$2,'ADMIN',$3,$4)
-        returning id,email,name,role
-      `,[email,name,p.salt,`pbkdf2${p.iterations}${p.hash}`]);
-      return setupPage(`Administrador ${r.rows[0].name} criado com sucesso. Agora você já pode entrar no Focado.`,true);
+
+      await db.query("begin");
+      try{
+        await db.query("lock table public.focado_users in share row exclusive mode");
+        const count=await db.query("select count(*)::int as n from public.focado_users");
+        if(Number(count.rows[0]?.n||0)>0){
+          await db.query("rollback");
+          return setupPage("O administrador inicial já foi criado.",true);
+        }
+        const p=await passwordHash(password);
+        const r=await db.query(`
+          insert into public.focado_users(email,name,role,password_salt,password_hash)
+          values($1,$2,'ADMIN',$3,$4)
+          returning id,email,name,role
+        `,[email,name,p.salt,`pbkdf2$${p.iterations}$${p.hash}`]);
+        await db.query("commit");
+        return setupPage(`Administrador ${r.rows[0].name} criado com sucesso. Agora você já pode entrar no Focado.`,true);
+      }catch(err){
+        try{await db.query("rollback")}catch(_){}
+        throw err;
+      }
     }
-    if(path==="/auth/bootstrap"&&request.method==="POST"){
-      const expected=String(env.FOCADO_BOOTSTRAP_TOKEN||""),supplied=request.headers.get("x-bootstrap-token")||"";
-      if(!expected||!constEq(expected,supplied))return json({error:"UNAUTHORIZED"},401);
-      const count=await db.query("select count(*)::int as n from public.focado_users");
-      if(Number(count.rows[0]?.n||0)>0)return json({error:"BOOTSTRAP_ALREADY_DONE"},409);
-      const body=await request.json();
-      const email=String(body.email||"").trim().toLowerCase(),name=String(body.name||"").trim(),password=String(body.password||"");
-      if(!email||!name||password.length<10)return json({error:"INVALID_BOOTSTRAP_DATA"},400);
-      const p=await passwordHash(password);
-      const r=await db.query(`
-        insert into public.focado_users(email,name,role,password_salt,password_hash)
-        values($1,$2,'ADMIN',$3,$4)
-        returning id,email,name,role
-      `,[email,name,p.salt,`pbkdf2$${p.iterations}$${p.hash}`]);
-      return json({user:r.rows[0]},201);
+    if(path==="/auth/bootstrap"){
+      return json({error:"BOOTSTRAP_DISABLED",message:"Use /setup para a criação inicial do administrador."},410);
     }
 
     if(path==="/auth/login"&&request.method==="POST"){
