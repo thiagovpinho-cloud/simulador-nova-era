@@ -3544,6 +3544,10 @@ async function init(){
 
   await bootApp();
 
+  if(window.FocadoAuth?.remoteConfigured?.() && window.FocadoDataStore?.getSessionToken?.()){
+    await window.FocadoAuth.restore();
+  }
+
   const savedRole = sessionStorage.getItem('nova-era-role');
   const savedLabel = sessionStorage.getItem('nova-era-role-label');
   const loginTime = Number(sessionStorage.getItem('nova-era-login-time') || 0);
