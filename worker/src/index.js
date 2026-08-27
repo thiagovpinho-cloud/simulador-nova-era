@@ -1,6 +1,6 @@
 import pg from "pg";
 import { DOMAIN_PERMISSION, FLOW, RULES_VERSION, applyDomain, applyTransitionSideEffects, getOrder, validateTransition } from "../../shared/domain-rules.js";
-import { ensurePlatformV2, syncPlatformV2, appendChange, loginThrottle } from "./platform-v2.js";
+import { ensurePlatformV2, syncPlatformV2, appendChange, loginThrottle, auditSnapshot } from "./platform-v2.js";
 const { Client } = pg;
 
 const WORKSPACE = "default";
@@ -272,12 +272,14 @@ async function route(request,env){
       const s=await requireSession(request,db,permission);
       await db.query("begin");
       try{
-        const row=await readWorkspace(db,true),revision=row?.revision||0,before=structuredClone(row?.payload||{}),state=structuredClone(row?.payload||{});
+        const row=await readWorkspace(db,true),revision=row?.revision||0,state=structuredClone(row?.payload||{});
         if(body.revision!=null&&Number(body.revision)!==revision)throw Object.assign(new Error("REVISION_CONFLICT"),{status:409,currentRevision:revision});
+        const before=auditSnapshot(state,domain,body.orderId);
         applyDomain(domain,state,body);
+        const after=auditSnapshot(state,domain,body.orderId);
         const saved=await writeWorkspace(db,state,revision);
         await syncPlatformV2(db,saved.payload);
-        await appendChange(db,{userId:s.userId,action:'DOMAIN_WRITE',entityType:domain.toLowerCase(),entityId:String(body.orderId||WORKSPACE),revision:saved.revision,before,after:saved.payload,metadata:{domain}});
+        await appendChange(db,{userId:String(s.userId),action:'DOMAIN_WRITE',entityType:domain.toLowerCase(),entityId:String(body.orderId||WORKSPACE),revision:saved.revision,before,after,metadata:{domain}});
         await db.query("insert into public.focado_audit_events(user_id,action,entity_type,entity_id,metadata) values($1,'DOMAIN_WRITE',$2,$3,$4::jsonb)",[s.userId,domain.toLowerCase(),String(body.orderId||WORKSPACE),JSON.stringify({domain,revision:saved.revision})]);
         await db.query("commit");
         return json({ok:true,revision:saved.revision,payload:saved.payload},200,{"etag":`"${saved.revision}"`});
@@ -288,8 +290,9 @@ async function route(request,env){
       const body=await request.json();
       await db.query("begin");
       try{
-        const row=await readWorkspace(db,true),revision=row?.revision||0,before=structuredClone(row?.payload||{}),state=structuredClone(row?.payload||{});
+        const row=await readWorkspace(db,true),revision=row?.revision||0,state=structuredClone(row?.payload||{});
         if(body.revision!=null&&Number(body.revision)!==revision)throw Object.assign(new Error("REVISION_CONFLICT"),{status:409,currentRevision:revision});
+        const before=structuredClone(getOrder(state,body.orderId)||null);
         const order=getOrder(state,body.orderId);if(!order)throw Object.assign(new Error("ORDER_NOT_FOUND"),{status:404});
         const rule=FLOW[order.status];if(!rule)throw Object.assign(new Error("INVALID_TRANSITION"),{status:400});
         const s=await requireSession(request,db);
@@ -301,7 +304,7 @@ async function route(request,env){
         order.events.unshift({at:Date.now(),type:"STATUS_TRANSITION",from,to:rule.to,user:s.name||s.email});
         const saved=await writeWorkspace(db,state,revision);
         await syncPlatformV2(db,saved.payload);
-        await appendChange(db,{userId:s.userId,action:'STATUS_TRANSITION',entityType:'order',entityId:String(order.id),revision:saved.revision,before,after:saved.payload,metadata:{from,to:rule.to}});
+        await appendChange(db,{userId:String(s.userId),action:'STATUS_TRANSITION',entityType:'order',entityId:String(order.id),revision:saved.revision,before,after:order,metadata:{from,to:rule.to}});
         await db.query("insert into public.focado_audit_events(user_id,action,entity_type,entity_id,metadata) values($1,'STATUS_TRANSITION','order',$2,$3::jsonb)",[s.userId,String(order.id),JSON.stringify({from,to:rule.to,revision:saved.revision})]);
         await db.query("commit");
         return json({ok:true,orderId:order.id,from,to:rule.to,revision:saved.revision});
