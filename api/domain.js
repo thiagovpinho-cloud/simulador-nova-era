@@ -12,7 +12,8 @@ const DOMAIN_PERMISSION={
   ESTOQUE:'inventory.write',
   LOGISTICA:'logistics.write',
   COMPRAS:'purchases.write',
-  FINANCEIRO:'finance.write'
+  FINANCEIRO:'finance.write',
+  SOLICITACAO_PRODUCAO:'pcp.write'
 };
 
 function pick(source,keys){
@@ -124,6 +125,11 @@ function applyPurchases(state,body){
   }
 }
 
+function applyProductionRequest(state,body){
+  const c=body.changes||{};
+  if(Array.isArray(c.productionRequests)) state.productionRequests=c.productionRequests;
+}
+
 function applyFinance(state,body){
   const c=body.changes||{};
   state.finance={...(state.finance||{}),...pick(c,['approvedFreight','paymentStatus','invoiceStatus','creditStatus','notes'])};
@@ -136,7 +142,8 @@ const APPLY={
   ESTOQUE:applyInventory,
   LOGISTICA:applyLogistics,
   COMPRAS:applyPurchases,
-  FINANCEIRO:applyFinance
+  FINANCEIRO:applyFinance,
+  SOLICITACAO_PRODUCAO:applyProductionRequest
 };
 
 export default async function handler(req,res){
