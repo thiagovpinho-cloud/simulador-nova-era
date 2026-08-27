@@ -95,3 +95,20 @@
 .fx-avatar{background:linear-gradient(145deg,#e5f5ed,#d9eee4);box-shadow:inset 0 0 0 1px rgba(8,120,91,.08)}
 .fx-version{background:rgba(255,255,255,.035);border-color:rgba(255,255,255,.11);color:rgba(255,255,255,.5)}
 @media(max-width:760px){#focadoShell{grid-template-columns:1fr}.fx-content{padding:14px 12px 24px}.fx-topbar{height:62px}}
+
+/* Dashboard Product UI 2.0 */
+.fx-titlebar-premium{align-items:flex-start;margin-bottom:18px}
+.fx-eyebrow,.fx-command-eyebrow{display:block;font-size:8.5px;font-weight:850;letter-spacing:1.15px;color:#0a7a5c;margin-bottom:7px}
+.fx-titlebar-premium h1{max-width:760px;font-size:30px;line-height:1.08;letter-spacing:-.85px;color:#12271f;margin:0 0 7px}
+.fx-titlebar-premium p{font-size:11.5px;color:#728078;margin:0}
+.fx-command{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:20px 22px;border-radius:20px;margin-bottom:14px;border:1px solid #e3eae6;background:linear-gradient(135deg,#fff 0%,#f8fbf9 100%);box-shadow:0 12px 32px rgba(18,54,41,.055)}
+.fx-command h2{margin:0 0 5px;font-size:18px;letter-spacing:-.3px;color:#183b2f}.fx-command p{margin:0;color:#708078;font-size:10.5px;max-width:720px}
+.fx-command.danger{background:linear-gradient(135deg,#fff 0%,#fff7f7 100%);border-color:#f0d9dc}.fx-command.danger .fx-command-eyebrow{color:#bd3842}
+.fx-command.warn{background:linear-gradient(135deg,#fff 0%,#fffaf3 100%);border-color:#efe1c8}.fx-command.warn .fx-command-eyebrow{color:#a86517}
+.fx-command.info{background:linear-gradient(135deg,#fff 0%,#f4f8ff 100%);border-color:#dde6f5}.fx-command.info .fx-command-eyebrow{color:#3769b1}
+.fx-command-action{border:0;background:#0a7659;color:white;border-radius:11px;padding:10px 14px;font:750 10.5px system-ui;white-space:nowrap;cursor:pointer;box-shadow:0 5px 15px rgba(10,118,89,.15)}
+.fx-command-action:hover{background:#08694f;transform:translateY(-1px)}
+.fx-kpis-premium{grid-template-columns:repeat(4,minmax(0,1fr))}
+.fx-kpis-premium .fx-kpi{min-height:104px}
+@media(max-width:900px){.fx-kpis-premium{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){.fx-command{align-items:flex-start;flex-direction:column}.fx-kpis-premium{grid-template-columns:1fr}.fx-titlebar-premium h1{font-size:24px}}
