@@ -3574,7 +3574,7 @@ init();
         Object.values(p.inputInventory||{}).forEach(inv=>{ if(!inv.reorder) inv.reorder={avgDaily:0,leadTimeDays:0,safetyStock:0}; });
         Object.values(p.inputInventory||{}).forEach(inv=>{ if(inv.blocked===undefined) inv.blocked=0; if(!inv.lots) inv.lots=[]; });
         Object.values(p.inventory||{}).forEach(inv=>{ if(inv.blocked===undefined) inv.blocked=0; });
-        (p.orders||[]).forEach(o=>(o.items||[]).forEach(i=>{ if(i.productId===undefined) i.productId=''; if(i.productionConsumed===undefined) i.productionConsumed=false; }));
+        (p.orders||[]).forEach(o=>(o.items||[]).forEach(i=>{ if(i.productId===undefined) i.productId=''; if(i.productionConsumed===undefined) i.productionConsumed=false; if(i.productionCompleted===undefined) i.productionCompleted=false; }));
         return p;
       }
     }catch(_){}
@@ -3998,6 +3998,32 @@ init();
     item.reservedQty=0;
   }
 
+  function completeProducedFinishedGoods(o){
+    (o.items||[]).forEach(item=>{
+      if(item.source!=='PRODUCAO' || item.productionCompleted) return;
+      const inv=normalizeInventory(item.code,item.name);
+      const qty=Number(item.qty||0);
+      const beforePhysical=Number(inv.physical||0);
+      const beforeReserved=Number(inv.reserved||0);
+      inv.physical=beforePhysical+qty;
+      inv.reserved=beforeReserved+qty;
+      item.reservedQty=qty;
+      item.productionCompleted=true;
+      OPS.stockMovements=OPS.stockMovements||[];
+      OPS.stockMovements.unshift({
+        id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+        at:Date.now(),kind:'finished',key:String(item.code||item.name),code:item.code||'',
+        name:item.name||'',unit:'CX',type:'PRODUCAO',qty,
+        reason:'Entrada automática da produção — pedido '+o.number,user:stockUser(),
+        warehouse:o.pcp?.deliveryBase||'',
+        before:{physical:beforePhysical,reserved:beforeReserved,blocked:Number(inv.blocked||0)},
+        after:{physical:Number(inv.physical||0),reserved:Number(inv.reserved||0),blocked:Number(inv.blocked||0)}
+      });
+    });
+    event(o,'Produção concluída e produto acabado reservado');
+    return true;
+  }
+
   function advance(o){
     if(o.status==='COMERCIAL'){
       o.status='PCP'; event(o,'Enviado ao PCP');
@@ -4011,6 +4037,7 @@ init();
       if(!o.pcp.availableDate){ alert('Informe a data disponível.'); return; }
       if(!o.pcp.separated){ alert('Confirme que o pedido está separado/liberado.'); return; }
       if(!consumeProductionInputs(o)) return;
+      completeProducedFinishedGoods(o);
       o.status='LOGISTICA'; event(o,'Liberado para Logística');
     }else if(o.status==='LOGISTICA'){
       if(!o.logistics.deliveryDate){ alert('Informe a data de entrega.'); return; }
