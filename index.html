@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Focado</title>
+<link id="focadoInlineFavicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2228%22%20cy%3D%2234%22%20r%3D%2218%22%20fill%3D%22none%22%20stroke%3D%22%230d5c47%22%20stroke-width%3D%224%22%2F%3E%3Ccircle%20cx%3D%2228%22%20cy%3D%2234%22%20r%3D%2211%22%20fill%3D%22none%22%20stroke%3D%22%230d5c47%22%20stroke-width%3D%223%22%2F%3E%3Cpath%20d%3D%22M11%2034h34M28%2017v34%22%20stroke%3D%22%230d5c47%22%20stroke-width%3D%222%22%20opacity%3D%22.45%22%2F%3E%3Cpath%20d%3D%22M14%2041l11-11%208%206%2014-17%22%20fill%3D%22none%22%20stroke%3D%22%2357b82a%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M43%2018l14-4-5%2014-3-6-6-4Z%22%20fill%3D%22%2357b82a%22%2F%3E%3C%2Fsvg%3E">
+<link rel="shortcut icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2228%22%20cy%3D%2234%22%20r%3D%2218%22%20fill%3D%22none%22%20stroke%3D%22%230d5c47%22%20stroke-width%3D%224%22%2F%3E%3Ccircle%20cx%3D%2228%22%20cy%3D%2234%22%20r%3D%2211%22%20fill%3D%22none%22%20stroke%3D%22%230d5c47%22%20stroke-width%3D%223%22%2F%3E%3Cpath%20d%3D%22M11%2034h34M28%2017v34%22%20stroke%3D%22%230d5c47%22%20stroke-width%3D%222%22%20opacity%3D%22.45%22%2F%3E%3Cpath%20d%3D%22M14%2041l11-11%208%206%2014-17%22%20fill%3D%22none%22%20stroke%3D%22%2357b82a%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M43%2018l14-4-5%2014-3-6-6-4Z%22%20fill%3D%22%2357b82a%22%2F%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -626,11 +628,19 @@
     footer{ max-width: 720px; margin-left:auto; margin-right:auto; }
   }
 </style>
-<link rel="manifest" href="manifest.webmanifest?v=20260827d">\n\n\n\n<meta name="theme-color" content="#04352a">\n<link rel="stylesheet" href="assets/app-shell.css?v=20260827d">\n<link rel="stylesheet" href="assets/modules/orders.css">\n<link rel="stylesheet" href="assets/modules/pcp.css">\n<link rel="stylesheet" href="assets/modules/production.css">\n<link rel="stylesheet" href="assets/modules/inventory.css">\n<link rel="stylesheet" href="assets/modules/logistics.css">\n<link rel="stylesheet" href="assets/modules/kanban.css">\n<link rel="icon" type="image/svg+xml" href="/simulador-nova-era/focado-app-icon.svg?v=20260827e">
-<link rel="shortcut icon" href="/simulador-nova-era/focado-app-icon.svg?v=20260827e">
-<link rel="apple-touch-icon" href="/simulador-nova-era/focado-app-icon.svg?v=20260827e">
+<link rel="manifest" href="manifest.webmanifest?v=20260827d">\n\n\n\n<meta name="theme-color" content="#04352a">\n<link rel="stylesheet" href="assets/app-shell.css?v=20260827d">\n<link rel="stylesheet" href="assets/modules/orders.css">\n<link rel="stylesheet" href="assets/modules/pcp.css">\n<link rel="stylesheet" href="assets/modules/production.css">\n<link rel="stylesheet" href="assets/modules/inventory.css">\n<link rel="stylesheet" href="assets/modules/logistics.css">\n<link rel="stylesheet" href="assets/modules/kanban.css">\n<link rel="apple-touch-icon" href="/simulador-nova-era/focado-app-icon.svg?v=20260827e">
 <meta name="application-name" content="Focado">
 <meta name="apple-mobile-web-app-title" content="Focado">
+<script>
+(function forceFocadoFavicon(){
+  const href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22white%22%2F%3E%3Ccircle%20cx%3D%2228%22%20cy%3D%2234%22%20r%3D%2218%22%20fill%3D%22none%22%20stroke%3D%22%230d5c47%22%20stroke-width%3D%224%22%2F%3E%3Ccircle%20cx%3D%2228%22%20cy%3D%2234%22%20r%3D%2211%22%20fill%3D%22none%22%20stroke%3D%22%230d5c47%22%20stroke-width%3D%223%22%2F%3E%3Cpath%20d%3D%22M11%2034h34M28%2017v34%22%20stroke%3D%22%230d5c47%22%20stroke-width%3D%222%22%20opacity%3D%22.45%22%2F%3E%3Cpath%20d%3D%22M14%2041l11-11%208%206%2014-17%22%20fill%3D%22none%22%20stroke%3D%22%2357b82a%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M43%2018l14-4-5%2014-3-6-6-4Z%22%20fill%3D%22%2357b82a%22%2F%3E%3C%2Fsvg%3E";
+  try{
+    document.querySelectorAll('link[rel="icon"],link[rel="shortcut icon"]').forEach(el=>el.remove());
+    const a=document.createElement('link'); a.rel='icon'; a.type='image/svg+xml'; a.href=href+'#v20260827f'; document.head.appendChild(a);
+    const b=document.createElement('link'); b.rel='shortcut icon'; b.type='image/svg+xml'; b.href=href+'#v20260827f'; document.head.appendChild(b);
+  }catch(_){}
+})();
+</script>
 </head>
 <body>
 
