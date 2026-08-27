@@ -1,4 +1,6 @@
+import { applyCors } from './_lib/http.js';
 export default async function handler(req,res){
+  if(applyCors(req,res))return;
   res.setHeader('Cache-Control','no-store');
   if(req.method!=='GET') return res.status(405).json({error:'METHOD_NOT_ALLOWED'});
   return res.status(200).json({
