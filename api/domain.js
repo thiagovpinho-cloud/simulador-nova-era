@@ -14,7 +14,8 @@ const DOMAIN_PERMISSION={
   COMPRAS:'purchases.write',
   FINANCEIRO:'finance.write',
   SOLICITACAO_PRODUCAO:'pcp.write',
-  TRANSPORTADORAS:'logistics.write'
+  TRANSPORTADORAS:'logistics.write',
+  CLIENTES:'commercial.write'
 };
 
 function pick(source,keys){
@@ -126,6 +127,15 @@ function applyPurchases(state,body){
   }
 }
 
+function applyCustomers(state,body){
+  const changes=body.changes||{};
+  state.customers=Array.isArray(state.customers)?state.customers:[];
+  if(changes.customer&&typeof changes.customer==='object'){
+    const incoming=structuredClone(changes.customer);
+    const idx=state.customers.findIndex(x=>String(x.id)===String(incoming.id));
+    if(idx>=0)state.customers[idx]=incoming;else state.customers.unshift(incoming);
+  }
+}
 function applyCarriers(state,body){
   const changes=body.changes||{};
   state.carriers=Array.isArray(state.carriers)?state.carriers:[];
@@ -156,7 +166,8 @@ const APPLY={
   COMPRAS:applyPurchases,
   FINANCEIRO:applyFinance,
   SOLICITACAO_PRODUCAO:applyProductionRequest,
-  TRANSPORTADORAS:applyCarriers
+  TRANSPORTADORAS:applyCarriers,
+  CLIENTES:applyCustomers
 };
 
 export default async function handler(req,res){
