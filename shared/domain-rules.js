@@ -1,4 +1,4 @@
-export const RULES_VERSION='2026.08.27.1';
+export const RULES_VERSION='2026.08.27.2';
 
 export const DOMAIN_PERMISSION=Object.freeze({
   COMERCIAL:'orders.write',
@@ -120,11 +120,32 @@ function applyProduction(state,body){
   }
 }
 
+export function requiredPickupDate(order){
+  const dates=(order?.items||[]).map(i=>i?.pcpAvailabilityDate).filter(Boolean);
+  if(order?.pcp?.logisticsAvailabilityDate)dates.push(order.pcp.logisticsAvailabilityDate);
+  return dates.sort().slice(-1)[0]||'';
+}
+
 function applyLogistics(state,body){
   const o=getOrder(state,body.orderId);
   if(!o)throw Object.assign(new Error('ORDER_NOT_FOUND'),{status:404});
   o.logistics=o.logistics||{};
-  Object.assign(o.logistics,pick(body.changes?.logistics||body.changes,[
+  const changes=body.changes?.logistics||body.changes||{};
+  const pickupDate=Object.prototype.hasOwnProperty.call(changes,'pickupDate')?changes.pickupDate:o.logistics.pickupDate;
+  const deliveryDate=Object.prototype.hasOwnProperty.call(changes,'deliveryDate')?changes.deliveryDate:o.logistics.deliveryDate;
+  const minPickup=requiredPickupDate(o);
+  if(pickupDate&&minPickup&&pickupDate<minPickup){
+    throw Object.assign(new Error('PICKUP_BEFORE_PCP_AVAILABILITY'),{status:422,minPickup});
+  }
+  if(deliveryDate&&pickupDate&&deliveryDate<pickupDate){
+    throw Object.assign(new Error('DELIVERY_BEFORE_PICKUP'),{status:422});
+  }
+  if(changes.carrierId){
+    const carrier=(state.carriers||[]).find(x=>String(x.id)===String(changes.carrierId)&&x.active!==false);
+    if(!carrier)throw Object.assign(new Error('INVALID_OR_INACTIVE_CARRIER'),{status:422});
+    changes.carrier=carrier.name||changes.carrier||'';
+  }
+  Object.assign(o.logistics,pick(changes,[
     'freightValue','pickupDate','deliveryDate','carrier','carrierId','trackingCode','vehicle','driver','notes',
     'deliveryConfirmed','deliveredOnTime','actualDeliveryDate','deliveryDelayReason','deliveryConfirmedAt','deliveryConfirmedBy'
   ]));
