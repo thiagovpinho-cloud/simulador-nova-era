@@ -59,3 +59,13 @@ assert.ok(purchasesModule.includes("saveDomain('COMPRAS'"),'Compras deve usar do
 assert.ok(expeditionModule.includes("saveDomain('EXPEDICAO'"),'Expedição deve usar domínio oficial');
 assert.ok(expeditionModule.includes('Liberar carga'),'Expedição deve possuir liberação de carga');
 assert.ok(!expeditionModule.includes('openLegacy'),'Expedição não pode abrir operação legada');
+
+const dataStoreV2=read('assets/core/data-store.js');
+const shellV2=read('assets/app-shell.js');
+const healthModule=read('assets/modules/system-health.js');
+assert.ok(dataStoreV2.includes('refreshDomainV2'),'DataStore deve suportar refresh de domínio v2');
+assert.ok(shellV2.includes("refreshDomainV2?.('customers')"),'Clientes deve ler Data v2 antes de renderizar');
+assert.ok(shellV2.includes("refreshDomainV2?.('orders')"),'Pedidos deve ler Data v2 antes de renderizar');
+assert.ok(shellV2.includes('Saúde & Auditoria'),'Admin deve possuir acesso ao diagnóstico técnico');
+assert.ok(healthModule.includes('getV2Consistency'),'Saúde deve validar consistência Data v2');
+assert.ok(healthModule.includes('getSecurityHealth'),'Saúde deve validar controles de segurança');
