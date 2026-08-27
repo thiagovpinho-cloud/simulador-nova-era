@@ -31,6 +31,19 @@
   const stage=s=>({COMERCIAL:['Em preenchimento','comercial'],PCP:['Aguardando PCP','pcp'],ESTOQUE_PRODUCAO:['Produção / Estoque','producao'],LOGISTICA:['Logística','logistica'],ENTREGUE:['Concluído','entregue']})[s]||[s||'—','comercial'];
   let currentFilters={q:'',stage:'TODOS'};
   let editingId=null;
+  function ensureOrderIds(ops){
+    let changed=false;
+    const used=new Set((ops.orders||[]).map(o=>String(o.id||'')).filter(Boolean));
+    (ops.orders||[]).forEach((o,index)=>{
+      if(o.id)return;
+      const base=String(o.number||('pedido-'+(index+1))).replace(/[^a-zA-Z0-9_-]/g,'_');
+      let candidate='op_'+base,n=2;
+      while(used.has(candidate)){candidate='op_'+base+'_'+n;n++}
+      o.id=candidate;used.add(candidate);changed=true;
+    });
+    if(changed){window.FocadoDataStore?.writeLocal?.(ops);window.FocadoDataStore?.save?.(ops)}
+    return ops;
+  }
   let formEditable=true;
 
   function apiBase(){return String(window.FocadoDataStore?.getConfig?.().apiBaseUrl||'').replace(/\/$/,'')}
@@ -86,7 +99,7 @@
 
   function render(filters){
     currentFilters=filters||currentFilters;editingId=null;
-    const ops=load();ensureCatalog(ops);
+    const ops=ensureOrderIds(load());ensureCatalog(ops);
     const orders=(ops.orders||[]).slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     const filtered=orders.filter(o=>{
       const q=currentFilters.q.toLowerCase();
