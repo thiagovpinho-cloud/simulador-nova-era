@@ -76,7 +76,7 @@
         ? {tone:'warn',eyebrow:'ATENÇÃO OPERACIONAL',title:alerts.length+' insumo(s) em nível crítico',text:'Revise necessidade de compra antes que a produção seja impactada.',route:'purchases',action:'Abrir Compras'}
         : counts.PCP
           ? {tone:'info',eyebrow:'PRÓXIMA DECISÃO',title:counts.PCP+' pedido(s) aguardando PCP',text:'Priorize os pedidos mais próximos da data solicitada de entrega.',route:'pcp',action:'Abrir PCP'}
-          : {tone:'ok',eyebrow:'OPERAÇÃO SOB CONTROLE',title:'Nenhuma exceção crítica neste momento',text:'O fluxo operacional está sem alertas prioritários registrados.',route:'orders',action:'Ver carteira'};
+          : {tone:'ok',eyebrow:'OPERAÇÃO SOB CONTROLE',title:'Nenhuma exceção crítica neste momento',text:'O fluxo operacional está sem alertas prioritários registrados.',route:'pedidos',action:'Ver carteira'};
 
     $('#fxContent').innerHTML=
       '<div class="fx-titlebar fx-titlebar-premium"><div><span class="fx-eyebrow">FOCADO · OPERAÇÃO</span><h1>Bom trabalho. Aqui está o que importa hoje.</h1><p>Decisões, exceções e andamento da operação em uma única visão.</p></div><div class="fx-date">'+date+'</div></div>'+
@@ -140,7 +140,14 @@
       alert('Seu perfil não possui acesso a esta área.');
       return;
     }
-    try{await window.FocadoModules?.ensure?.(id)}catch(err){console.error('[FocadoModules]',err);alert('Não foi possível carregar esta área. Tente novamente.');return}
+    try{
+      if(id!=='dashboard'&&!window.FocadoModules?.ensure)throw new Error('MODULE_LOADER_UNAVAILABLE');
+      await window.FocadoModules?.ensure?.(id);
+    }catch(err){
+      console.error('[FocadoModules]',err);
+      alert('Esta área não foi carregada corretamente. Atualize a página e tente novamente. Se persistir, informe o Administrador.');
+      return;
+    }
     if(id==='clientes')await window.FocadoDataStore?.refreshDomainV2?.('customers');
     if(id==='pedidos')await window.FocadoDataStore?.refreshDomainV2?.('orders');
     const open=(fn)=>{
