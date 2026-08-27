@@ -6,6 +6,8 @@ on:
     branches: [main]
     paths:
       - "worker/**"
+      - "shared/**"
+      - "tests/domain-rules.test.mjs"
       - ".github/workflows/deploy-focado-worker.yml"
 
 permissions:
@@ -32,6 +34,9 @@ jobs:
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+
+      - name: Test shared domain rules
+        run: node ../tests/domain-rules.test.mjs
 
       - name: Validate Worker
         run: npx wrangler deploy --dry-run
