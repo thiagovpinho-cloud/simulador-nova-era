@@ -36,29 +36,29 @@
     const awaiting=all.filter(o=>o.status==='PCP').length;
     const ready=all.filter(o=>o.status==='PCP'&&planningStatus(o)[1]==='ready').length;
     const done=all.filter(o=>o.status==='ESTOQUE_PRODUCAO').length;
-    content().innerHTML='<div class="fp-page">'+
-      '<div class="fp-head"><div><h1>PCP</h1><p>Pedidos recebidos do Comercial · planejar disponibilidade e atendimento</p></div></div>'+
-      '<div class="fp-kpis">'+
+    content().innerHTML='<div class="fpcp-page">'+
+      '<div class="fpcp-head"><div><h1>PCP</h1><p>Pedidos recebidos do Comercial · planejar disponibilidade e atendimento</p></div></div>'+
+      '<div class="fpcp-kpis">'+
         kpi('Aguardando análise',awaiting,'pedidos recebidos do Comercial')+
         kpi('Prontos para finalizar',ready,'planejamento completo')+
         kpi('PCP concluído',done,'enviados para operação')+
         kpi('Volume em produção',all.reduce((s,o)=>s+prodQty(o),0)+' cx','carteira atual')+
         kpi('Volume por estoque',all.reduce((s,o)=>s+stockQty(o),0)+' cx','carteira atual')+
       '</div>'+
-      '<div class="fp-guide"><b>Como operar:</b><span>1. Abra um pedido</span><span>2. Confira estoque por item</span><span>3. Defina Estoque ou Produção</span><span>4. Informe base e disponibilidade</span><span>5. Finalize o PCP</span></div>'+
-      '<div class="fp-toolbar"><input class="fp-search" id="fpSearch" placeholder="Buscar pedido, cliente, CNPJ, representante ou produto" value="'+esc(filters.q)+'"><select class="fp-select" id="fpBase"><option value="TODAS">Todas as bases</option>'+['SENIR','GREENTECH','TOPLAND'].map(b=>'<option value="'+b+'" '+(filters.base===b?'selected':'')+'>'+b+'</option>').join('')+'</select><span class="fp-muted">'+rows.length+' pedido(s)</span></div>'+
-      '<div class="fp-table-wrap">'+table(rows)+'</div></div>';
+      '<div class="fpcp-guide"><b>Como operar:</b><span>1. Abra um pedido</span><span>2. Confira estoque por item</span><span>3. Defina Estoque ou Produção</span><span>4. Informe base e disponibilidade</span><span>5. Finalize o PCP</span></div>'+
+      '<div class="fpcp-toolbar"><input class="fpcp-search" id="fpSearch" placeholder="Buscar pedido, cliente, CNPJ, representante ou produto" value="'+esc(filters.q)+'"><select class="fpcp-select" id="fpBase"><option value="TODAS">Todas as bases</option>'+['SENIR','GREENTECH','TOPLAND'].map(b=>'<option value="'+b+'" '+(filters.base===b?'selected':'')+'>'+b+'</option>').join('')+'</select><span class="fpcp-muted">'+rows.length+' pedido(s)</span></div>'+
+      '<div class="fpcp-table-wrap">'+table(rows)+'</div></div>';
     const q=document.getElementById('fpSearch'),base=document.getElementById('fpBase');let t;
     q.oninput=()=>{clearTimeout(t);t=setTimeout(()=>render({q:q.value,base:base.value}),180)};
     base.onchange=()=>render({q:q.value,base:base.value});
-    document.querySelectorAll('[data-fp-open]').forEach(b=>b.onclick=()=>openOrder(b.dataset.fpOpen));
+    document.querySelectorAll('[data-fpcp-open]').forEach(b=>b.onclick=()=>openOrder(b.dataset.fpOpen));
   }
-  function kpi(a,b,c){return '<div class="fp-kpi"><span>'+a+'</span><strong>'+b+'</strong><small>'+c+'</small></div>'}
+  function kpi(a,b,c){return '<div class="fpcp-kpi"><span>'+a+'</span><strong>'+b+'</strong><small>'+c+'</small></div>'}
   function table(rows){
-    if(!rows.length)return '<div class="fp-empty">Nenhum pedido aguardando PCP para os filtros atuais.</div>';
-    return '<table class="fp-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Data</th><th>Itens</th><th>Valor</th><th>Base</th><th>Disponível</th><th>Status PCP</th><th></th></tr></thead><tbody>'+rows.map(o=>{
+    if(!rows.length)return '<div class="fpcp-empty">Nenhum pedido aguardando PCP para os filtros atuais.</div>';
+    return '<table class="fpcp-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Data</th><th>Itens</th><th>Valor</th><th>Base</th><th>Disponível</th><th>Status PCP</th><th></th></tr></thead><tbody>'+rows.map(o=>{
       const st=planningStatus(o);
-      return '<tr><td><div class="fp-order">'+esc(o.number)+'</div></td><td><div class="fp-client">'+esc(o.client||'—')+'</div><div class="fp-muted">'+esc([o.city,o.uf].filter(Boolean).join('/'))+'</div></td><td>'+dbr(o.orderDate)+'</td><td>'+((o.items||[]).length)+'<div class="fp-muted">'+totalQty(o)+' cx</div></td><td>'+money(orderValue(o))+'</td><td>'+esc(o.pcp?.deliveryBase||'—')+'</td><td>'+dbr(o.pcp?.availableDate)+'</td><td><span class="fp-status '+st[1]+'">'+st[0]+'</span></td><td><button class="fp-open" data-fp-open="'+esc(o.id)+'">'+(o.status==='PCP'?'Planejar':'Consultar')+'</button></td></tr>';
+      return '<tr><td><div class="fpcp-order">'+esc(o.number)+'</div></td><td><div class="fpcp-client">'+esc(o.client||'—')+'</div><div class="fpcp-muted">'+esc([o.city,o.uf].filter(Boolean).join('/'))+'</div></td><td>'+dbr(o.orderDate)+'</td><td>'+((o.items||[]).length)+'<div class="fpcp-muted">'+totalQty(o)+' cx</div></td><td>'+money(orderValue(o))+'</td><td>'+esc(o.pcp?.deliveryBase||'—')+'</td><td>'+dbr(o.pcp?.availableDate)+'</td><td><span class="fpcp-status '+st[1]+'">'+st[0]+'</span></td><td><button class="fpcp-open" data-fpcp-open="'+esc(o.id)+'">'+(o.status==='PCP'?'Planejar':'Consultar')+'</button></td></tr>';
     }).join('')+'</tbody></table>';
   }
 
@@ -70,23 +70,23 @@
   function renderDetail(o,ops){
     const editable=o.status==='PCP';
     const st=planningStatus(o);
-    content().innerHTML='<div class="fp-page">'+
-      '<div class="fp-head"><div><button class="fp-back" id="fpBack">← Fila PCP</button><h1>PCP · '+esc(o.number)+'</h1><p>'+esc(o.client||'')+' · '+esc([o.city,o.uf].filter(Boolean).join('/'))+'</p></div><div class="fp-actions">'+
-        (editable?'<button class="fp-btn secondary" id="fpSave">Salvar planejamento</button><button class="fp-btn primary" id="fpFinish">Finalizar PCP → Operação</button>':'<span class="fp-status done">PCP concluído</span>')+
+    content().innerHTML='<div class="fpcp-page">'+
+      '<div class="fpcp-head"><div><button class="fpcp-back" id="fpBack">← Fila PCP</button><h1>PCP · '+esc(o.number)+'</h1><p>'+esc(o.client||'')+' · '+esc([o.city,o.uf].filter(Boolean).join('/'))+'</p></div><div class="fpcp-actions">'+
+        (editable?'<button class="fpcp-btn secondary" id="fpSave">Salvar planejamento</button><button class="fpcp-btn primary" id="fpFinish">Finalizar PCP → Operação</button>':'<span class="fpcp-status done">PCP concluído</span>')+
       '</div></div>'+
-      '<div class="fp-flowline"><span class="done">Comercial ✓</span><i>→</i><span class="'+(editable?'active':'done')+'">PCP'+(editable?'':' ✓')+'</span><i>→</i><span class="'+(!editable?'active':'')+'">Produção / Estoque</span><i>→</i><span>Logística</span></div>'+
-      '<div class="fp-commercial-readonly"><h2>Dados recebidos do Comercial</h2><div class="fp-read-grid">'+read('Cliente',o.client)+read('CNPJ',o.cnpj)+read('Representante',o.representative)+read('Data do pedido',dbr(o.orderDate))+read('Entrega solicitada',dbr(o.requestedDeliveryDate))+read('Frete',o.freightType)+read('Condição de pagamento',o.paymentTerms)+read('Local de entrega',o.deliveryAddress)+'</div></div>'+
-      '<div class="fp-panel"><div class="fp-panel-head"><div><h2>1. Atendimento dos itens</h2><p>O estoque mostrado é o saldo disponível atual de produto acabado.</p></div><span class="fp-status '+st[1]+'">'+st[0]+'</span></div>'+
-        '<div class="fp-item-table-wrap"><table class="fp-item-table"><thead><tr><th>Código</th><th>Produto</th><th>Pedido</th><th>Estoque disponível</th><th>Atendimento PCP</th><th>Observação</th></tr></thead><tbody>'+
+      '<div class="fpcp-flowline"><span class="done">Comercial ✓</span><i>→</i><span class="'+(editable?'active':'done')+'">PCP'+(editable?'':' ✓')+'</span><i>→</i><span class="'+(!editable?'active':'')+'">Produção / Estoque</span><i>→</i><span>Logística</span></div>'+
+      '<div class="fpcp-commercial-readonly"><h2>Dados recebidos do Comercial</h2><div class="fpcp-read-grid">'+read('Cliente',o.client)+read('CNPJ',o.cnpj)+read('Representante',o.representative)+read('Data do pedido',dbr(o.orderDate))+read('Entrega solicitada',dbr(o.requestedDeliveryDate))+read('Frete',o.freightType)+read('Condição de pagamento',o.paymentTerms)+read('Local de entrega',o.deliveryAddress)+'</div></div>'+
+      '<div class="fpcp-panel"><div class="fpcp-panel-head"><div><h2>1. Atendimento dos itens</h2><p>O estoque mostrado é o saldo disponível atual de produto acabado.</p></div><span class="fpcp-status '+st[1]+'">'+st[0]+'</span></div>'+
+        '<div class="fpcp-item-table-wrap"><table class="fpcp-item-table"><thead><tr><th>Código</th><th>Produto</th><th>Pedido</th><th>Estoque disponível</th><th>Atendimento PCP</th><th>Observação</th></tr></thead><tbody>'+
           (o.items||[]).map((i,n)=>itemRow(i,n,finishedAvailable(ops,i),editable)).join('')+
         '</tbody></table></div></div>'+
-      '<div class="fp-panel"><h2>2. Planejamento e disponibilidade</h2><div class="fp-form-grid">'+
+      '<div class="fpcp-panel"><h2>2. Planejamento e disponibilidade</h2><div class="fpcp-form-grid">'+
         select('Base de entrega / produção','deliveryBase',o.pcp?.deliveryBase||'',["","SENIR","GREENTECH","TOPLAND"],editable)+
         input('Data de início de produção','productionDate',o.pcp?.productionDate||'','date',editable)+
         input('Data disponível para expedição','availableDate',o.pcp?.availableDate||'','date',editable)+
         input('Quantidade programada (cx)','scheduledQty',o.pcp?.scheduledQty||'','number',editable)+
-        '<label class="fp-field wide"><span>Observações do PCP</span><textarea id="fpNotes" '+(editable?'':'disabled')+'>'+esc(o.pcp?.notes||'')+'</textarea></label>'+
-      '</div><div class="fp-help">Se todos os itens forem atendidos por estoque, a data disponível continua sendo útil para informar quando o pedido estará realmente liberado para a Logística.</div></div>'+
+        '<label class="fpcp-field wide"><span>Observações do PCP</span><textarea id="fpNotes" '+(editable?'':'disabled')+'>'+esc(o.pcp?.notes||'')+'</textarea></label>'+
+      '</div><div class="fpcp-help">Se todos os itens forem atendidos por estoque, a data disponível continua sendo útil para informar quando o pedido estará realmente liberado para a Logística.</div></div>'+
       history(o)+'</div>';
     document.getElementById('fpBack').onclick=()=>render(filters);
     if(editable){
@@ -96,14 +96,14 @@
   }
   function read(a,b){return '<div><span>'+a+'</span><b>'+esc(b||'—')+'</b></div>'}
   function select(label,id,val,options,editable){
-    return '<label class="fp-field"><span>'+label+'</span><select id="fp_'+id+'" '+(editable?'':'disabled')+'>'+options.map(x=>'<option value="'+esc(x)+'" '+(String(val)===x?'selected':'')+'>'+(x||'Selecione')+'</option>').join('')+'</select></label>';
+    return '<label class="fpcp-field"><span>'+label+'</span><select id="fp_'+id+'" '+(editable?'':'disabled')+'>'+options.map(x=>'<option value="'+esc(x)+'" '+(String(val)===x?'selected':'')+'>'+(x||'Selecione')+'</option>').join('')+'</select></label>';
   }
   function input(label,id,val,type,editable){
-    return '<label class="fp-field"><span>'+label+'</span><input id="fp_'+id+'" type="'+type+'" value="'+esc(val||'')+'" '+(editable?'':'disabled')+'></label>';
+    return '<label class="fpcp-field"><span>'+label+'</span><input id="fp_'+id+'" type="'+type+'" value="'+esc(val||'')+'" '+(editable?'':'disabled')+'></label>';
   }
   function itemRow(i,n,av,editable){
     const shortage=Number(i.qty||0)>av;
-    return '<tr data-pcp-item data-key="'+esc(i.id||i.code||i.productId||'')+'"><td><b>'+esc(i.code||'—')+'</b></td><td>'+esc(i.name||'—')+'</td><td><b>'+Number(i.qty||0)+' cx</b></td><td><span class="fp-stock '+(shortage?'low':'ok')+'">'+av+' cx</span></td><td><select data-source '+(editable?'':'disabled')+'><option value="">Definir</option><option value="ESTOQUE" '+(i.source==='ESTOQUE'?'selected':'')+'>Estoque</option><option value="PRODUCAO" '+(i.source==='PRODUCAO'?'selected':'')+'>Produção</option></select></td><td class="fp-item-note">'+(shortage?'Estoque menor que o pedido':'Saldo suficiente para estoque')+'</td></tr>';
+    return '<tr data-pcp-item data-key="'+esc(i.id||i.code||i.productId||'')+'"><td><b>'+esc(i.code||'—')+'</b></td><td>'+esc(i.name||'—')+'</td><td><b>'+Number(i.qty||0)+' cx</b></td><td><span class="fpcp-stock '+(shortage?'low':'ok')+'">'+av+' cx</span></td><td><select data-source '+(editable?'':'disabled')+'><option value="">Definir</option><option value="ESTOQUE" '+(i.source==='ESTOQUE'?'selected':'')+'>Estoque</option><option value="PRODUCAO" '+(i.source==='PRODUCAO'?'selected':'')+'>Produção</option></select></td><td class="fpcp-item-note">'+(shortage?'Estoque menor que o pedido':'Saldo suficiente para estoque')+'</td></tr>';
   }
   function collectChanges(o,ops){
     const items=[...document.querySelectorAll('[data-pcp-item]')].map(r=>({id:r.dataset.key,source:r.querySelector('[data-source]').value}));
@@ -161,7 +161,7 @@
   }
   function history(o){
     const events=(o.events||[]).slice(0,8);
-    return '<div class="fp-panel"><h2>Histórico</h2>'+(events.length?'<div class="fp-history">'+events.map(e=>'<div><span>'+dbr(new Date(e.at).toISOString().slice(0,10))+'</span><p><b>'+esc(e.text||e.type||'Movimentação')+'</b><small>'+esc(e.user||'')+'</small></p></div>').join('')+'</div>':'<div class="fp-empty small">Nenhuma movimentação registrada.</div>')+'</div>';
+    return '<div class="fpcp-panel"><h2>Histórico</h2>'+(events.length?'<div class="fpcp-history">'+events.map(e=>'<div><span>'+dbr(new Date(e.at).toISOString().slice(0,10))+'</span><p><b>'+esc(e.text||e.type||'Movimentação')+'</b><small>'+esc(e.user||'')+'</small></p></div>').join('')+'</div>':'<div class="fpcp-empty small">Nenhuma movimentação registrada.</div>')+'</div>';
   }
 
   window.FocadoPCP={render,openOrder};
