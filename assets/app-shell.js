@@ -113,8 +113,8 @@
     if(id==='fichas')return clickLegacy('hubGoFichas');
     if(id==='pcp'){showShell(); if(window.FocadoPCP) window.FocadoPCP.render(); return}
     if(id==='production'){showShell(); if(window.FocadoProduction) window.FocadoProduction.render(); return}\n    if(id==='bases')return openOps('production');
-    if(id==='inventory'||id==='finished')return openOps('inventory');
-    if(id==='inputs'||id==='inventario')return openOps('inputs');
+    if(id==='inventory'||id==='finished'){showShell(); if(window.FocadoInventory) window.FocadoInventory.render({tab:id==='finished'?'finished':'inputs',q:'',filter:'TODOS'}); return}
+    if(id==='inputs'){showShell(); if(window.FocadoInventory) window.FocadoInventory.render({tab:'inputs',q:'',filter:'TODOS'}); return}\n    if(id==='inventario')return openOps('inputs');
     if(id==='movements')return openOps('movements');
     if(id==='purchases')return openOps('purchases');
   }
