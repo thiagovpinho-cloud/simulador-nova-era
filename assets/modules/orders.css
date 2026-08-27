@@ -32,3 +32,6 @@
 .fo-rep-select select{flex:1;min-width:0}
 .fo-rep-select button{width:36px;border:1px solid #0b6a51;background:#e8f5ef;color:#075f48;border-radius:8px;font-size:16px;font-weight:800;cursor:pointer}
 .fo-rep-select button:hover{background:#dff1e9}
+
+.fo-field span::after{content:""}
+.fo-field-required>span::after{content:" *";color:#bd3439}
