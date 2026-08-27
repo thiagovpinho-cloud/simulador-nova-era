@@ -111,7 +111,7 @@
     if(id==='clientes')return clickLegacy('hubGoCadastro');
     if(id==='pedidos'){showShell(); if(window.FocadoOrders) window.FocadoOrders.render(); return}
     if(id==='fichas')return clickLegacy('hubGoFichas');
-    if(id==='pcp')return openOps('orders');
+    if(id==='pcp'){showShell(); if(window.FocadoPCP) window.FocadoPCP.render(); return}
     if(id==='production'||id==='bases')return openOps('production');
     if(id==='inventory'||id==='finished')return openOps('inventory');
     if(id==='inputs'||id==='inventario')return openOps('inputs');
