@@ -22,7 +22,7 @@
     const s=state||{q:'',status:'TODOS'};
     const rows=all.filter(o=>{
       const q=s.q.toLowerCase();
-      const mq=!q||[o.number,o.client,o.city,o.logistics?.carrier].some(v=>String(v||'').toLowerCase().includes(q));
+      const mq=!q||[o.number,o.client,o.city,o.logistics?.carrier,(o.items||[]).map(i=>i.deliveryBase+' '+i.code+' '+i.name).join(' ')].some(v=>String(v||'').toLowerCase().includes(q));
       const st=status(o)[0];
       const ms=s.status==='TODOS'||st===s.status;
       return mq&&ms;
@@ -65,7 +65,7 @@
   }
   function table(rows){
     if(!rows.length)return '<div class="fl-empty">Nenhum pedido logístico encontrado.</div>';
-    return '<table class="fl-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Transportadora</th><th>Orçamento</th><th>Frete</th><th>Coleta</th><th>Entrega</th><th>Lead time</th><th>Status</th><th></th></tr></thead><tbody>'+rows.map(o=>{const st=status(o),lt=days(o.logistics?.pickupDate,o.logistics?.deliveryDate);return '<tr><td><div class="fl-order">'+esc(o.number)+'</div><div class="fl-muted">'+dbr(o.orderDate)+'</div></td><td><div class="fl-client">'+esc(o.client)+'</div><div class="fl-muted">'+esc(o.city||'')+'</div></td><td>'+esc(o.logistics?.carrier||'—')+'</td><td>'+money(o.logisticsBudget)+'</td><td>'+money(o.logistics?.freightValue)+'</td><td>'+dbr(o.logistics?.pickupDate)+'</td><td>'+dbr(o.logistics?.deliveryDate)+'</td><td>'+(lt==null?'—':lt+' dia(s)')+'</td><td><span class="fl-chip '+st[1]+'">'+st[0]+'</span></td><td><button class="fl-open" data-fl-open="'+esc(o.id)+'">Abrir</button></td></tr>'}).join('')+'</tbody></table>';
+    return '<table class="fl-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Retirada por item</th><th>Transportadora</th><th>Orçamento</th><th>Frete</th><th>Coleta</th><th>Entrega</th><th>Lead time</th><th>Status</th><th></th></tr></thead><tbody>'+rows.map(o=>{const st=status(o),lt=days(o.logistics?.pickupDate,o.logistics?.deliveryDate);const pickups=(o.items||[]).map(i=>'<div><b>'+esc(i.code||'')+'</b> · '+esc(i.name||'')+'<div class="fl-muted">'+esc(i.deliveryBase||o.pcp?.deliveryBase||'Base não definida')+' · '+Number(i.qty||0)+' cx</div></div>').join('');return '<tr><td><div class="fl-order">'+esc(o.number)+'</div><div class="fl-muted">'+dbr(o.orderDate)+'</div></td><td><div class="fl-client">'+esc(o.client)+'</div><div class="fl-muted">'+esc(o.city||'')+'</div></td><td>'+pickups+'</td><td>'+esc(o.logistics?.carrier||'—')+'</td><td>'+money(o.logisticsBudget)+'</td><td>'+money(o.logistics?.freightValue)+'</td><td>'+dbr(o.logistics?.pickupDate)+'</td><td>'+dbr(o.logistics?.deliveryDate)+'</td><td>'+(lt==null?'—':lt+' dia(s)')+'</td><td><span class="fl-chip '+st[1]+'">'+st[0]+'</span></td><td><button class="fl-open" data-fl-open="'+esc(o.id)+'">Abrir</button></td></tr>'}).join('')+'</tbody></table>';
   }
   function openOrder(id){document.getElementById('focadoShell')?.classList.add('hidden');const btn=document.getElementById('hubGoOperacoes');if(!btn)return;btn.click();setTimeout(()=>document.querySelector('[data-open-order="'+CSS.escape(id)+'"]')?.click(),20)}
   function openLegacy(){document.getElementById('focadoShell')?.classList.add('hidden');const btn=document.getElementById('hubGoOperacoes');if(btn)btn.click()}
