@@ -46,7 +46,7 @@
   }
   function remaining(i){return Math.max(0,Number(i.qty||0)-Number(i.reservedQty||0)-Number(i.cutQty||0))}
   function planningStatus(o){
-    if(o.status==='ESTOQUE_PRODUCAO')return ['PCP concluído','done'];
+    if(o.status==='LOGISTICA')return ['PCP concluído','done'];
     const items=o.items||[];
     if(items.some(i=>!i.deliveryBase))return ['Definir base por item','attention'];
     if(items.some(i=>remaining(i)>0 && i.pcpBalanceDecision==='AGUARDAR' && !i.pcpAvailabilityDate))return ['Informar previsão de saldo','attention'];
@@ -63,7 +63,7 @@
   function render(state){
     filters=state||filters;
     const ops=ensureOrderIds(load());
-    const all=(ops.orders||[]).filter(o=>o.status==='PCP'||o.status==='ESTOQUE_PRODUCAO');
+    const all=(ops.orders||[]).filter(o=>o.status==='PCP'||o.status==='LOGISTICA');
     const knownBases=['SENIR','GREENTECH','TOPLAND'];
     const rows=all.filter(o=>{
       const q=filters.q.toLowerCase();
@@ -73,11 +73,11 @@
     });
     const awaiting=all.filter(o=>o.status==='PCP').length;
     const ready=all.filter(o=>o.status==='PCP'&&planningStatus(o)[1]==='ready').length;
-    const done=all.filter(o=>o.status==='ESTOQUE_PRODUCAO').length;
+    const done=all.filter(o=>o.status==='LOGISTICA').length;
     const reserved=all.reduce((s,o)=>s+(o.items||[]).reduce((a,i)=>a+Number(i.reservedQty||0),0),0);
     content().innerHTML='<div class="fpcp-page">'+
       '<div class="fpcp-head"><div><h1>PCP</h1><p>Estoque real por código · reserva · disponibilidade · base de retirada</p></div></div>'+
-      '<div class="fpcp-kpis">'+kpi('Aguardando análise',awaiting,'pedidos recebidos do Comercial')+kpi('Prontos para liberar',ready,'itens atendidos ou cortados')+kpi('PCP concluído',done,'enviados para operação')+kpi('Reservado',reserved+' cx','estoque comprometido com pedidos')+'</div>'+
+      '<div class="fpcp-kpis">'+kpi('Aguardando análise',awaiting,'pedidos recebidos do Comercial')+kpi('Prontos para liberar',ready,'itens atendidos ou cortados')+kpi('PCP concluído',done,'enviados para Logística')+kpi('Reservado',reserved+' cx','estoque comprometido com pedidos')+'</div>'+
       '<div class="fpcp-guide"><b>Como operar:</b><span>1. Abra o pedido</span><span>2. Confira o saldo atual</span><span>3. Reserve total ou parcialmente</span><span>4. Informe previsão do saldo ou corte</span><span>5. Defina a base por item e libere</span></div>'+
       '<div class="fpcp-toolbar"><input class="fpcp-search" id="fpSearch" placeholder="Buscar pedido, cliente, CNPJ, representante ou produto" value="'+esc(filters.q)+'"><select class="fpcp-select" id="fpBase"><option value="TODAS">Todas as bases</option>'+knownBases.map(b=>'<option value="'+b+'" '+(filters.base===b?'selected':'')+'>'+b+'</option>').join('')+'</select><span class="fpcp-muted">'+rows.length+' pedido(s)</span></div>'+
       '<div class="fpcp-table-wrap">'+table(rows)+'</div></div>';
@@ -253,7 +253,7 @@
       current.pcp={...(current.pcp||{}),...changes.pcp};
       current.pcp.deliveryBase=basesOf(current).length===1?basesOf(current)[0]:'MÚLTIPLAS';
       current.events=current.events||[];current.events.unshift({at:Date.now(),text:finish?'PCP liberado com reservas confirmadas':(preReleaseLogistics?'Logística pré-liberada com ressalva de disponibilidade em '+dbr(changes.pcp.logisticsAvailabilityDate):'Planejamento PCP salvo'),user:window.FocadoAuth?.getUser?.()?.name||'PCP'});
-      if(finish)current.status='ESTOQUE_PRODUCAO';
+      if(finish)current.status='LOGISTICA';
       await window.FocadoDataStore?.save?.(ops);
     }
     window.dispatchEvent(new CustomEvent('focado:ops-updated',{detail:{source:'pcp'}}));
