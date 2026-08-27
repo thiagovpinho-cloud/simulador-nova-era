@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260827-lazy-v1';
+  const VERSION='20260827-lazy-v2';
   const loaded=new Map();
   const defs={
     produtos:{css:'products.css',js:'products.js'},
@@ -22,6 +22,28 @@
     kanban:{css:'kanban.css',js:'kanban.js',deps:['pedidos']},
     'system-health':{css:'system-health.css',js:'system-health.js'}
   };
+  const contracts={
+    produtos:()=>typeof window.FocadoProducts?.render==='function',
+    representantes:()=>typeof window.FocadoRepresentatives?.render==='function',
+    clientes:()=>typeof window.FocadoCustomers?.render==='function',
+    pedidos:()=>typeof window.FocadoOrders?.render==='function'&&typeof window.FocadoOrders?.openOrder==='function',
+    pcp:()=>typeof window.FocadoPCP?.render==='function',
+    production:()=>typeof window.FocadoProduction?.render==='function',
+    inventory:()=>typeof window.FocadoInventory?.render==='function',
+    purchases:()=>typeof window.FocadoPurchases?.render==='function',
+    expedicao:()=>typeof window.FocadoExpedition?.render==='function',
+    logistica:()=>typeof window.FocadoLogistics?.render==='function',
+    kanban:()=>typeof window.FocadoKanban?.render==='function',
+    cockpit:()=>typeof window.FocadoIntelligenceUI?.renderCockpit==='function',
+    'corpo-auditor':()=>typeof window.FocadoIntelligenceUI?.renderAuditor==='function',
+    'system-health':()=>typeof window.FocadoSystemHealth?.render==='function'
+  };
+  function verify(name){
+    const key=defs[name]?.alias||name;
+    const fn=contracts[name]||contracts[key];
+    if(fn&&!fn())throw new Error('MODULE_CONTRACT_FAILED:'+name);
+    return true;
+  }
   function css(href){
     if(document.querySelector('link[data-focado-module="'+href+'"]'))return Promise.resolve();
     return new Promise((resolve,reject)=>{
@@ -40,11 +62,12 @@
   }
   async function ensure(name){
     let def=defs[name];if(!def)return true;
-    if(def.alias)return ensure(def.alias);
+    if(def.alias){await ensure(def.alias);verify(name);return true;}
     if(loaded.has(name))return loaded.get(name);
     const p=(async()=>{
       for(const dep of def.deps||[])await ensure(dep);
       await Promise.all([def.css?css(def.css):null,def.js?js(def.js):null].filter(Boolean));
+      verify(name);
       return true;
     })();
     loaded.set(name,p);
