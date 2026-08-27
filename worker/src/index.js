@@ -12,7 +12,8 @@ const DOMAIN_PERMISSION = {
   COMPRAS:"purchases.write",
   FINANCEIRO:"finance.write",
   SOLICITACAO_PRODUCAO:"pcp.write",
-  TRANSPORTADORAS:"logistics.write"
+  TRANSPORTADORAS:"logistics.write",
+  CLIENTES:"commercial.write"
 };
 const FLOW = {
   COMERCIAL:{to:"PCP",permission:"orders.write"},
@@ -227,6 +228,15 @@ function applyLogistics(state,body){
 }
 function applyPurchases(state,body){state.purchasePlanning={...(state.purchasePlanning||{}),...(body.changes?.reorder||{})}}
 function applyFinance(state,body){state.finance={...(state.finance||{}),...pick(body.changes||{},["approvedFreight","paymentStatus","invoiceStatus","creditStatus","notes"])}}
+function applyCustomers(state,body){
+  const changes=body.changes||{};
+  state.customers=Array.isArray(state.customers)?state.customers:[];
+  if(changes.customer&&typeof changes.customer==="object"){
+    const incoming=structuredClone(changes.customer);
+    const idx=state.customers.findIndex(x=>String(x.id)===String(incoming.id));
+    if(idx>=0)state.customers[idx]=incoming;else state.customers.unshift(incoming);
+  }
+}
 function applyCarriers(state,body){
   const changes=body.changes||{};
   state.carriers=Array.isArray(state.carriers)?state.carriers:[];
@@ -248,7 +258,7 @@ function applyProductionRequest(state,body){
     else state.productionRequests.unshift(incoming);
   }
 }
-const APPLY={COMERCIAL:applyCommercial,PCP:applyPCP,PRODUCAO:applyProduction,ESTOQUE:applyInventory,LOGISTICA:applyLogistics,COMPRAS:applyPurchases,FINANCEIRO:applyFinance,SOLICITACAO_PRODUCAO:applyProductionRequest,TRANSPORTADORAS:applyCarriers};
+const APPLY={COMERCIAL:applyCommercial,PCP:applyPCP,PRODUCAO:applyProduction,ESTOQUE:applyInventory,LOGISTICA:applyLogistics,COMPRAS:applyPurchases,FINANCEIRO:applyFinance,SOLICITACAO_PRODUCAO:applyProductionRequest,TRANSPORTADORAS:applyCarriers,CLIENTES:applyCustomers};
 
 function validateTransition(order){
   switch(order.status){
