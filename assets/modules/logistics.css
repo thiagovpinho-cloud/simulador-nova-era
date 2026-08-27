@@ -29,3 +29,23 @@
 .fl-head .fl-btn{margin-bottom:8px}
 @media(max-width:1000px){.fl-detail-grid{grid-template-columns:1fr}}
 @media(max-width:700px){.fl-form-grid{grid-template-columns:1fr}.fl-span-2{grid-column:span 1}.fl-form-actions{justify-content:stretch}.fl-form-actions .fl-btn{width:100%}}
+
+.fl-budget-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.fl-budget-row>div{background:#fff;border:1px solid var(--fx-border);border-radius:13px;padding:13px 14px}
+.fl-budget-row span{display:block;color:var(--fx-muted);font-size:9px;text-transform:uppercase;letter-spacing:.35px;font-weight:800}
+.fl-budget-row strong{display:block;margin-top:5px;font-size:17px;color:var(--fx-text)}
+.fl-budget-status.ok{background:#eef8f3;border-color:#cce9db}.fl-budget-status.ok b{color:#08785b}
+.fl-budget-status.over{background:#fff0f0;border-color:#f1c8c8}.fl-budget-status.over b{color:#b92d35}
+.fl-budget-status.neutral{background:#f7f9f8}
+.fl-budget-status b{display:block;font-size:10px}.fl-budget-status span{margin-top:3px;text-transform:none;letter-spacing:0}
+.fl-callout{border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:3px}
+.fl-callout b{font-size:10.5px}.fl-callout span{font-size:9.5px;color:var(--fx-muted)}
+.fl-callout.warn{background:#fff7ec;border:1px solid #f3dfbf}.fl-callout.warn b{color:#a86113}
+.fl-callout.info{margin-top:12px;background:#eef7f4;border:1px solid #d2e9e1}.fl-callout.info b{color:#0a7054}
+.fl-pickup-card{padding:12px;border:1px solid #e5ece8;border-radius:11px;background:#fafcfb}
+.fl-pickup-card b{display:block;font-size:10.5px;color:var(--fx-text)}.fl-pickup-card small{display:block;margin-top:3px;color:var(--fx-muted);font-size:9px}
+.fl-help{font-size:8.5px!important;color:var(--fx-muted);text-transform:none!important;letter-spacing:0!important;font-weight:500!important}
+.fl-delivery-table{min-width:900px}
+.fl-info-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid #edf1ee}
+.fl-info-row:last-child{border-bottom:0}.fl-info-row span{font-size:9.5px;color:var(--fx-muted)}.fl-info-row b{font-size:10.5px}
+@media(max-width:800px){.fl-budget-row{grid-template-columns:1fr}.fl-budget-row>div{padding:11px 12px}}
