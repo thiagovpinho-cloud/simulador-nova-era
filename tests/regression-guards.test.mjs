@@ -69,3 +69,16 @@ assert.ok(shellV2.includes("refreshDomainV2?.('orders')"),'Pedidos deve ler Data
 assert.ok(shellV2.includes('Saúde & Auditoria'),'Admin deve possuir acesso ao diagnóstico técnico');
 assert.ok(healthModule.includes('getV2Consistency'),'Saúde deve validar consistência Data v2');
 assert.ok(healthModule.includes('getSecurityHealth'),'Saúde deve validar controles de segurança');
+
+const intelligenceCore=read('assets/modules/intelligence-core.js');
+const intelligenceUI=read('assets/modules/intelligence.js');
+assert.ok(shell.includes('Cockpit Operacional'),'Barra lateral deve expor Cockpit Operacional');
+assert.ok(shell.includes('Corpo Auditor'),'Barra lateral deve expor Corpo Auditor');
+assert.ok(pcp.includes('MRP / Capacidade'),'PCP deve expor MRP leve');
+assert.ok(purchasesModule.includes('Performance fornecedores'),'Compras deve expor performance de fornecedores');
+assert.ok(logistics.includes('Performance transportadoras'),'Logística deve expor performance de transportadoras');
+assert.ok(intelligenceCore.includes('orderRisk'),'Motor deve calcular risco explicável de pedido');
+assert.ok(intelligenceCore.includes('auditorFindings'),'Motor deve gerar achados do Corpo Auditor');
+assert.ok(intelligenceCore.includes('confidence'),'Sugestões devem carregar confiança/evidência');
+assert.ok(intelligenceUI.includes('renderCockpit'),'UI deve possuir Cockpit');
+assert.ok(intelligenceUI.includes('renderAuditor'),'UI deve possuir Corpo Auditor');
