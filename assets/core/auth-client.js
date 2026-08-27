@@ -24,7 +24,7 @@
     pedidos:['ADMIN','COMERCIAL'],
     fichas:['ADMIN','COMERCIAL','PCP','PRODUCAO'],
     pcp:['ADMIN','PCP'],
-    production:['ADMIN','PRODUCAO'],
+    production:['ADMIN','PCP','PRODUCAO'],
     bases:['ADMIN','PCP','PRODUCAO'],
     inventory:['ADMIN','ESTOQUE'],
     inputs:['ADMIN','ESTOQUE','COMPRAS'],
