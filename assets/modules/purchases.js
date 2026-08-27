@@ -33,12 +33,13 @@
     const ops=load(),ns=needs(ops),reqs=(ops.purchaseRequests||[]).slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)),sup=(ops.suppliers||[]).filter(s=>s.active!==false);
     const open=reqs.filter(r=>!['RECEBIDO','CANCELADO'].includes(r.status)).length;
     content().innerHTML='<div class="fds-page">'+
-      '<div class="fpur-head"><div><h1>Compras</h1><p>Necessidades de matéria-prima, requisições, fornecedores e recebimentos</p></div><div class="fds-row"><button class="fds-btn" id="fpurNew">+ Nova requisição</button><button class="fds-btn" id="fpurSupplier">+ Fornecedor</button></div></div>'+
+      '<div class="fpur-head"><div><h1>Compras</h1><p>Necessidades de matéria-prima, requisições, fornecedores e recebimentos</p></div><div class="fds-row"><button class="fds-btn" id="fpurScore">Performance fornecedores</button><button class="fds-btn" id="fpurNew">+ Nova requisição</button><button class="fds-btn" id="fpurSupplier">+ Fornecedor</button></div></div>'+
       '<div class="fpur-kpis"><div class="fds-card"><span>Necessidades</span><strong>'+ns.length+'</strong><small>insumos ainda sem cobertura</small></div><div class="fds-card"><span>Requisições abertas</span><strong>'+open+'</strong><small>em cotação/aprovação/pedido</small></div><div class="fds-card"><span>Fornecedores ativos</span><strong>'+sup.length+'</strong><small>cadastro disponível</small></div></div>'+
       '<div class="fpur-tabs"><button class="'+(tab==='needs'?'active':'')+'" data-tab="needs">Necessidades</button><button class="'+(tab==='requests'?'active':'')+'" data-tab="requests">Requisições</button><button class="'+(tab==='suppliers'?'active':'')+'" data-tab="suppliers">Fornecedores</button></div>'+
       (tab==='needs'?needsView(ns):tab==='requests'?requestsView(reqs):suppliersView(ops.suppliers||[]))+
       '</div>';
     document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render()});
+    document.getElementById('fpurScore').onclick=()=>window.FocadoIntelligenceUI?.renderSuppliers();
     document.getElementById('fpurNew').onclick=()=>openRequest(null);
     document.getElementById('fpurSupplier').onclick=()=>openSupplier();
     document.querySelectorAll('[data-need]').forEach(b=>b.onclick=()=>openRequest(b.dataset.need));
