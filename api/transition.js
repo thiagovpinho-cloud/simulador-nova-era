@@ -18,9 +18,17 @@ function validate(order){
       if(!order.client || !(order.items||[]).length) return 'Pedido incompleto para finalizar Comercial.';
       return null;
     case 'PCP':
-      if(!order.pcp?.deliveryBase) return 'Defina a base de entrega/produção.';
-      if((order.items||[]).some(i=>!['ESTOQUE','PRODUCAO'].includes(i.source))) return 'Defina Estoque ou Produção para todos os itens.';
-      if((order.items||[]).some(i=>i.source==='PRODUCAO') && !order.pcp?.availableDate) return 'Produção sem data disponível.';
+      for(const item of order.items||[]){
+        if(!item.deliveryBase) return 'Defina a base de retirada de todos os itens.';
+        const qty=Math.max(0,Number(item.qty||0));
+        const reserved=Math.max(0,Number(item.reservedQty||0));
+        const cut=Math.max(0,Number(item.cutQty||0));
+        const missing=Math.max(0,qty-reserved-cut);
+        if(missing>0){
+          if(item.pcpBalanceDecision==='AGUARDAR'&&!item.pcpAvailabilityDate) return 'Há item sem previsão de estoque disponível.';
+          return 'Há item ainda não atendido. Reserve o saldo ou libere com corte.';
+        }
+      }
       return null;
     case 'ESTOQUE_PRODUCAO':
       if((order.items||[]).some(i=>i.source==='PRODUCAO'&&!i.productionCompleted)) return 'Há item de produção ainda não concluído.';
