@@ -637,7 +637,7 @@
     <h1>Simulador de Precificação</h1>
     <p class="login-sub">Entre com seu login e senha para continuar</p>
     <form id="loginForm" autocomplete="on">
-      <input type="text" id="loginUser" name="username" placeholder="Login" autocomplete="username">
+      <input type="email" id="loginUser" name="username" placeholder="E-mail" autocomplete="username">
       <input type="password" id="loginPassword" name="password" placeholder="Senha" autocomplete="current-password">
       <button id="loginBtn" type="submit">Entrar</button>
     </form>
@@ -1175,11 +1175,8 @@ function getTodayQuote(){
   return MOTIVATIONAL_QUOTES[dayOfYear % MOTIVATIONAL_QUOTES.length];
 }
 
-const CREDENTIALS = [
-  { login:'Admin',  senha:'1@novaera',    role:'admin', label:'Administrador' },
-  { login:'Vendas', senha:'vendasnovaera', role:'admin', label:'Vendas' },
-  { login:'Rep01',  senha:'repnovaera',    role:'user',  label:'Representante Comercial' },
-];
+const CREDENTIALS = []; // legado desativado: autenticação oficial via Cloudflare/Neon
+
 
 const ESTADOS = [
   {code:'DF', name:'Distrito Federal'},
@@ -3418,26 +3415,9 @@ async function attemptLogin(){
     return;
   }
 
-  const match = CREDENTIALS.find(c => c.login.toLowerCase() === login.toLowerCase() && c.senha === pass);
-  if(!match){
-    err.textContent = 'Login ou senha incorretos. Tente novamente.';
-    document.getElementById('loginPassword').value = '';
-    document.getElementById('loginPassword').focus();
-    return;
-  }
-  sessionStorage.setItem('nova-era-role', match.role);
-  sessionStorage.setItem('nova-era-role-label', match.label);
-  sessionStorage.setItem('nova-era-login-time', String(Date.now()));
-  window.FocadoAuth?.adoptLegacy?.(match.role, match.label);
-  applyRole(match.role, match.label);
-  resetSimulatorKeepingHistory();
-  renderBrandHeader();
-  renderEstadoOptions();
-  const all = renderTopBar();
-  renderProducts(all);
-  updateShareCount();
-  hideLogin();
-  showHub();
+  err.textContent = 'Autenticação do servidor indisponível. Tente novamente em instantes.';
+  document.getElementById('loginPassword').value = '';
+  document.getElementById('loginPassword').focus();
 }
 
 async function logout(){
