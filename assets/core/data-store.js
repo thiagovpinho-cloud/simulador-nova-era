@@ -50,13 +50,36 @@
     else if(Number.isFinite(Number(body.revision))) revision=Number(body.revision);
     return body;
   }
+  function hasMeaningfulLocalState(state){
+    if(!state||typeof state!=='object')return false;
+    if(Array.isArray(state.orders)&&state.orders.length)return true;
+    if(state.inventory&&Object.keys(state.inventory).length)return true;
+    if(state.inputInventory&&Object.keys(state.inputInventory).length)return true;
+    if(Array.isArray(state.stockMovements)&&state.stockMovements.length)return true;
+    return false;
+  }
   async function load(){
     if(!isRemoteReady()) return readLocal();
     try{
       const body=await remoteRequest('/api/state');
-      const state=body?.payload||{};
-      writeLocal(state);
-      return state;
+      const remoteState=body?.payload||{};
+      const localState=readLocal();
+
+      // Migração única: se o workspace remoto acabou de nascer vazio,
+      // preserva o histórico local existente e o envia ao backend.
+      if(Number(body?.revision||0)===0 && Object.keys(remoteState).length===0 && hasMeaningfulLocalState(localState)){
+        const migrated=await remoteRequest('/api/state',{
+          method:'PUT',
+          headers:{'If-Match':'"0"'},
+          body:JSON.stringify({payload:localState})
+        });
+        const state=migrated?.payload||localState;
+        writeLocal(state);
+        return state;
+      }
+
+      writeLocal(remoteState);
+      return remoteState;
     }catch(err){
       console.warn('[FocadoDataStore] API indisponível; usando cache local',err);
       return readLocal();
