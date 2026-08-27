@@ -16,7 +16,8 @@
     logistica:{css:'logistics.css',js:'logistics.js'},
     entregas:{alias:'logistica'},
     transportadoras:{alias:'logistica'},
-    kanban:{css:'kanban.css',js:'kanban.js',deps:['pedidos']}
+    kanban:{css:'kanban.css',js:'kanban.js',deps:['pedidos']},
+    'system-health':{css:'system-health.css',js:'system-health.js'}
   };
   function css(href){
     if(document.querySelector('link[data-focado-module="'+href+'"]'))return Promise.resolve();
