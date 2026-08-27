@@ -44,15 +44,45 @@ function applyPCP(state,body){
   const o=getOrder(state,body.orderId);
   if(!o) throw Object.assign(new Error('ORDER_NOT_FOUND'),{status:404});
   o.pcp=o.pcp||{};
-  Object.assign(o.pcp,pick(body.changes?.pcp||body.changes,['deliveryBase','productionDate','availableDate','separated','scheduledQty','autoScheduled','productionPlan']));
-  if(Array.isArray(body.changes?.items)){
-    const byId=new Map((o.items||[]).map(i=>[String(i.id||i.code||i.productId),i]));
-    for(const incoming of body.changes.items){
-      const key=String(incoming.id||incoming.code||incoming.productId||'');
-      const item=byId.get(key);
-      if(item && ['ESTOQUE','PRODUCAO'].includes(incoming.source)) item.source=incoming.source;
+  Object.assign(o.pcp,pick(body.changes?.pcp||body.changes,['notes']));
+  state.inventory=state.inventory||{};
+  state.stockMovements=Array.isArray(state.stockMovements)?state.stockMovements:[];
+  const byId=new Map((o.items||[]).map(i=>[String(i.id||i.code||i.productId),i]));
+  const findInventory=item=>{
+    const keys=[item.code,item.productId,item.name].map(v=>String(v||'')).filter(Boolean);
+    for(const k of keys) if(state.inventory[k]) return [k,state.inventory[k]];
+    const found=Object.entries(state.inventory).find(([,v])=>String(v?.code||'')===String(item.code||''));
+    if(found)return found;
+    const key=String(item.code||item.productId||item.name||'');
+    const inv={code:item.code||'',name:item.name||'',unit:'CX',physical:0,reserved:0,blocked:0};
+    state.inventory[key]=inv;return [key,inv];
+  };
+  for(const incoming of body.changes?.items||[]){
+    const key=String(incoming.id||incoming.code||incoming.productId||'');
+    const item=byId.get(key);if(!item)continue;
+    const [invKey,inv]=findInventory(item);
+    const oldReserved=Math.max(0,Number(item.reservedQty||0));
+    const desired=Math.max(0,Number(incoming.reservedQty||0));
+    const free=Math.max(0,Number(inv.physical||0)-Number(inv.reserved||0)-Number(inv.blocked||0));
+    if(desired>oldReserved+free){
+      throw Object.assign(new Error('INSUFFICIENT_STOCK'),{status:422});
     }
+    const beforeReserved=Math.max(0,Number(inv.reserved||0));
+    inv.reserved=Math.max(0,beforeReserved-oldReserved+desired);
+    if(desired!==oldReserved){
+      state.stockMovements.unshift({
+        id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),at:Date.now(),kind:'finished',key:invKey,
+        code:item.code||'',name:item.name||'',unit:'CX',type:desired>oldReserved?'RESERVA':'LIBERACAO_RESERVA',
+        qty:Math.abs(desired-oldReserved),reason:'PCP · pedido '+o.number,user:'Sistema',
+        before:{physical:Number(inv.physical||0),reserved:beforeReserved,blocked:Number(inv.blocked||0)},
+        after:{physical:Number(inv.physical||0),reserved:Number(inv.reserved||0),blocked:Number(inv.blocked||0)}
+      });
+    }
+    Object.assign(item,pick(incoming,['reservedQty','cutQty','pcpAvailabilityDate','deliveryBase','pcpBalanceDecision']));
+    item.source='ESTOQUE';
   }
+  const bases=[...new Set((o.items||[]).map(i=>i.deliveryBase).filter(Boolean))];
+  o.pcp.deliveryBase=bases.length===1?bases[0]:(bases.length?'MÚLTIPLAS':'');
 }
 
 function applyProduction(state,body){
