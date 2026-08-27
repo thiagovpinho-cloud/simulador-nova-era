@@ -246,3 +246,52 @@
   :is(.fpcp-head,.fi-head,.fl-head,.fc-head,.fpr-head){flex-direction:column}
   .fds-grid{grid-template-columns:1fr}
 }
+
+/* Focado Design Language 2.0 — product polish */
+:root{
+  --fds-canvas:#f3f6f4;
+  --fds-surface-elevated:rgba(255,255,255,.92);
+  --fds-line:#e7ece9;
+  --fds-ink-strong:#12271f;
+  --fds-accent:#0a7a5c;
+  --fds-accent-2:#14a277;
+  --fds-radius-xl:22px;
+  --fds-shadow-soft:0 1px 2px rgba(16,43,33,.03),0 10px 30px rgba(16,43,33,.055);
+}
+#focadoShell{background:
+  radial-gradient(circle at 85% -10%,rgba(15,148,105,.08),transparent 28%),
+  linear-gradient(180deg,#f7f9f8 0%,var(--fds-canvas) 100%)!important}
+.fx-content{scroll-behavior:smooth}
+:is(.fpcp-page,.fi-page,.fl-page,.fc-page,.fpr-page,.fds-page){max-width:1380px}
+:is(.fpcp-head,.fi-head,.fl-head,.fc-head,.fpr-head,.fpur-head,.fexp-head) h1{
+  font-size:28px!important;font-weight:780!important;letter-spacing:-.72px!important;color:var(--fds-ink-strong)!important
+}
+:is(.fpcp-head,.fi-head,.fl-head,.fc-head,.fpr-head,.fpur-head,.fexp-head) p{
+  font-size:11.5px!important;line-height:1.55!important;max-width:760px
+}
+:is(.fpcp-panel,.fi-panel,.fl-panel,.fc-card,.fpr-panel,.fds-card,.fpcp-kpi,.fi-kpi,.fl-kpi,.fpr-kpi){
+  border-color:var(--fds-line)!important;box-shadow:var(--fds-shadow-soft)!important
+}
+:is(.fpcp-panel,.fi-panel,.fl-panel,.fc-card,.fpr-panel,.fds-card){
+  border-radius:18px!important
+}
+:is(.fpcp-kpi,.fi-kpi,.fl-kpi,.fpr-kpi,.fpur-kpis .fds-card,.fexp-kpis .fds-card){
+  position:relative;overflow:hidden
+}
+:is(.fpcp-kpi,.fi-kpi,.fl-kpi,.fpr-kpi,.fpur-kpis .fds-card,.fexp-kpis .fds-card)::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--fds-accent),var(--fds-accent-2));opacity:.78
+}
+:is(.fpcp-table,.fi-table,.fl-table,.fc-table,.fpr-table,.fpur-table-wrap table,.fexp-table-wrap table) tbody tr{transition:background .13s ease}
+:is(.fpcp-table,.fi-table,.fl-table,.fc-table,.fpr-table,.fpur-table-wrap table,.fexp-table-wrap table) tbody tr:hover{background:#f8fbf9}
+:is(.fpcp-btn,.fi-btn,.fl-btn,.fc-btn,.fpr-btn,.fds-btn,.fpcp-open,.fi-open,.fl-open){
+  border-radius:10px!important;letter-spacing:.02em!important;box-shadow:0 1px 1px rgba(0,0,0,.03)!important
+}
+:is(.fpcp-btn,.fi-btn,.fl-btn,.fc-btn,.fpr-btn,.fds-btn,.fpcp-open,.fi-open,.fl-open):hover{
+  box-shadow:0 7px 18px rgba(8,120,91,.16)!important
+}
+:is(.fpcp-field,.fi-field,.fl-field,.fc-field,.fpr-field,.fds-field)>span{letter-spacing:.48px!important}
+:is(.fpcp-field,.fi-field,.fl-field,.fc-field,.fpr-field,.fds-field) :is(input,select,textarea),
+.fds-input{transition:border-color .15s ease,box-shadow .15s ease,background .15s ease}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}
