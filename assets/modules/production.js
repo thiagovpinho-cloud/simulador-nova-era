@@ -1,85 +1,227 @@
 (function(){
   'use strict';
-  const KEY='focado-operacoes-v2';
   const content=()=>document.getElementById('fxContent');
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const dbr=v=>{if(!v)return '—';const d=new Date(v+(String(v).length===10?'T12:00:00':''));return isNaN(d)?'—':d.toLocaleDateString('pt-BR')};
-  const load=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(_){return {}}};
-  const prodQty=o=>(o.items||[]).filter(i=>i.source==='PRODUCAO').reduce((s,i)=>s+(Number(i.qty)||0),0);
-  const totalQty=o=>(o.items||[]).reduce((s,i)=>s+(Number(i.qty)||0),0);
-  function inputAvailable(inv){return Math.max(0,Number(inv.physical||0)-Number(inv.reserved||0)-Number(inv.blocked||0))}
-  function recipeStatus(o,ops){
-    let missing=0;
-    (o.items||[]).filter(i=>i.source==='PRODUCAO').forEach(item=>{
-      const reqs=item.productionRequirements||[];
-      reqs.forEach(r=>{const inv=ops.inputInventory?.[String(r.code)];if(inv&&inputAvailable(inv)+1e-9<Number(r.required||0))missing++});
+  const today=()=>new Date().toISOString().slice(0,10);
+  const load=()=>window.FocadoDataStore?.readLocal?.()||{};
+  const role=()=>window.FocadoAuth?.getRole?.()||'';
+  const canCreate=()=>['ADMIN','PCP'].includes(role());
+  const fmt=(v,d=3)=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+  let currentFilter={base:'TODAS',status:'TODOS',q:''};
+
+  function catalog(ops){return window.FocadoProducts?.getCatalog?.(ops)||[]}
+  function getBrand(label){return typeof BRANDS!=='undefined'?Object.values(BRANDS).find(b=>b.label===label):null}
+  function getRecipe(product,qty){
+    const brand=getBrand(product.brand);if(!brand)return [];
+    const def=(brand.products||[]).find(p=>p.id===product.simulatorId||(brand.orderForm?.productCodes?.[p.id]!==undefined&&String(brand.orderForm.productCodes[p.id])===String(product.code)));
+    if(!def)return [];
+    return (def.materials||[]).map(m=>{
+      const ins=brand.insumosByCode?.[m.insumo]||{};
+      const required=(Number(m.qty)||0)*(1+(Number(m.perda)||0))*Number(def.unitsPerCaixa||1)*Number(qty||0);
+      return {code:String(m.insumo),name:ins.desc||String(m.insumo),unit:ins.unit||'',required};
+    }).filter(x=>x.required>0);
+  }
+  function inputInventory(ops,code){
+    const inv=ops.inputInventory||{};
+    if(inv[String(code)])return inv[String(code)];
+    return Object.values(inv).find(v=>String(v?.code||'')===String(code))||null;
+  }
+  function available(inv){return Math.max(0,Number(inv?.physical||0)-Number(inv?.reserved||0)-Number(inv?.blocked||0))}
+  function analyze(items,ops){
+    const agg={};
+    items.forEach(i=>{
+      getRecipe(i.product,Number(i.qty)||0).forEach(r=>{
+        if(!agg[r.code])agg[r.code]={...r,required:0};
+        agg[r.code].required+=r.required;
+      });
     });
-    if(missing)return ['Falta insumo','block'];
-    if((o.items||[]).some(i=>i.source==='PRODUCAO'&&!i.productionConsumed))return ['Aguardando produção','wait'];
-    if((o.items||[]).filter(i=>i.source==='PRODUCAO').every(i=>i.productionCompleted))return ['Produção concluída','ready'];
-    return ['Programada','ready'];
+    return Object.values(agg).map(r=>{
+      const inv=inputInventory(ops,r.code),av=available(inv),shortage=Math.max(0,r.required-av);
+      return {...r,available:av,shortage,status:shortage>1e-9?'COMPRAR':'OK'};
+    });
+  }
+  function nextNumber(ops){
+    const nums=(ops.productionRequests||[]).map(r=>String(r.number||'').match(/(\d+)$/)).filter(Boolean).map(m=>Number(m[1]));
+    return 'SP-'+String(Math.max(0,...nums)+1).padStart(5,'0');
+  }
+  async function persist(ops){
+    if(window.FocadoDataStore?.isRemoteReady?.()){
+      return await window.FocadoDataStore.saveDomain('SOLICITACAO_PRODUCAO',{productionRequests:ops.productionRequests||[]},null);
+    }
+    return await window.FocadoDataStore?.save?.(ops);
+  }
+  function requestStatus(r){
+    if(r.status==='FINALIZADA')return r.materialStatus==='COMPRAR'?['Finalizada · compra necessária','block']:['Finalizada','ready'];
+    return ['Rascunho','wait'];
   }
   function render(state){
-    const ops=load(),all=(ops.orders||[]).filter(o=>prodQty(o)>0&&o.status!=='ENTREGUE');
-    const f=state||{q:'',base:'TODAS'};
-    const rows=all.filter(o=>{const q=f.q.toLowerCase();return (!q||[o.number,o.client,o.city].some(v=>String(v||'').toLowerCase().includes(q)))&&(f.base==='TODAS'||o.pcp?.deliveryBase===f.base)});
-    const inProd=all.filter(o=>o.status==='ESTOQUE_PRODUCAO').length;
-    const queued=all.filter(o=>o.status==='PCP').length;
-    const completed=all.filter(o=>(o.items||[]).filter(i=>i.source==='PRODUCAO').every(i=>i.productionCompleted)).length;
-    const volume=all.reduce((s,o)=>s+prodQty(o),0);
-    const noDate=all.filter(o=>!o.pcp?.availableDate).length;
+    currentFilter=state||currentFilter;
+    const ops=load();ops.productionRequests=Array.isArray(ops.productionRequests)?ops.productionRequests:[];
+    const rows=ops.productionRequests.slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).filter(r=>{
+      const q=currentFilter.q.toLowerCase();
+      const mq=!q||[r.number,r.base,r.requestedBy,(r.items||[]).map(i=>i.product?.name+' '+i.product?.code).join(' ')].some(v=>String(v||'').toLowerCase().includes(q));
+      const mb=currentFilter.base==='TODAS'||r.base===currentFilter.base;
+      const ms=currentFilter.status==='TODOS'||r.status===currentFilter.status;
+      return mq&&mb&&ms;
+    });
+    const drafts=ops.productionRequests.filter(r=>r.status==='RASCUNHO').length;
+    const finals=ops.productionRequests.filter(r=>r.status==='FINALIZADA').length;
+    const purchase=ops.productionRequests.filter(r=>r.status==='FINALIZADA'&&r.materialStatus==='COMPRAR').length;
     content().innerHTML='<div class="fpr-page">'+
-      '<div class="fpr-head"><div><h1>Produção</h1><p>Programação, capacidade e execução das ordens produtivas por base</p></div><div class="fpr-actions"><button class="fpr-btn secondary" id="fprRefresh">Atualizar</button></div></div>'+
-      '<div class="fpr-kpis"><div class="fpr-kpi"><span>Fila PCP</span><strong>'+queued+'</strong><small>aguardando liberação</small></div><div class="fpr-kpi"><span>Em produção</span><strong>'+inProd+'</strong><small>ordens abertas</small></div><div class="fpr-kpi"><span>Volume a produzir</span><strong>'+volume+' cx</strong><small>carteira produtiva</small></div><div class="fpr-kpi"><span>Concluídas</span><strong>'+completed+'</strong><small>produto acabado gerado</small></div><div class="fpr-kpi"><span>Sem data</span><strong>'+noDate+'</strong><small>exigem programação</small></div></div>'+
-      '<div class="fpr-grid"><div class="fpr-panel"><h2>Capacidade por base</h2>'+capacity(ops,all)+'</div><div class="fpr-panel"><h2>Saúde da produção</h2>'+health(all,ops)+'</div></div>'+
-      '<div class="fpr-toolbar"><input class="fpr-search" id="fprSearch" placeholder="Buscar pedido ou cliente" value="'+esc(f.q)+'"><select class="fpr-select" id="fprBase"><option value="TODAS">Todas as bases</option>'+['SENIR','GREENTECH','TOPLAND'].map(b=>'<option value="'+b+'" '+(f.base===b?'selected':'')+'>'+b+'</option>').join('')+'</select><span class="fpr-muted">'+rows.length+' ordem(ns)</span></div>'+
-      '<div class="fpr-table-wrap">'+table(rows,ops)+'</div></div>';
-    document.getElementById('fprRefresh').onclick=()=>render(f);
-    const q=document.getElementById('fprSearch'),base=document.getElementById('fprBase');
-    q.oninput=()=>render({q:q.value,base:base.value});base.onchange=()=>render({q:q.value,base:base.value});
-    document.querySelectorAll('[data-fpr-open]').forEach(b=>b.onclick=()=>openOrder(b.dataset.fprOpen));
+      '<div class="fpr-head"><div><h1>Produção</h1><p>Solicitações de produção emitidas pelo PCP por planta/base</p></div><div class="fpr-actions">'+(canCreate()?'<button class="fpr-btn primary" id="fprNew">+ Nova solicitação</button>':'')+'</div></div>'+
+      '<div class="fpr-kpis"><div class="fpr-kpi"><span>Rascunhos</span><strong>'+drafts+'</strong><small>em preparação</small></div><div class="fpr-kpi"><span>Finalizadas</span><strong>'+finals+'</strong><small>documentos emitidos</small></div><div class="fpr-kpi"><span>Compra necessária</span><strong>'+purchase+'</strong><small>solicitações com falta de insumo</small></div></div>'+
+      '<div class="fpr-toolbar"><input class="fpr-search" id="fprSearch" placeholder="Buscar solicitação, produto ou base" value="'+esc(currentFilter.q)+'"><select class="fpr-select" id="fprBase"><option value="TODAS">Todas as bases</option>'+['SENIR','GREENTECH','TOPLAND'].map(b=>'<option value="'+b+'" '+(currentFilter.base===b?'selected':'')+'>'+b+'</option>').join('')+'</select><select class="fpr-select" id="fprStatus"><option value="TODOS">Todos os status</option><option value="RASCUNHO" '+(currentFilter.status==='RASCUNHO'?'selected':'')+'>Rascunho</option><option value="FINALIZADA" '+(currentFilter.status==='FINALIZADA'?'selected':'')+'>Finalizada</option></select><span class="fpr-muted">'+rows.length+' solicitação(ões)</span></div>'+
+      '<div class="fpr-table-wrap">'+table(rows)+'</div></div>';
+    if(canCreate())document.getElementById('fprNew').onclick=()=>openEditor();
+    const q=document.getElementById('fprSearch'),b=document.getElementById('fprBase'),s=document.getElementById('fprStatus');
+    q.oninput=()=>render({q:q.value,base:b.value,status:s.value});b.onchange=s.onchange=()=>render({q:q.value,base:b.value,status:s.value});
+    document.querySelectorAll('[data-fpr-open]').forEach(btn=>btn.onclick=()=>openRequest(btn.dataset.fprOpen));
   }
-  function capacity(ops,orders){
-    const bases=ops.productionBases||{};
-    return Object.entries(bases).map(([base,cfg])=>{const cap=Number(cfg.capacityPerDay)||0;const committed=orders.filter(o=>o.pcp?.deliveryBase===base).reduce((s,o)=>s+(Number(o.pcp?.scheduledQty)||prodQty(o)),0);const pct=cap?Math.min(100,Math.round(committed/cap*100)):0;return '<div class="fpr-base"><div class="fpr-base-meta"><b>'+esc(base)+'</b><span>'+committed+' / '+cap+' cx · '+pct+'%</span></div><div class="fpr-bar"><i style="width:'+pct+'%"></i></div></div>'}).join('')||'<div class="fpr-empty">Capacidade não configurada.</div>';
+  function table(rows){
+    if(!rows.length)return '<div class="fpr-empty">Nenhuma solicitação de produção encontrada.</div>';
+    return '<table class="fpr-table"><thead><tr><th>Solicitação</th><th>Base</th><th>Data</th><th>Itens</th><th>Caixas</th><th>Insumos</th><th>Status</th><th></th></tr></thead><tbody>'+rows.map(r=>{const st=requestStatus(r);const qty=(r.items||[]).reduce((s,i)=>s+Number(i.qty||0),0);return '<tr><td><b>'+esc(r.number)+'</b><div class="fpr-muted">'+esc(r.requestedBy||'')+'</div></td><td>'+esc(r.base)+'</td><td>'+dbr(r.requestDate)+'</td><td>'+((r.items||[]).length)+'</td><td>'+qty+'</td><td>'+(r.materialStatus==='COMPRAR'?'<span class="fpr-chip block">Comprar</span>':'<span class="fpr-chip ready">OK</span>')+'</td><td><span class="fpr-chip '+st[1]+'">'+st[0]+'</span></td><td><button class="fpr-open" data-fpr-open="'+esc(r.id)+'">'+(r.status==='FINALIZADA'?'Visualizar':'Editar')+'</button></td></tr>'}).join('')+'</tbody></table>';
   }
-  function health(rows,ops){
-    const noBase=rows.filter(o=>!o.pcp?.deliveryBase).length,noDate=rows.filter(o=>!o.pcp?.availableDate).length,blocked=rows.filter(o=>recipeStatus(o,ops)[1]==='block').length;
-    const a=[];if(noBase)a.push(noBase+' ordem(ns) sem base produtiva.');if(noDate)a.push(noDate+' ordem(ns) sem data disponível.');if(blocked)a.push(blocked+' ordem(ns) com risco de falta de insumo.');
-    return a.length?a.map(x=>'<div class="fpr-alert">⚠ '+x+'</div>').join(''):'<div class="fpr-alert good">✓ Nenhum alerta crítico de produção.</div>';
+  function blankRequest(ops){
+    return {id:'spr_'+Date.now(),number:nextNumber(ops),status:'RASCUNHO',createdAt:Date.now(),requestDate:today(),needByDate:'',base:'SENIR',requestedBy:window.FocadoAuth?.getUser?.()?.name||'PCP',notes:'',items:[],materials:[],materialStatus:'OK'};
   }
-  function table(rows,ops){
-    if(!rows.length)return '<div class="fpr-empty">Nenhuma ordem produtiva encontrada.</div>';
-    return '<table class="fpr-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Volume</th><th>Base</th><th>Produção</th><th>Disponível</th><th>Status</th><th></th></tr></thead><tbody>'+rows.map(o=>{const st=recipeStatus(o,ops);return '<tr><td><div class="fpr-order">'+esc(o.number)+'</div><div class="fpr-muted">'+dbr(o.orderDate)+'</div></td><td><div class="fpr-client">'+esc(o.client)+'</div><div class="fpr-muted">'+esc(o.city||'')+'</div></td><td>'+prodQty(o)+' cx<div class="fpr-muted">'+totalQty(o)+' cx no pedido</div></td><td>'+esc(o.pcp?.deliveryBase||'—')+'</td><td>'+dbr(o.pcp?.productionDate)+'</td><td>'+dbr(o.pcp?.availableDate)+'</td><td><span class="fpr-chip '+st[1]+'">'+st[0]+'</span></td><td><button class="fpr-open" data-fpr-open="'+esc(o.id)+'">Abrir ordem</button></td></tr>'}).join('')+'</tbody></table>';
+  function openEditor(id){
+    const ops=load();ops.productionRequests=Array.isArray(ops.productionRequests)?ops.productionRequests:[];
+    let r=id?ops.productionRequests.find(x=>x.id===id):null;
+    if(!r){r=blankRequest(ops);ops.productionRequests.unshift(r)}
+    renderEditor(r,ops);
   }
-  function openOrder(id){
-    const ops=load(),o=(ops.orders||[]).find(x=>String(x.id)===String(id));
-    if(!o)return;
-    renderDetail(o,ops);
-  }
-  function renderDetail(o,ops){
-    const prodItems=(o.items||[]).filter(i=>i.source==='PRODUCAO');
-    const st=recipeStatus(o,ops);
-    const base=o.pcp?.deliveryBase||prodItems.map(i=>i.deliveryBase).find(Boolean)||'—';
+  function renderEditor(r,ops){
+    const products=catalog(ops);
     content().innerHTML='<div class="fpr-page">'+
-      '<div class="fpr-head"><div><button class="fpr-btn secondary" id="fprBack">← Produção</button><h1>Ordem de Produção · '+esc(o.number)+'</h1><p>'+esc(o.client||'')+' · Base '+esc(base)+'</p></div><span class="fpr-chip '+st[1]+'">'+st[0]+'</span></div>'+
-      '<div class="fpr-grid"><div class="fpr-panel"><h2>Programação</h2>'+
-        '<div class="fpr-alert"><b>Base produtiva:</b> '+esc(base)+'</div>'+
-        '<div class="fpr-alert"><b>Data programada:</b> '+dbr(o.pcp?.productionDate)+'</div>'+
-        '<div class="fpr-alert"><b>Disponibilidade prevista:</b> '+dbr(o.pcp?.availableDate)+'</div>'+
-      '</div><div class="fpr-panel"><h2>Execução</h2>'+
-        '<div class="fpr-alert"><b>Volume a produzir:</b> '+prodQty(o)+' cx</div>'+
-        '<div class="fpr-alert"><b>Itens produtivos:</b> '+prodItems.length+'</div>'+
-        '<div class="fpr-alert"><b>Status:</b> '+esc(st[0])+'</div>'+
+      '<div class="fpr-head"><div><button class="fpr-btn secondary" id="fprBack">← Solicitações</button><h1>'+esc(r.number)+'</h1><p>Solicitação de produção · PCP</p></div><div class="fpr-actions"><button class="fpr-btn secondary" id="fprSave">Salvar rascunho</button><button class="fpr-btn primary" id="fprFinalize">Finalizar solicitação</button></div></div>'+
+      '<div class="fpr-panel"><h2>Dados da solicitação</h2><div class="fpr-grid">'+
+        field('Base / Planta','fprReqBase','select',r.base,['SENIR','GREENTECH','TOPLAND'])+
+        field('Data da solicitação','fprReqDate','date',r.requestDate)+
+        field('Necessidade para','fprNeedBy','date',r.needByDate)+
+        '<label class="fpr-field"><span>Solicitante</span><input id="fprRequestedBy" value="'+esc(r.requestedBy||'')+'"></label>'+
       '</div></div>'+
-      '<div class="fpr-panel"><h2>Itens da ordem</h2>'+
-      (prodItems.length?'<table class="fpr-table"><thead><tr><th>Código</th><th>Produto</th><th>Quantidade</th><th>Base</th><th>Insumos</th><th>Produção</th></tr></thead><tbody>'+
-        prodItems.map(i=>'<tr><td>'+esc(i.code||'—')+'</td><td>'+esc(i.name||'—')+'</td><td>'+Number(i.qty||0)+' cx</td><td>'+esc(i.deliveryBase||base)+'</td><td>'+((i.productionRequirements||[]).length)+' requisito(s)</td><td>'+((i.productionCompleted)?'Concluída':(i.productionConsumed?'Em execução':'Pendente'))+'</td></tr>').join('')+
-      '</tbody></table>':'<div class="fpr-empty">Nenhum item deste pedido foi marcado para produção.</div>')+
-      '</div>'+
-      '<div class="fpr-panel"><h2>Função do módulo Produção</h2><div class="fpr-alert">Este módulo é a área operacional para programar e acompanhar produção por base, comparar consumo teórico x real de insumos, registrar perdas, lote produzido, início/fim e conclusão. Ele não deve abrir o simulador comercial.</div></div>'+
-      '</div>';
-    document.getElementById('fprBack').onclick=()=>render({q:'',base:'TODAS'});
+      '<div class="fpr-panel"><div class="fpr-panel-head"><div><h2>Produtos a produzir</h2><p>Inclua os produtos e as características logísticas da produção.</p></div><button class="fpr-btn secondary" id="fprAddItem">+ Adicionar produto</button></div>'+
+      '<div class="fpr-table-wrap"><table class="fpr-table"><thead><tr><th>Produto</th><th>Qtd. cx</th><th>Paletizado?</th><th>Chapatex?</th><th>Caixas/palete</th><th>Paletes</th><th></th></tr></thead><tbody id="fprItems">'+
+        (r.items||[]).map((i,n)=>editorRow(i,n,products)).join('')+
+      '</tbody></table></div></div>'+
+      '<div class="fpr-panel"><h2>Análise automática de insumos</h2><div id="fprMaterialAnalysis"></div></div>'+
+      '<div class="fpr-panel"><h2>Observações</h2><textarea id="fprNotes" style="width:100%;min-height:90px">'+esc(r.notes||'')+'</textarea></div></div>';
+    document.getElementById('fprBack').onclick=()=>render(currentFilter);
+    document.getElementById('fprSave').onclick=()=>saveDraft(r,ops,false);
+    document.getElementById('fprFinalize').onclick=()=>saveDraft(r,ops,true);
+    document.getElementById('fprAddItem').onclick=()=>{r.items=r.items||[];r.items.push({product:null,qty:0,palletized:false,chapatex:false,boxesPerPallet:0});renderEditor(r,ops)};
+    bindEditor(r,ops,products);
+    paintMaterialAnalysis(r,ops);
   }
-  window.FocadoProduction={render,openOrder};
+  function field(label,id,type,val,options){
+    if(type==='select')return '<label class="fpr-field"><span>'+label+'</span><select id="'+id+'">'+options.map(x=>'<option '+(x===val?'selected':'')+'>'+x+'</option>').join('')+'</select></label>';
+    return '<label class="fpr-field"><span>'+label+'</span><input id="'+id+'" type="'+type+'" value="'+esc(val||'')+'"></label>';
+  }
+  function editorRow(i,n,products){
+    const p=i.product||{};
+    return '<tr data-prod-row="'+n+'"><td><select data-product><option value="">Selecione</option>'+products.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===p.id?'selected':'')+'>'+esc(x.code+' · '+x.name+' · '+x.brand)+'</option>').join('')+'</select></td><td><input data-qty type="number" min="0" step="1" value="'+Number(i.qty||0)+'" style="width:85px"></td><td><select data-palletized><option value="NAO" '+(!i.palletized?'selected':'')+'>Não</option><option value="SIM" '+(i.palletized?'selected':'')+'>Sim</option></select></td><td><select data-chapatex><option value="NAO" '+(!i.chapatex?'selected':'')+'>Não</option><option value="SIM" '+(i.chapatex?'selected':'')+'>Sim</option></select></td><td><input data-boxes type="number" min="0" step="1" value="'+Number(i.boxesPerPallet||0)+'" style="width:90px"></td><td><span data-pallets>'+calcPallets(i)+'</span></td><td><button class="fpr-open" data-remove="'+n+'">Remover</button></td></tr>';
+  }
+  function calcPallets(i){return i.palletized&&Number(i.boxesPerPallet)>0?Math.ceil(Number(i.qty||0)/Number(i.boxesPerPallet||0)):0}
+  function syncFromForm(r,ops){
+    const products=catalog(ops);
+    r.base=document.getElementById('fprReqBase').value;
+    r.requestDate=document.getElementById('fprReqDate').value;
+    r.needByDate=document.getElementById('fprNeedBy').value;
+    r.requestedBy=document.getElementById('fprRequestedBy').value.trim();
+    r.notes=document.getElementById('fprNotes').value.trim();
+    r.items=[...document.querySelectorAll('[data-prod-row]')].map(row=>{
+      const product=products.find(p=>p.id===row.querySelector('[data-product]').value)||null;
+      const qty=Number(row.querySelector('[data-qty]').value)||0;
+      const palletized=row.querySelector('[data-palletized]').value==='SIM';
+      const chapatex=row.querySelector('[data-chapatex]').value==='SIM';
+      const boxesPerPallet=Number(row.querySelector('[data-boxes]').value)||0;
+      return {product:product?{id:product.id,simulatorId:product.simulatorId,code:product.code,name:product.name,brand:product.brand,unit:product.unit}:null,qty,palletized,chapatex,boxesPerPallet,pallets:palletized&&boxesPerPallet>0?Math.ceil(qty/boxesPerPallet):0};
+    });
+    r.materials=analyze(r.items.filter(i=>i.product&&i.qty>0),ops);
+    r.materialStatus=r.materials.some(m=>m.shortage>1e-9)?'COMPRAR':'OK';
+  }
+  function bindEditor(r,ops){
+    document.querySelectorAll('[data-prod-row]').forEach(row=>{
+      row.querySelectorAll('select,input').forEach(el=>el.onchange=el.oninput=()=>{syncFromForm(r,ops);const idx=Number(row.dataset.prodRow),i=r.items[idx];row.querySelector('[data-pallets]').textContent=calcPallets(i);paintMaterialAnalysis(r,ops)});
+    });
+    document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{syncFromForm(r,ops);r.items.splice(Number(b.dataset.remove),1);renderEditor(r,ops)});
+  }
+  function paintMaterialAnalysis(r,ops){
+    syncFromForm(r,ops);
+    const root=document.getElementById('fprMaterialAnalysis');if(!root)return;
+    if(!r.items.some(i=>i.product&&i.qty>0)){root.innerHTML='<div class="fpr-empty">Adicione produtos e quantidades para analisar os insumos.</div>';return}
+    if(!r.materials.length){root.innerHTML='<div class="fpr-alert">⚠ Não foi encontrada ficha técnica para os produtos selecionados. Revise o cadastro antes de finalizar.</div>';return}
+    root.innerHTML='<table class="fpr-table"><thead><tr><th>Código</th><th>Insumo</th><th>Necessário</th><th>Disponível</th><th>Falta</th><th>Status</th></tr></thead><tbody>'+r.materials.map(m=>'<tr><td>'+esc(m.code)+'</td><td>'+esc(m.name)+'</td><td>'+fmt(m.required)+' '+esc(m.unit)+'</td><td>'+fmt(m.available)+' '+esc(m.unit)+'</td><td>'+fmt(m.shortage)+' '+esc(m.unit)+'</td><td><span class="fpr-chip '+(m.shortage>1e-9?'block':'ready')+'">'+(m.shortage>1e-9?'COMPRAR':'OK')+'</span></td></tr>').join('')+'</tbody></table>';
+  }
+  async function saveDraft(r,ops,finalize){
+    syncFromForm(r,ops);
+    const errors=[];
+    if(!r.base)errors.push('Base / Planta');
+    if(!r.requestDate)errors.push('Data da solicitação');
+    if(!r.items.length||r.items.some(i=>!i.product||!(i.qty>0)))errors.push('Produto e quantidade em todas as linhas');
+    r.items.forEach((i,n)=>{if(i.palletized&&!(i.boxesPerPallet>0))errors.push('Caixas por palete na linha '+(n+1))});
+    if(finalize&&r.materials.length===0)errors.push('Ficha técnica / análise de insumos');
+    if(errors.length){alert('Revise antes de salvar:\n\n• '+[...new Set(errors)].join('\n• '));return}
+    if(finalize){
+      r.status='FINALIZADA';r.finalizedAt=Date.now();r.finalizedBy=window.FocadoAuth?.getUser?.()?.name||'PCP';
+      r.snapshot={base:r.base,requestDate:r.requestDate,needByDate:r.needByDate,requestedBy:r.requestedBy,notes:r.notes,items:JSON.parse(JSON.stringify(r.items)),materials:JSON.parse(JSON.stringify(r.materials)),materialStatus:r.materialStatus};
+    }
+    const result=await persist(ops);
+    if(result?.mode==='conflict'||result?.ok===false){alert('Não foi possível salvar a solicitação. Atualize a tela e tente novamente.');return}
+    if(finalize){alert('Solicitação de produção finalizada e congelada para consulta.');renderViewer(r)}else{alert('Rascunho salvo.');render(currentFilter)}
+  }
+  function openRequest(id){
+    const ops=load(),r=(ops.productionRequests||[]).find(x=>x.id===id);if(!r)return;
+    if(r.status==='FINALIZADA')renderViewer(r);else if(canCreate())renderEditor(r,ops);else renderViewer(r);
+  }
+  function renderViewer(r){
+    const s=r.snapshot||r,st=requestStatus(r);
+    content().innerHTML='<div class="fpr-page">'+
+      '<div class="fpr-head"><div><button class="fpr-btn secondary" id="fprBack">← Solicitações</button><h1>'+esc(r.number)+'</h1><p>Solicitação de Produção · '+esc(s.base)+'</p></div><div class="fpr-actions"><button class="fpr-btn secondary" id="fprPdf">Salvar PDF</button><button class="fpr-btn secondary" id="fprEmail">E-mail</button><button class="fpr-btn secondary" id="fprWhats">WhatsApp</button></div></div>'+
+      '<div class="fpr-grid"><div class="fpr-panel"><h2>Dados</h2><div class="fpr-alert"><b>Base:</b> '+esc(s.base)+'</div><div class="fpr-alert"><b>Data:</b> '+dbr(s.requestDate)+'</div><div class="fpr-alert"><b>Necessidade para:</b> '+dbr(s.needByDate)+'</div><div class="fpr-alert"><b>Solicitante:</b> '+esc(s.requestedBy||'')+'</div></div><div class="fpr-panel"><h2>Status</h2><div class="fpr-alert"><span class="fpr-chip '+st[1]+'">'+st[0]+'</span></div><div class="fpr-alert"><b>Insumos:</b> '+(s.materialStatus==='COMPRAR'?'Há necessidade de compra':'Suficientes para a produção')+'</div></div></div>'+
+      '<div class="fpr-panel"><h2>Produtos solicitados</h2>'+viewerItems(s.items||[])+'</div>'+
+      '<div class="fpr-panel"><h2>Análise de insumos</h2>'+viewerMaterials(s.materials||[])+'</div>'+
+      '<div class="fpr-panel"><h2>Observações</h2><div class="fpr-alert">'+esc(s.notes||'Sem observações')+'</div></div></div>';
+    document.getElementById('fprBack').onclick=()=>render(currentFilter);
+    document.getElementById('fprPdf').onclick=()=>generatePdf(r,'save');
+    document.getElementById('fprEmail').onclick=()=>share(r,'email');
+    document.getElementById('fprWhats').onclick=()=>share(r,'whatsapp');
+  }
+  function viewerItems(items){
+    return '<table class="fpr-table"><thead><tr><th>Código</th><th>Produto</th><th>Marca</th><th>Quantidade</th><th>Paletizado</th><th>Chapatex</th><th>Caixas/palete</th><th>Paletes</th></tr></thead><tbody>'+items.map(i=>'<tr><td>'+esc(i.product?.code||'')+'</td><td>'+esc(i.product?.name||'')+'</td><td>'+esc(i.product?.brand||'')+'</td><td>'+Number(i.qty||0)+' cx</td><td>'+(i.palletized?'Sim':'Não')+'</td><td>'+(i.chapatex?'Sim':'Não')+'</td><td>'+(i.palletized?Number(i.boxesPerPallet||0):'—')+'</td><td>'+(i.palletized?Number(i.pallets||0):'—')+'</td></tr>').join('')+'</tbody></table>';
+  }
+  function viewerMaterials(materials){
+    if(!materials.length)return '<div class="fpr-empty">Sem análise de insumos registrada.</div>';
+    return '<table class="fpr-table"><thead><tr><th>Código</th><th>Insumo</th><th>Necessário</th><th>Disponível</th><th>Falta</th><th>Status</th></tr></thead><tbody>'+materials.map(m=>'<tr><td>'+esc(m.code)+'</td><td>'+esc(m.name)+'</td><td>'+fmt(m.required)+' '+esc(m.unit)+'</td><td>'+fmt(m.available)+' '+esc(m.unit)+'</td><td>'+fmt(m.shortage)+' '+esc(m.unit)+'</td><td>'+(m.shortage>1e-9?'COMPRAR':'OK')+'</td></tr>').join('')+'</tbody></table>';
+  }
+  function pdfDoc(r){
+    const s=r.snapshot||r;
+    if(!window.jspdf?.jsPDF)return null;
+    const doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
+    doc.setFontSize(16);doc.text('SOLICITAÇÃO DE PRODUÇÃO',14,16);
+    doc.setFontSize(10);doc.text(r.number+' · Base '+s.base,14,23);
+    doc.text('Data: '+dbr(s.requestDate)+'   Necessidade para: '+dbr(s.needByDate),14,29);
+    doc.text('Solicitante: '+String(s.requestedBy||''),14,35);
+    doc.autoTable({startY:41,head:[['Código','Produto','Marca','Qtd cx','Paletizado','Chapatex','Cx/palete','Paletes']],body:(s.items||[]).map(i=>[i.product?.code||'',i.product?.name||'',i.product?.brand||'',String(i.qty||0),i.palletized?'Sim':'Não',i.chapatex?'Sim':'Não',i.palletized?String(i.boxesPerPallet||0):'—',i.palletized?String(i.pallets||0):'—']),styles:{fontSize:7}});
+    let y=doc.lastAutoTable.finalY+6;doc.setFontSize(11);doc.text('Análise de insumos',14,y);
+    doc.autoTable({startY:y+3,head:[['Código','Insumo','Necessário','Disponível','Falta','Status']],body:(s.materials||[]).map(m=>[m.code,m.name,fmt(m.required)+' '+m.unit,fmt(m.available)+' '+m.unit,fmt(m.shortage)+' '+m.unit,m.shortage>1e-9?'COMPRAR':'OK']),styles:{fontSize:7}});
+    y=doc.lastAutoTable.finalY+6;doc.setFontSize(9);doc.text('Observações: '+String(s.notes||'Sem observações'),14,y,{maxWidth:180});
+    return doc;
+  }
+  function generatePdf(r,mode){
+    const doc=pdfDoc(r);if(!doc){alert('Gerador de PDF indisponível.');return}
+    if(mode==='blob')return doc.output('blob');
+    doc.save('Solicitacao_Producao_'+r.number+'.pdf');
+  }
+  function share(r,channel){
+    const s=r.snapshot||r;
+    const msg='Solicitação de Produção '+r.number+'\nBase: '+s.base+'\nNecessidade: '+dbr(s.needByDate)+'\nStatus insumos: '+(s.materialStatus==='COMPRAR'?'COMPRA NECESSÁRIA':'OK')+'\n\nAbra o Focado para consultar e salvar o PDF.';
+    if(channel==='email'){
+      location.href='mailto:?subject='+encodeURIComponent('Solicitação de Produção '+r.number)+'&body='+encodeURIComponent(msg+'\n\nAnexe o PDF salvo pelo Focado.');
+    }else{
+      window.open('https://wa.me/?text='+encodeURIComponent(msg+'\n\nAnexe o PDF salvo pelo Focado.'),'_blank');
+    }
+  }
+  window.FocadoProduction={render,openRequest};
 })();
