@@ -20,3 +20,11 @@ assert.ok(platform.includes('auditSnapshot'),'Auditoria deve ser escopada por en
 assert.ok(!worker.includes("before,after:saved.payload"),'Auditoria não deve duplicar workspace completo por alteração');
 
 console.log('platform-v2: ok');
+
+assert.ok(platform.includes('readDomainV2'),'Plataforma v2 deve oferecer leitura direta por domínio');
+assert.ok(platform.includes('consistencyV2'),'Plataforma v2 deve verificar consistência de migração');
+assert.ok(platform.includes('passwordPolicy'),'Política de senha deve estar centralizada');
+assert.ok(worker.includes('/v2/domain/'),'Worker deve expor leitura v2 autenticada');
+assert.ok(worker.includes('/v2/consistency'),'Worker deve expor consistência v2 para administrador');
+assert.ok(worker.includes('/security/health'),'Worker deve expor diagnóstico de segurança');
+assert.ok(worker.includes('passwordProblems'),'Criação de usuário deve informar violações da política de senha');
