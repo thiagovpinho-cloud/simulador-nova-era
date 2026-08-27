@@ -1,99 +1,168 @@
 (function(){
   'use strict';
-  const KEY='focado-operacoes-v2';
   const content=()=>document.getElementById('fxContent');
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const dbr=v=>{if(!v)return '—';const d=new Date(v+(String(v).length===10?'T12:00:00':''));return isNaN(d)?'—':d.toLocaleDateString('pt-BR')};
-  const load=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(_){return {}}};
+  const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const load=()=>window.FocadoDataStore?.readLocal?.()||{};
+  const totalQty=o=>(o.items||[]).reduce((s,i)=>s+(Number(i.qty)||0),0);
   const prodQty=o=>(o.items||[]).filter(i=>i.source==='PRODUCAO').reduce((s,i)=>s+(Number(i.qty)||0),0);
   const stockQty=o=>(o.items||[]).filter(i=>i.source==='ESTOQUE').reduce((s,i)=>s+(Number(i.qty)||0),0);
-  const totalQty=o=>(o.items||[]).reduce((s,i)=>s+(Number(i.qty)||0),0);
+  const orderValue=o=>(o.items||[]).reduce((s,i)=>s+(Number(i.qty)||0)*(Number(i.price)||0),0);
+  let filters={q:'',base:'TODAS'};
 
+  function finishedAvailable(ops,item){
+    const inv=(ops.inventory||{})[String(item.code||item.productId||item.name)]||(ops.inventory||{})[String(item.code||'')]||null;
+    if(!inv)return 0;
+    return Math.max(0,Number(inv.physical||0)-Number(inv.reserved||0)-Number(inv.blocked||0));
+  }
   function planningStatus(o){
-    if(o.status==='PCP' && !(o.pcp?.deliveryBase)) return ['Aguardando base','pending'];
-    if(o.status==='PCP' && (o.items||[]).some(i=>!i.source)) return ['Definir origem','attention'];
-    if(prodQty(o)>0 && !o.pcp?.availableDate) return ['Sem data disponível','attention'];
-    if(o.pcp?.deliveryBase && (o.pcp?.availableDate || prodQty(o)===0)) return ['Planejado','planned'];
-    return ['Em análise','pending'];
-  }
-  function sourceHtml(o){
-    const p=prodQty(o),s=stockQty(o),parts=[];
-    if(s)parts.push('<span class="fp-chip stock">Estoque '+s+' cx</span>');
-    if(p)parts.push('<span class="fp-chip prod">Produção '+p+' cx</span>');
-    if(!parts.length)parts.push('<span class="fp-chip none">Não definido</span>');
-    return parts.join('');
-  }
-  function capacityRows(ops){
-    const bases=ops.productionBases||{};
-    const orders=ops.orders||[];
-    return Object.entries(bases).map(([base,cfg])=>{
-      const cap=Number(cfg.capacityPerDay)||0;
-      const committed=orders.filter(o=>o.status!=='ENTREGUE'&&o.pcp?.deliveryBase===base&&prodQty(o)>0).reduce((s,o)=>s+(Number(o.pcp?.scheduledQty)||prodQty(o)),0);
-      const pct=cap?Math.min(100,Math.round(committed/cap*100)):0;
-      return '<div class="fp-base"><div class="fp-base-meta"><b>'+esc(base)+'</b><span>'+committed+' / '+cap+' cx · '+pct+'%</span></div><div class="fp-bar"><i style="width:'+pct+'%"></i></div></div>';
-    }).join('')||'<div class="fp-empty">Capacidades ainda não configuradas.</div>';
+    if(o.status==='ESTOQUE_PRODUCAO')return ['PCP concluído','done'];
+    if((o.items||[]).some(i=>!['ESTOQUE','PRODUCAO'].includes(i.source)))return ['Definir atendimento','attention'];
+    if(!o.pcp?.deliveryBase)return ['Definir base','attention'];
+    if(prodQty(o)>0&&!o.pcp?.availableDate)return ['Definir disponibilidade','attention'];
+    return ['Pronto para finalizar','ready'];
   }
   function render(state){
-    const ops=load(),all=(ops.orders||[]).filter(o=>o.status==='PCP'||o.status==='ESTOQUE_PRODUCAO');
-    const f=state||{q:'',base:'TODAS'};
+    filters=state||filters;
+    const ops=load();
+    const all=(ops.orders||[]).filter(o=>o.status==='PCP'||o.status==='ESTOQUE_PRODUCAO');
     const rows=all.filter(o=>{
-      const q=f.q.toLowerCase();
-      const mq=!q||[o.number,o.client,o.cnpj,o.city].some(v=>String(v||'').toLowerCase().includes(q));
-      const mb=f.base==='TODAS'||o.pcp?.deliveryBase===f.base;
-      return mq&&mb;
+      const q=filters.q.toLowerCase();
+      const match=!q||[o.number,o.client,o.cnpj,o.city,o.representative,(o.items||[]).map(i=>i.name).join(' ')].some(v=>String(v||'').toLowerCase().includes(q));
+      const byBase=filters.base==='TODAS'||o.pcp?.deliveryBase===filters.base;
+      return match&&byBase;
     });
     const awaiting=all.filter(o=>o.status==='PCP').length;
-    const planned=all.filter(o=>planningStatus(o)[1]==='planned').length;
-    const prod=all.reduce((s,o)=>s+prodQty(o),0);
-    const stock=all.reduce((s,o)=>s+stockQty(o),0);
-    const noDate=all.filter(o=>prodQty(o)>0&&!o.pcp?.availableDate).length;
-
+    const ready=all.filter(o=>o.status==='PCP'&&planningStatus(o)[1]==='ready').length;
+    const done=all.filter(o=>o.status==='ESTOQUE_PRODUCAO').length;
     content().innerHTML='<div class="fp-page">'+
-      '<div class="fp-head"><div><h1>PCP</h1><p>Planejamento e controle da carteira operacional</p></div><div class="fp-actions"><button class="fp-btn secondary" id="fpRefresh">Atualizar</button><button class="fp-btn primary" id="fpCapacity">Capacidade produtiva</button></div></div>'+
+      '<div class="fp-head"><div><h1>PCP</h1><p>Pedidos recebidos do Comercial · planejar disponibilidade e atendimento</p></div></div>'+
       '<div class="fp-kpis">'+
-        '<div class="fp-kpi"><span>Aguardando PCP</span><strong>'+awaiting+'</strong><small>pedidos em análise</small></div>'+
-        '<div class="fp-kpi"><span>Planejados</span><strong>'+planned+'</strong><small>com base/data definidas</small></div>'+
-        '<div class="fp-kpi"><span>Produção necessária</span><strong>'+prod+' cx</strong><small>volume em carteira</small></div>'+
-        '<div class="fp-kpi"><span>Atendimento por estoque</span><strong>'+stock+' cx</strong><small>volume direcionado</small></div>'+
-        '<div class="fp-kpi"><span>Sem data disponível</span><strong>'+noDate+'</strong><small>exigem atenção</small></div>'+
+        kpi('Aguardando análise',awaiting,'pedidos recebidos do Comercial')+
+        kpi('Prontos para finalizar',ready,'planejamento completo')+
+        kpi('PCP concluído',done,'enviados para operação')+
+        kpi('Volume em produção',all.reduce((s,o)=>s+prodQty(o),0)+' cx','carteira atual')+
+        kpi('Volume por estoque',all.reduce((s,o)=>s+stockQty(o),0)+' cx','carteira atual')+
       '</div>'+
-      '<div class="fp-grid"><div class="fp-panel"><h2>Capacidade por base</h2>'+capacityRows(ops)+'</div><div class="fp-panel"><h2>Pontos de atenção</h2>'+attention(all)+'</div></div>'+
-      '<div class="fp-toolbar"><input class="fp-search" id="fpSearch" placeholder="Buscar pedido, cliente, CNPJ ou cidade" value="'+esc(f.q)+'"><select class="fp-select" id="fpBase"><option value="TODAS">Todas as bases</option>'+['SENIR','GREENTECH','TOPLAND'].map(b=>'<option value="'+b+'" '+(f.base===b?'selected':'')+'>'+b+'</option>').join('')+'</select><span class="fp-muted">'+rows.length+' pedido(s)</span></div>'+
+      '<div class="fp-guide"><b>Como operar:</b><span>1. Abra um pedido</span><span>2. Confira estoque por item</span><span>3. Defina Estoque ou Produção</span><span>4. Informe base e disponibilidade</span><span>5. Finalize o PCP</span></div>'+
+      '<div class="fp-toolbar"><input class="fp-search" id="fpSearch" placeholder="Buscar pedido, cliente, CNPJ, representante ou produto" value="'+esc(filters.q)+'"><select class="fp-select" id="fpBase"><option value="TODAS">Todas as bases</option>'+['SENIR','GREENTECH','TOPLAND'].map(b=>'<option value="'+b+'" '+(filters.base===b?'selected':'')+'>'+b+'</option>').join('')+'</select><span class="fp-muted">'+rows.length+' pedido(s)</span></div>'+
       '<div class="fp-table-wrap">'+table(rows)+'</div></div>';
-
-    document.getElementById('fpRefresh').onclick=()=>render(f);
-    document.getElementById('fpCapacity').onclick=()=>window.FocadoPCP.openProduction();
-    const q=document.getElementById('fpSearch'),base=document.getElementById('fpBase');
-    q.oninput=()=>render({q:q.value,base:base.value}); base.onchange=()=>render({q:q.value,base:base.value});
+    const q=document.getElementById('fpSearch'),base=document.getElementById('fpBase');let t;
+    q.oninput=()=>{clearTimeout(t);t=setTimeout(()=>render({q:q.value,base:base.value}),180)};
+    base.onchange=()=>render({q:q.value,base:base.value});
     document.querySelectorAll('[data-fp-open]').forEach(b=>b.onclick=()=>openOrder(b.dataset.fpOpen));
   }
-  function attention(rows){
-    const notes=[];
-    const undefinedSource=rows.filter(o=>(o.items||[]).some(i=>!i.source)).length;
-    const undefinedBase=rows.filter(o=>!o.pcp?.deliveryBase).length;
-    const undefinedDate=rows.filter(o=>prodQty(o)>0&&!o.pcp?.availableDate).length;
-    if(undefinedSource)notes.push(undefinedSource+' pedido(s) sem definição Estoque/Produção.');
-    if(undefinedBase)notes.push(undefinedBase+' pedido(s) sem base produtiva definida.');
-    if(undefinedDate)notes.push(undefinedDate+' pedido(s) de produção sem data disponível.');
-    if(!notes.length)return '<div class="fp-alert" style="background:#eaf6ee;color:#177347">✓ Nenhuma pendência crítica de planejamento.</div>';
-    return notes.map(n=>'<div class="fp-alert">⚠ '+n+'</div>').join('');
-  }
+  function kpi(a,b,c){return '<div class="fp-kpi"><span>'+a+'</span><strong>'+b+'</strong><small>'+c+'</small></div>'}
   function table(rows){
-    if(!rows.length)return '<div class="fp-empty">Nenhum pedido encontrado para os filtros atuais.</div>';
-    return '<table class="fp-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Origem</th><th>Base</th><th>Produção</th><th>Disponível</th><th>Status PCP</th><th></th></tr></thead><tbody>'+rows.map(o=>{
+    if(!rows.length)return '<div class="fp-empty">Nenhum pedido aguardando PCP para os filtros atuais.</div>';
+    return '<table class="fp-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Data</th><th>Itens</th><th>Valor</th><th>Base</th><th>Disponível</th><th>Status PCP</th><th></th></tr></thead><tbody>'+rows.map(o=>{
       const st=planningStatus(o);
-      return '<tr><td><div class="fp-order">'+esc(o.number)+'</div><div class="fp-muted">'+dbr(o.orderDate)+'</div></td><td><div class="fp-client">'+esc(o.client)+'</div><div class="fp-muted">'+esc(o.city||'')+'</div></td><td>'+((o.items||[]).length)+'<div class="fp-muted">'+totalQty(o)+' cx</div></td><td><div class="fp-source">'+sourceHtml(o)+'</div></td><td>'+esc(o.pcp?.deliveryBase||'—')+'</td><td>'+dbr(o.pcp?.productionDate)+'</td><td>'+dbr(o.pcp?.availableDate)+'</td><td><span class="fp-status '+st[1]+'">'+st[0]+'</span></td><td><button class="fp-open" data-fp-open="'+esc(o.id)+'">Planejar</button></td></tr>';
+      return '<tr><td><div class="fp-order">'+esc(o.number)+'</div></td><td><div class="fp-client">'+esc(o.client||'—')+'</div><div class="fp-muted">'+esc([o.city,o.uf].filter(Boolean).join('/'))+'</div></td><td>'+dbr(o.orderDate)+'</td><td>'+((o.items||[]).length)+'<div class="fp-muted">'+totalQty(o)+' cx</div></td><td>'+money(orderValue(o))+'</td><td>'+esc(o.pcp?.deliveryBase||'—')+'</td><td>'+dbr(o.pcp?.availableDate)+'</td><td><span class="fp-status '+st[1]+'">'+st[0]+'</span></td><td><button class="fp-open" data-fp-open="'+esc(o.id)+'">'+(o.status==='PCP'?'Planejar':'Consultar')+'</button></td></tr>';
     }).join('')+'</tbody></table>';
   }
+
   function openOrder(id){
-    document.getElementById('focadoShell')?.classList.add('hidden');
-    const btn=document.getElementById('hubGoOperacoes'); if(!btn)return; btn.click();
-    setTimeout(()=>{const row=document.querySelector('[data-open-order="'+CSS.escape(id)+'"]');if(row)row.click()},20);
+    const ops=load(),o=(ops.orders||[]).find(x=>String(x.id)===String(id));
+    if(!o){alert('Pedido não encontrado.');return}
+    renderDetail(o,ops);
   }
-  function openProduction(){
-    document.getElementById('focadoShell')?.classList.add('hidden');
-    const btn=document.getElementById('hubGoOperacoes'); if(!btn)return; btn.click();
-    setTimeout(()=>document.querySelector('#opsBody [data-view="production"]')?.click(),20);
+  function renderDetail(o,ops){
+    const editable=o.status==='PCP';
+    const st=planningStatus(o);
+    content().innerHTML='<div class="fp-page">'+
+      '<div class="fp-head"><div><button class="fp-back" id="fpBack">← Fila PCP</button><h1>PCP · '+esc(o.number)+'</h1><p>'+esc(o.client||'')+' · '+esc([o.city,o.uf].filter(Boolean).join('/'))+'</p></div><div class="fp-actions">'+
+        (editable?'<button class="fp-btn secondary" id="fpSave">Salvar planejamento</button><button class="fp-btn primary" id="fpFinish">Finalizar PCP → Operação</button>':'<span class="fp-status done">PCP concluído</span>')+
+      '</div></div>'+
+      '<div class="fp-flowline"><span class="done">Comercial ✓</span><i>→</i><span class="'+(editable?'active':'done')+'">PCP'+(editable?'':' ✓')+'</span><i>→</i><span class="'+(!editable?'active':'')+'">Produção / Estoque</span><i>→</i><span>Logística</span></div>'+
+      '<div class="fp-commercial-readonly"><h2>Dados recebidos do Comercial</h2><div class="fp-read-grid">'+read('Cliente',o.client)+read('CNPJ',o.cnpj)+read('Representante',o.representative)+read('Data do pedido',dbr(o.orderDate))+read('Entrega solicitada',dbr(o.requestedDeliveryDate))+read('Frete',o.freightType)+read('Condição de pagamento',o.paymentTerms)+read('Local de entrega',o.deliveryAddress)+'</div></div>'+
+      '<div class="fp-panel"><div class="fp-panel-head"><div><h2>1. Atendimento dos itens</h2><p>O estoque mostrado é o saldo disponível atual de produto acabado.</p></div><span class="fp-status '+st[1]+'">'+st[0]+'</span></div>'+
+        '<div class="fp-item-table-wrap"><table class="fp-item-table"><thead><tr><th>Código</th><th>Produto</th><th>Pedido</th><th>Estoque disponível</th><th>Atendimento PCP</th><th>Observação</th></tr></thead><tbody>'+
+          (o.items||[]).map((i,n)=>itemRow(i,n,finishedAvailable(ops,i),editable)).join('')+
+        '</tbody></table></div></div>'+
+      '<div class="fp-panel"><h2>2. Planejamento e disponibilidade</h2><div class="fp-form-grid">'+
+        select('Base de entrega / produção','deliveryBase',o.pcp?.deliveryBase||'',["","SENIR","GREENTECH","TOPLAND"],editable)+
+        input('Data de início de produção','productionDate',o.pcp?.productionDate||'','date',editable)+
+        input('Data disponível para expedição','availableDate',o.pcp?.availableDate||'','date',editable)+
+        input('Quantidade programada (cx)','scheduledQty',o.pcp?.scheduledQty||'','number',editable)+
+        '<label class="fp-field wide"><span>Observações do PCP</span><textarea id="fpNotes" '+(editable?'':'disabled')+'>'+esc(o.pcp?.notes||'')+'</textarea></label>'+
+      '</div><div class="fp-help">Se todos os itens forem atendidos por estoque, a data disponível continua sendo útil para informar quando o pedido estará realmente liberado para a Logística.</div></div>'+
+      history(o)+'</div>';
+    document.getElementById('fpBack').onclick=()=>render(filters);
+    if(editable){
+      document.getElementById('fpSave').onclick=()=>savePlanning(o,false);
+      document.getElementById('fpFinish').onclick=()=>savePlanning(o,true);
+    }
   }
-  window.FocadoPCP={render,openOrder,openProduction};
+  function read(a,b){return '<div><span>'+a+'</span><b>'+esc(b||'—')+'</b></div>'}
+  function select(label,id,val,options,editable){
+    return '<label class="fp-field"><span>'+label+'</span><select id="fp_'+id+'" '+(editable?'':'disabled')+'>'+options.map(x=>'<option value="'+esc(x)+'" '+(String(val)===x?'selected':'')+'>'+(x||'Selecione')+'</option>').join('')+'</select></label>';
+  }
+  function input(label,id,val,type,editable){
+    return '<label class="fp-field"><span>'+label+'</span><input id="fp_'+id+'" type="'+type+'" value="'+esc(val||'')+'" '+(editable?'':'disabled')+'></label>';
+  }
+  function itemRow(i,n,av,editable){
+    const shortage=Number(i.qty||0)>av;
+    return '<tr data-pcp-item data-key="'+esc(i.id||i.code||i.productId||'')+'"><td><b>'+esc(i.code||'—')+'</b></td><td>'+esc(i.name||'—')+'</td><td><b>'+Number(i.qty||0)+' cx</b></td><td><span class="fp-stock '+(shortage?'low':'ok')+'">'+av+' cx</span></td><td><select data-source '+(editable?'':'disabled')+'><option value="">Definir</option><option value="ESTOQUE" '+(i.source==='ESTOQUE'?'selected':'')+'>Estoque</option><option value="PRODUCAO" '+(i.source==='PRODUCAO'?'selected':'')+'>Produção</option></select></td><td class="fp-item-note">'+(shortage?'Estoque menor que o pedido':'Saldo suficiente para estoque')+'</td></tr>';
+  }
+  function collectChanges(o,ops){
+    const items=[...document.querySelectorAll('[data-pcp-item]')].map(r=>({id:r.dataset.key,source:r.querySelector('[data-source]').value}));
+    return {
+      pcp:{
+        deliveryBase:document.getElementById('fp_deliveryBase').value,
+        productionDate:document.getElementById('fp_productionDate').value,
+        availableDate:document.getElementById('fp_availableDate').value,
+        scheduledQty:Number(document.getElementById('fp_scheduledQty').value)||0,
+        notes:document.getElementById('fpNotes').value.trim()
+      },
+      items
+    };
+  }
+  function validate(o,ops,changes){
+    const errors=[];
+    if(!changes.pcp.deliveryBase)errors.push('Defina a base de entrega / produção.');
+    for(const incoming of changes.items){
+      if(!['ESTOQUE','PRODUCAO'].includes(incoming.source))errors.push('Defina Estoque ou Produção para todos os itens.');
+      if(incoming.source==='ESTOQUE'){
+        const item=(o.items||[]).find(i=>String(i.id||i.code||i.productId||'')===String(incoming.id));
+        if(item&&finishedAvailable(ops,item)<Number(item.qty||0))errors.push('O item '+(item.name||item.code)+' não possui estoque suficiente para atendimento por estoque.');
+      }
+    }
+    if(changes.items.some(i=>i.source==='PRODUCAO')&&!changes.pcp.availableDate)errors.push('Informe a data disponível para os itens que serão produzidos.');
+    return [...new Set(errors)];
+  }
+  async function savePlanning(o,finish){
+    const ops=load(),changes=collectChanges(o,ops);
+    const errors=validate(o,ops,changes);
+    if(finish&&errors.length){alert('Antes de finalizar o PCP:\n\n• '+errors.join('\n• '));return}
+    let result;
+    if(window.FocadoDataStore?.isRemoteReady?.()){
+      result=await window.FocadoDataStore.saveDomain('PCP',changes,o.id);
+      if(!result?.ok){alert('Não foi possível salvar o planejamento do PCP. '+(result?.error||''));return}
+      if(finish){
+        const tr=await window.FocadoDataStore.transitionOrder(o.id);
+        if(!tr?.ok){alert('O PCP não pôde ser finalizado: '+(tr?.code||tr?.error||'verifique os campos obrigatórios.'));return}
+      }
+      await window.FocadoDataStore.load();
+    }else{
+      const current=(ops.orders||[]).find(x=>String(x.id)===String(o.id));
+      if(!current)return;
+      current.pcp={...(current.pcp||{}),...changes.pcp};
+      changes.items.forEach(incoming=>{const item=(current.items||[]).find(i=>String(i.id||i.code||i.productId||'')===String(incoming.id));if(item)item.source=incoming.source});
+      current.events=Array.isArray(current.events)?current.events:[];
+      current.events.unshift({at:Date.now(),text:finish?'PCP finalizado':'Planejamento PCP salvo',user:window.FocadoAuth?.getUser?.()?.name||'PCP'});
+      if(finish)current.status='ESTOQUE_PRODUCAO';
+      await window.FocadoDataStore?.save?.(ops);
+    }
+    window.dispatchEvent(new CustomEvent('focado:ops-updated',{detail:{source:'pcp'}}));
+    if(finish)render({q:'',base:'TODAS'});else{
+      const fresh=load(),updated=(fresh.orders||[]).find(x=>String(x.id)===String(o.id));if(updated)renderDetail(updated,fresh);
+    }
+  }
+  function history(o){
+    const events=(o.events||[]).slice(0,8);
+    return '<div class="fp-panel"><h2>Histórico</h2>'+(events.length?'<div class="fp-history">'+events.map(e=>'<div><span>'+dbr(new Date(e.at).toISOString().slice(0,10))+'</span><p><b>'+esc(e.text||e.type||'Movimentação')+'</b><small>'+esc(e.user||'')+'</small></p></div>').join('')+'</div>':'<div class="fp-empty small">Nenhuma movimentação registrada.</div>')+'</div>';
+  }
+
+  window.FocadoPCP={render,openOrder};
 })();
