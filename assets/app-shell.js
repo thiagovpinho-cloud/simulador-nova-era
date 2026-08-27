@@ -134,6 +134,8 @@
       return;
     }
     try{await window.FocadoModules?.ensure?.(id)}catch(err){console.error('[FocadoModules]',err);alert('Não foi possível carregar esta área. Tente novamente.');return}
+    if(id==='clientes')await window.FocadoDataStore?.refreshDomainV2?.('customers');
+    if(id==='pedidos')await window.FocadoDataStore?.refreshDomainV2?.('orders');
     const open=(fn)=>{
       showShell(false);
       if(typeof fn==='function')fn();
