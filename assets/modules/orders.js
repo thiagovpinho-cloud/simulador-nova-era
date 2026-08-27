@@ -4,6 +4,17 @@
   const content=()=>document.getElementById('fxContent');
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const moneyInput=v=>{
+    const n=Number(v||0);
+    return n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  };
+  const parseMoneyInput=v=>{
+    let s=String(v??'').trim().replace(/\s/g,'').replace(/^R\$/i,'');
+    if(!s)return 0;
+    if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');
+    const n=Number(s.replace(/[^0-9.-]/g,''));
+    return Number.isFinite(n)?n:0;
+  };
   const dbr=v=>{if(!v)return '—';const d=new Date(v+(String(v).length===10?'T12:00:00':''));return isNaN(d)?'—':d.toLocaleDateString('pt-BR')};
   const today=()=>new Date().toISOString().slice(0,10);
   const firstDayMonth=()=>today().slice(0,8)+'01';
@@ -168,7 +179,7 @@
     return '<label class="fo-field"><span>CNPJ</span><div class="fo-inline-input"><input name="cnpj" id="foCnpj" value="'+esc(formatCnpj(val))+'" inputmode="numeric" '+(editable?'':'disabled')+'><button type="button" id="foCnpjLookup" '+(editable?'':'disabled')+'>Buscar</button></div></label>';
   }
   function itemRow(i,n,editable){
-    return '<tr data-item-row data-product-id="'+esc(i.productId||'')+'"><td><input data-k="code" list="foProductCodes" value="'+esc(i.code||'')+'" '+(editable?'':'disabled')+'></td><td><input data-k="name" list="foProductNames" value="'+esc(i.name||'')+'" '+(editable?'':'disabled')+'></td><td><input data-k="qty" type="number" min="0" step="1" value="'+esc(i.qty||'')+'" '+(editable?'':'disabled')+'></td><td><input data-k="price" type="number" min="0" step="0.01" value="'+esc(i.price||'')+'" '+(editable?'':'disabled')+'></td><td class="fo-line-total">'+money((Number(i.qty)||0)*(Number(i.price)||0))+'</td><td>'+(editable?'<button type="button" class="fo-remove">×</button>':'')+'</td></tr>';
+    return '<tr data-item-row data-product-id="'+esc(i.productId||'')+'"><td><input data-k="code" list="foProductCodes" value="'+esc(i.code||'')+'" '+(editable?'':'disabled')+'></td><td><input data-k="name" list="foProductNames" value="'+esc(i.name||'')+'" '+(editable?'':'disabled')+'></td><td><input data-k="qty" type="number" min="0" step="1" value="'+esc(i.qty||'')+'" '+(editable?'':'disabled')+'></td><td><div class="fo-money-input"><span>R$</span><input data-k="price" type="text" inputmode="decimal" value="'+esc(moneyInput(i.price))+'" '+(editable?'':'disabled')+'></div></td><td class="fo-line-total">'+money((Number(i.qty)||0)*(Number(i.price)||0))+'</td><td>'+(editable?'<button type="button" class="fo-remove">×</button>':'')+'</td></tr>';
   }
   function addItemRow(ops){
     const tbody=document.querySelector('#foItems tbody');tbody.insertAdjacentHTML('beforeend',itemRow({},tbody.children.length,true));bindItemEvents(ops);
@@ -183,12 +194,18 @@
       }
       code.onchange=()=>resolve(code);code.onblur=()=>resolve(code);
       name.onchange=()=>resolve(name);name.onblur=()=>resolve(name);
-      row.querySelectorAll('input').forEach(i=>i.addEventListener('input',updateTotals));
+      const price=row.querySelector('[data-k="price"]');
+      if(price){
+        price.onfocus=()=>{price.select()};
+        price.onblur=()=>{price.value=moneyInput(parseMoneyInput(price.value));updateTotals()};
+        price.oninput=updateTotals;
+      }
+      row.querySelectorAll('input:not([data-k="price"])').forEach(i=>i.addEventListener('input',updateTotals));
     });
     document.querySelectorAll('.fo-remove').forEach(b=>b.onclick=()=>{if(document.querySelectorAll('[data-item-row]').length>1)b.closest('tr').remove();updateTotals()});
   }
   function updateTotals(){
-    let total=0;document.querySelectorAll('[data-item-row]').forEach(r=>{const q=Number(r.querySelector('[data-k="qty"]').value)||0,p=Number(r.querySelector('[data-k="price"]').value)||0;r.querySelector('.fo-line-total').textContent=money(q*p);total+=q*p});
+    let total=0;document.querySelectorAll('[data-item-row]').forEach(r=>{const q=Number(r.querySelector('[data-k="qty"]').value)||0,p=parseMoneyInput(r.querySelector('[data-k="price"]').value);r.querySelector('.fo-line-total').textContent=money(q*p);total+=q*p});
     const g=document.getElementById('foGrandTotal');if(g)g.textContent=money(total);
   }
 
@@ -254,7 +271,7 @@
       deliveryAddress:fd.get('deliveryAddress')||'',notes:fd.get('notes')||'',
       items:[...document.querySelectorAll('[data-item-row]')].map(r=>{
         const code=r.querySelector('[data-k="code"]').value,name=r.querySelector('[data-k="name"]').value,p=findProduct(code||name,brand,ops);
-        return {productId:p?.simulatorId||r.dataset.productId||'',code:p?.code||code,name:p?.name||name,qty:r.querySelector('[data-k="qty"]').value,price:r.querySelector('[data-k="price"]').value};
+        return {productId:p?.simulatorId||r.dataset.productId||'',code:p?.code||code,name:p?.name||name,qty:r.querySelector('[data-k="qty"]').value,price:parseMoneyInput(r.querySelector('[data-k="price"]').value)};
       })
     };
   }
