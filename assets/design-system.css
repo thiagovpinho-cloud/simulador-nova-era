@@ -311,3 +311,34 @@
 :is(.fo-btn.primary,.fpcp-btn.primary,.fl-btn.primary){background:linear-gradient(180deg,#0a7d5e,#087254)!important;border-color:#087254!important}
 .fpcp-guide{border:0!important;background:linear-gradient(90deg,#eef8f3,#f8fbf9)!important;border-radius:14px!important;color:#426357!important}
 .fl-grid{gap:12px!important}.fl-panel h2,.fpcp-panel h2,.fo-card h2{font-weight:780;letter-spacing:-.15px}
+
+/* Multi-age usability baseline — 15 / 35 / 46 / 65 */
+:root{--fds-readable:12px;--fds-readable-small:11px;--fds-hit:40px}
+.fx-nav,.fds-btn,
+:is(.fpcp-btn,.fi-btn,.fl-btn,.fc-btn,.fpr-btn,.fpcp-open,.fi-open,.fl-open){
+  min-height:var(--fds-hit)!important;font-size:11.5px!important
+}
+:is(.fpcp-table,.fi-table,.fl-table,.fc-table,.fpr-table,.fpur-table-wrap table,.fexp-table-wrap table,.fiq-table-wrap table) td{
+  font-size:10.5px!important;line-height:1.45
+}
+:is(.fpcp-table,.fi-table,.fl-table,.fc-table,.fpr-table,.fpur-table-wrap table,.fexp-table-wrap table,.fiq-table-wrap table) th{
+  font-size:9px!important;line-height:1.35
+}
+:is(.fpcp-head,.fi-head,.fl-head,.fc-head,.fpr-head,.fpur-head,.fexp-head,.fiq-head,.fhealth-head) p{
+  font-size:11.5px!important
+}
+.fds-field>span,
+:is(.fpcp-field,.fi-field,.fl-field,.fc-field,.fpr-field)>span{
+  font-size:9.5px!important
+}
+.fds-input,
+:is(.fpcp-field,.fi-field,.fl-field,.fc-field,.fpr-field) :is(input,select,textarea){
+  min-height:40px!important;font-size:12px!important
+}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:3px solid rgba(10,122,92,.22)!important;outline-offset:2px!important
+}
+@media(max-width:760px){
+  .fx-nav,.fds-btn,
+  :is(.fpcp-btn,.fi-btn,.fl-btn,.fc-btn,.fpr-btn,.fpcp-open,.fi-open,.fl-open){min-height:44px!important}
+}
