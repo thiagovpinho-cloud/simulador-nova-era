@@ -86,15 +86,33 @@
     if(!rows.length)return '<div class="fpr-empty">Nenhuma solicitação de produção encontrada.</div>';
     return '<table class="fpr-table"><thead><tr><th>Solicitação</th><th>Base</th><th>Data</th><th>Itens</th><th>Caixas</th><th>Insumos</th><th>Status</th><th></th></tr></thead><tbody>'+rows.map(r=>{const st=requestStatus(r);const qty=(r.items||[]).reduce((s,i)=>s+Number(i.qty||0),0);return '<tr><td><b>'+esc(r.number)+'</b><div class="fpr-muted">'+esc(r.requestedBy||'')+'</div></td><td>'+esc(r.base)+'</td><td>'+dbr(r.requestDate)+'</td><td>'+((r.items||[]).length)+'</td><td>'+qty+'</td><td>'+(r.materialStatus==='COMPRAR'?'<span class="fpr-chip block">Comprar</span>':'<span class="fpr-chip ready">OK</span>')+'</td><td><span class="fpr-chip '+st[1]+'">'+st[0]+'</span></td><td><button class="fpr-open" data-fpr-open="'+esc(r.id)+'">'+(r.status==='FINALIZADA'?'Visualizar':'Editar')+'</button></td></tr>'}).join('')+'</tbody></table>';
   }
-  function blankRequest(ops){
-    return {id:'spr_'+Date.now(),number:nextNumber(ops),status:'RASCUNHO',createdAt:Date.now(),requestDate:today(),needByDate:'',base:'SENIR',requestedBy:window.FocadoAuth?.getUser?.()?.name||'PCP',notes:'',items:[],materials:[],materialStatus:'OK'};
+  function blankRequest(ops,seed={}){
+    return {
+      id:'spr_'+Date.now(),
+      number:nextNumber(ops),
+      status:'RASCUNHO',
+      createdAt:Date.now(),
+      requestDate:today(),
+      needByDate:seed.needByDate||'',
+      base:seed.base||'SENIR',
+      requestedBy:window.FocadoAuth?.getUser?.()?.name||'PCP',
+      notes:seed.notes||'',
+      items:Array.isArray(seed.items)?JSON.parse(JSON.stringify(seed.items)):[],
+      materials:[],
+      materialStatus:'OK',
+      source:seed.source||''
+    };
   }
-  function openEditor(id){
+  function openEditor(id,seed){
     const ops=load();ops.productionRequests=Array.isArray(ops.productionRequests)?ops.productionRequests:[];
     let r=id?ops.productionRequests.find(x=>x.id===id):null;
-    if(!r){r=blankRequest(ops);ops.productionRequests.unshift(r)}
+    if(!r){r=blankRequest(ops,seed||{});ops.productionRequests.unshift(r)}
     window.FocadoDataStore?.writeLocal?.(ops);
     renderEditor(r,ops);
+  }
+  function createFromPlan(seed){
+    if(!canCreate()){alert('Seu perfil não possui permissão para criar solicitação de produção.');return}
+    openEditor(null,{...(seed||{}),source:'PCP_CONSOLIDADO'});
   }
   function renderEditor(r,ops){
     const products=catalog(ops);
@@ -343,5 +361,5 @@
   }
   ensureStyles();
 
-  window.FocadoProduction={render,openRequest};
+  window.FocadoProduction={render,openRequest,createFromPlan};
 })();
