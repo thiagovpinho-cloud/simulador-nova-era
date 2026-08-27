@@ -55,6 +55,7 @@ export async function ensurePlatformV2(db){
       id bigserial primary key, attempted_at timestamptz not null default now(), email text not null,
       ip_hash text, success boolean not null default false
     )`,
+    `alter table public.focado_v2_change_log alter column user_id type text using user_id::text`,
     `create index if not exists focado_login_attempts_email_time_idx on public.focado_login_attempts(email,attempted_at desc)`,
     `create index if not exists focado_v2_orders_status_idx on public.focado_v2_orders(status)`,
     `create index if not exists focado_v2_order_items_code_idx on public.focado_v2_order_items(code)`,
