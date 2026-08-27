@@ -1,7 +1,9 @@
+import { applyCors } from '../_lib/http.js';
 import { db } from '../_lib/db.js';
 import { requireSession } from '../_lib/auth.js';
 
 export default async function handler(req,res){
+  if(applyCors(req,res))return;
   res.setHeader('Cache-Control','no-store');
   if(req.method!=='POST')return res.status(405).json({error:'METHOD_NOT_ALLOWED'});
   try{
