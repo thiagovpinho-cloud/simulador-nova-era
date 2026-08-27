@@ -1,3 +1,4 @@
+import { applyCors } from './_lib/http.js';
 import { db } from './_lib/db.js';
 import { requireSession } from './_lib/auth.js';
 import { hashPassword } from './_lib/password.js';
@@ -5,6 +6,7 @@ import { hashPassword } from './_lib/password.js';
 const ROLES=new Set(['ADMIN','COMERCIAL','PCP','PRODUCAO','ESTOQUE','LOGISTICA','COMPRAS','FINANCEIRO']);
 
 export default async function handler(req,res){
+  if(applyCors(req,res))return;
   res.setHeader('Cache-Control','no-store');
   try{
     const session=await requireSession(req,res,'users.manage');if(!session)return;
