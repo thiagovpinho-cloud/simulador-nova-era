@@ -71,3 +71,8 @@ assert.ok(shellProduct.includes('PRIORIDADE AGORA'),'Dashboard deve priorizar ex
 assert.ok(shellProduct.includes('OPERAÇÃO SOB CONTROLE'),'Dashboard deve possuir estado saudável');
 assert.ok(shellProductCss.includes('.fx-command'),'Dashboard deve possuir command center visual');
 assert.ok(dsCss.includes('Journey UI 2.0'),'Design System deve refinar as jornadas principais');
+
+const intelligenceCss=read('assets/modules/intelligence.css');
+assert.ok(intelligenceCss.includes('.fiq-hero'),'Cockpit deve possuir hierarquia de decisão própria');
+assert.ok(intelligenceCss.includes('.fiq-audit-card'),'Corpo Auditor deve possuir cards de achado');
+assert.ok(intelligenceCss.includes('.fiq-risk'),'Risco deve ter tratamento visual consistente');
