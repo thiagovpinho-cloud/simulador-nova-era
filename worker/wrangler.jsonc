@@ -3,12 +3,20 @@
   "name": "focado-api",
   "main": "src/index.js",
   "compatibility_date": "2026-08-26",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1
   },
   "vars": {
     "FOCADO_ALLOWED_ORIGIN": "https://thiagovpinho-cloud.github.io"
-  }
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "0a078f911ad54d15a1dafe913370a139"
+    }
+  ]
 }
