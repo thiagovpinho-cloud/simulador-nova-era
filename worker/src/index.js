@@ -281,6 +281,38 @@ async function route(request,env){
       return json({ok:true});
     }
 
+    if(path.startsWith("/cnpj/")&&request.method==="GET"){
+      await requireSession(request,db);
+      const cnpj=path.slice("/cnpj/".length).replace(/[^0-9A-Za-z]/g,"").toUpperCase();
+      if(cnpj.length!==14)return json({error:"INVALID_CNPJ"},400);
+      let response;
+      try{
+        response=await fetch("https://brasilapi.com.br/api/cnpj/v1/"+encodeURIComponent(cnpj),{
+          headers:{"accept":"application/json","user-agent":"Focado/1.0"}
+        });
+      }catch(err){
+        return json({error:"CNPJ_PROVIDER_UNAVAILABLE"},503);
+      }
+      const body=await response.json().catch(()=>({}));
+      if(!response.ok)return json({error:response.status===404?"CNPJ_NOT_FOUND":"CNPJ_LOOKUP_FAILED",providerStatus:response.status},response.status===404?404:502);
+      return json({
+        cnpj:String(body.cnpj||cnpj),
+        razaoSocial:body.razao_social||"",
+        nomeFantasia:body.nome_fantasia||"",
+        descricaoSituacao:body.descricao_situacao_cadastral||"",
+        cep:body.cep||"",
+        logradouro:body.logradouro||"",
+        numero:body.numero||"",
+        complemento:body.complemento||"",
+        bairro:body.bairro||"",
+        municipio:body.municipio||"",
+        uf:body.uf||"",
+        dddTelefone1:body.ddd_telefone_1||"",
+        dddTelefone2:body.ddd_telefone_2||"",
+        email:body.email||""
+      });
+    }
+
     if(path==="/state"&&request.method==="GET"){
       await requireSession(request,db,"workspace.read");
       const row=await readWorkspace(db,false);
