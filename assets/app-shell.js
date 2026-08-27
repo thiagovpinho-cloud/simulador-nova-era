@@ -10,7 +10,7 @@
     ['Comercial',[['clientes','♙','Clientes'],['oportunidades','◎','Oportunidades','soon'],['pedidos','▤','Pedidos Comerciais']]],
     ['Operações',[['pcp','⌘','PCP'],['production','⚙','Produção'],['inventory','▣','Estoque'],['inputs','◇','Insumos'],['finished','□','Produtos Acabados'],['movements','↕','Movimentações'],['inventario','✓','Inventário'],['purchases','↻','Reposição']]],
     ['Logística',[['logistica','▰','Logística'],['entregas','✓','Entregas'],['transportadoras','⌁','Transportadoras','soon']]],
-    ['Cadastros',[['produtos','◫','Produtos','soon'],['fichas','▧','Fichas Técnicas'],['bases','▦','Bases Produtivas']]],
+    ['Cadastros',[['produtos','◫','Produtos'],['fichas','▧','Fichas Técnicas'],['bases','▦','Bases Produtivas']]],
     ['Relatórios',[['relatorios','▥','Relatórios','soon'],['indicadores','◉','Indicadores','soon']]],
     ['Configurações',[['config','⚙','Configurações','soon'],['usuarios','♚','Usuários e Perfis','soon']]]
   ];
@@ -140,6 +140,7 @@
     if(id==='clientes')return clickLegacy('hubGoCadastro');
     if(id==='pedidos'){showShell(); if(window.FocadoOrders) window.FocadoOrders.render(); return}
     if(id==='fichas')return clickLegacy('hubGoFichas');
+    if(id==='produtos'){showShell(); if(window.FocadoProducts) window.FocadoProducts.render(); return}
     if(id==='pcp'){showShell(); if(window.FocadoPCP) window.FocadoPCP.render(); return}
     if(id==='production'){showShell(); if(window.FocadoProduction) window.FocadoProduction.render(); return}
     if(id==='bases')return openOps('production');
