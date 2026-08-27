@@ -141,7 +141,7 @@
     };
     if(id==='dashboard'){showShell(true);return}
     if(id==='kanban'){open(()=>window.FocadoKanban?.render({q:'',brand:'TODAS'}));return}
-    if(id==='clientes')return clickLegacy('hubGoCadastro');
+    if(id==='clientes'){open(()=>window.FocadoCustomers?.render());return}
     if(id==='representantes'){open(()=>window.FocadoRepresentatives?.render());return}
     if(id==='pedidos'){open(()=>window.FocadoOrders?.render());return}
     if(id==='fichas')return clickLegacy('hubGoFichas');
