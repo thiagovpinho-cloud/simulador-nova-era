@@ -50,7 +50,12 @@
     const items=o.items||[];
     if(items.some(i=>!i.deliveryBase))return ['Definir base por item','attention'];
     if(items.some(i=>remaining(i)>0 && i.pcpBalanceDecision==='AGUARDAR' && !i.pcpAvailabilityDate))return ['Informar previsão de saldo','attention'];
-    if(items.some(i=>remaining(i)>0))return ['Aguardando saldo / decisão','attention'];
+    const waiting=items.filter(i=>remaining(i)>0 && i.pcpBalanceDecision==='AGUARDAR' && i.pcpAvailabilityDate);
+    if(waiting.length){
+      const latest=waiting.map(i=>i.pcpAvailabilityDate).sort().slice(-1)[0];
+      return ['Aguardando estoque até '+dbr(latest),'attention'];
+    }
+    if(items.some(i=>remaining(i)>0))return ['Aguardando decisão','attention'];
     return ['Pronto para liberar','ready'];
   }
   function basesOf(o){return [...new Set((o.items||[]).map(i=>i.deliveryBase).filter(Boolean))]}
@@ -100,7 +105,7 @@
     const editable=o.status==='PCP',st=planningStatus(o);
     content().innerHTML='<div class="fpcp-page">'+
       '<div class="fpcp-head"><div><button class="fpcp-back" id="fpBack">← Fila PCP</button><h1>PCP · '+esc(o.number)+'</h1><p>'+esc(o.client||'')+' · '+esc([o.city,o.uf].filter(Boolean).join('/'))+'</p></div><div class="fpcp-actions">'+
-        (editable?'<button class="fpcp-btn secondary" id="fpSave">Salvar e reservar</button><button class="fpcp-btn primary" id="fpFinish">Liberar PCP → Operação</button>':'<span class="fpcp-status done">PCP concluído</span>')+
+        (editable?'<button class="fpcp-btn secondary" id="fpSave">Salvar planejamento</button><button class="fpcp-btn primary" id="fpFinish">Liberar PCP → Operação</button>':'<span class="fpcp-status done">PCP concluído</span>')+
       '</div></div>'+
       '<div class="fpcp-flowline"><span class="done">Comercial ✓</span><i>→</i><span class="'+(editable?'active':'done')+'">PCP'+(editable?'':' ✓')+'</span><i>→</i><span class="'+(!editable?'active':'')+'">Produção / Estoque</span><i>→</i><span>Logística</span></div>'+
       '<div class="fpcp-commercial-readonly"><h2>Dados recebidos do Comercial</h2><div class="fpcp-read-grid">'+read('Cliente',o.client)+read('CNPJ',o.cnpj)+read('E-mail',o.email)+read('Representante',o.representative)+read('Data do pedido',dbr(o.orderDate))+read('Entrega solicitada',dbr(o.requestedDeliveryDate))+read('Frete',o.freightType)+read('Condição de pagamento',o.paymentTerms)+read('Local de entrega',o.deliveryAddress)+'</div></div>'+
@@ -112,8 +117,11 @@
       '<div class="fpcp-panel"><h2>Observações do PCP</h2><textarea id="fpNotes" '+(editable?'':'disabled')+' placeholder="Observações gerais do planejamento">'+esc(o.pcp?.notes||'')+'</textarea></div>'+
       history(o)+'</div>';
     document.getElementById('fpBack').onclick=()=>render(filters);
-    bindDynamicRows();
-    if(editable){document.getElementById('fpSave').onclick=()=>savePlanning(o,false);document.getElementById('fpFinish').onclick=()=>savePlanning(o,true)}
+    bindDynamicRows(o);
+    if(editable){
+      document.getElementById('fpSave').onclick=()=>savePlanning(o,false);
+      updatePrimaryAction(o);
+    }
   }
   function read(a,b){return '<div><span>'+a+'</span><b>'+esc(b||'—')+'</b></div>'}
   function itemRow(i,n,sv,editable){
@@ -129,7 +137,7 @@
       '<td><select data-base '+(editable?'':'disabled')+'><option value="">Selecione</option>'+['SENIR','GREENTECH','TOPLAND'].map(b=>'<option value="'+b+'" '+(i.deliveryBase===b?'selected':'')+'>'+b+'</option>').join('')+'</select></td>'+
       '</tr>';
   }
-  function bindDynamicRows(){
+  function bindDynamicRows(o){
     document.querySelectorAll('[data-pcp-item]').forEach(r=>{
       const reserve=r.querySelector('[data-reserve]'),decision=r.querySelector('[data-decision]'),date=r.querySelector('[data-availability]'),out=r.querySelector('[data-remaining]');
       const update=()=>{
@@ -140,8 +148,44 @@
         date.disabled=decision.disabled||decision.value==='CORTE'||remain===0;
         if(date.disabled&&decision.value==='CORTE')date.value='';
       };
-      reserve?.addEventListener('input',update);decision?.addEventListener('change',update);update();
+      const refresh=()=>{update();updatePrimaryAction(o)};
+      reserve?.addEventListener('input',refresh);
+      decision?.addEventListener('change',refresh);
+      date?.addEventListener('change',()=>updatePrimaryAction(o));
+      r.querySelector('[data-base]')?.addEventListener('change',()=>updatePrimaryAction(o));
+      update();
     });
+    updatePrimaryAction(o);
+  }
+  function currentPlanState(o){
+    const changes=collectChanges();
+    let waiting=false,unresolved=false,missingDate=false,missingBase=false;
+    for(const incoming of changes.items){
+      const item=(o.items||[]).find(i=>String(i.id||i.code||i.productId||'')===String(incoming.id));if(!item)continue;
+      const qty=Number(item.qty||0),covered=Number(incoming.reservedQty||0)+Number(incoming.cutQty||0),missing=Math.max(0,qty-covered);
+      if(!incoming.deliveryBase)missingBase=true;
+      if(missing>0){
+        unresolved=true;
+        if(incoming.pcpBalanceDecision==='AGUARDAR'){
+          waiting=true;
+          if(!incoming.pcpAvailabilityDate)missingDate=true;
+        }
+      }
+    }
+    return {waiting,unresolved,missingDate,missingBase};
+  }
+  function updatePrimaryAction(o){
+    const btn=document.getElementById('fpFinish');if(!btn)return;
+    const st=currentPlanState(o);
+    if(st.waiting && !st.missingDate && !st.missingBase){
+      btn.textContent='Confirmar planejamento · Aguardar estoque';
+      btn.onclick=()=>savePlanning(o,false);
+      btn.dataset.mode='wait';
+      return;
+    }
+    btn.textContent='Liberar PCP → Operação';
+    btn.onclick=()=>savePlanning(o,true);
+    btn.dataset.mode='release';
   }
   function collectChanges(){
     return {
