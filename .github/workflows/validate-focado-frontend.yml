@@ -1,0 +1,44 @@
+name: Validate Focado Frontend
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "assets/**"
+      - "index.html"
+      - "tests/**"
+      - "shared/**"
+      - "package.json"
+      - ".github/workflows/validate-focado-frontend.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: focado-frontend-validation
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run business and design tests
+        run: npm test
+
+      - name: Syntax check frontend modules
+        shell: bash
+        run: |
+          node --check assets/design-system.js
+          node --check assets/app-shell.js
+          for f in assets/modules/*.js; do
+            node --check "$f"
+          done
