@@ -3581,7 +3581,11 @@ init();
     return {version:3, orders:[], inventory:{}, inputInventory:{}, stockMovements:[], inventoryCounts:[], productionBases:{SENIR:{capacityPerDay:0,workingDays:[1,2,3,4,5]},GREENTECH:{capacityPerDay:0,workingDays:[1,2,3,4,5]},TOPLAND:{capacityPerDay:0,workingDays:[1,2,3,4,5]}}, events:[]};
   }
   function saveOps(){
-    localStorage.setItem(KEY, JSON.stringify(OPS));
+    if(window.FocadoDataStore){
+      window.FocadoDataStore.save(OPS);
+    }else{
+      localStorage.setItem(KEY, JSON.stringify(OPS));
+    }
     try{ window.dispatchEvent(new CustomEvent('focado:ops-updated',{detail:{key:KEY}})); }catch(_){}
   }
   function esc(v){
@@ -4330,5 +4334,5 @@ init();
 })();
 </script>
 <!-- FOCADO_OPS_V6_END -->
-<script src="assets/modules/orders.js"></script>\n<script src="assets/modules/pcp.js"></script>\n<script src="assets/modules/production.js"></script>\n<script src="assets/modules/inventory.js"></script>\n<script src="assets/modules/logistics.js"></script>\n<script src="assets/modules/kanban.js"></script>\n<script src="assets/app-shell.js"></script>\n</body>
+<script src="assets/core/data-store.js"></script>\n<script src="assets/modules/orders.js"></script>\n<script src="assets/modules/pcp.js"></script>\n<script src="assets/modules/production.js"></script>\n<script src="assets/modules/inventory.js"></script>\n<script src="assets/modules/logistics.js"></script>\n<script src="assets/modules/kanban.js"></script>\n<script src="assets/app-shell.js"></script>\n</body>
 </html>
