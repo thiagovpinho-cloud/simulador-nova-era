@@ -202,3 +202,33 @@ assert.equal(supportState.finance.secret,undefined);
 expectError(()=>applyDomain('DESCONHECIDO',{},{}),'INVALID_DOMAIN');
 
 console.log('domain-rules: ok');
+
+
+// Compras: recebimento alimenta estoque de insumos e não pode duplicar.
+const buyState={
+  purchaseRequests:[],
+  suppliers:[],
+  inputInventory:{},
+  stockMovements:[]
+};
+applyDomain('COMPRAS',buyState,{changes:{supplier:{id:'s1',name:'Fornecedor 1',active:true}}});
+applyDomain('COMPRAS',buyState,{changes:{request:{id:'r1',number:'RC-00001',code:'MP1',material:'Matéria Prima 1',unit:'KG',qty:100,status:'PEDIDO_EMITIDO',supplierId:'s1',supplierName:'Fornecedor 1'}}});
+applyDomain('COMPRAS',buyState,{changes:{request:{...buyState.purchaseRequests[0]},receive:{requestId:'r1',qty:100,user:'Compras'}}});
+assert.equal(buyState.inputInventory.MP1.physical,100);
+assert.equal(buyState.stockMovements[0].type,'ENTRADA_COMPRA');
+assert.equal(buyState.purchaseRequests[0].status,'RECEBIDO');
+expectError(()=>applyDomain('COMPRAS',buyState,{changes:{receive:{requestId:'r1',qty:100}}}),'PURCHASE_ALREADY_RECEIVED');
+
+// Expedição: baixa física nasce do pedido e libera reserva uma única vez.
+const expState={
+  inventory:{PX:{code:'PX',name:'Produto X',physical:20,reserved:10,blocked:0,unit:'CX'}},
+  stockMovements:[],
+  orders:[{id:'exp1',number:'PED-X',status:'LOGISTICA',items:[{id:'x1',code:'PX',name:'Produto X',qty:10,reservedQty:10,deliveryBase:'SENIR'}]}]
+};
+applyDomain('EXPEDICAO',expState,{orderId:'exp1',changes:{expedition:{releaseStock:true,releasedBy:'Expedição',separationDate:'2026-09-01',conferenceDate:'2026-09-01'}}});
+assert.equal(expState.inventory.PX.physical,10);
+assert.equal(expState.inventory.PX.reserved,0);
+assert.equal(expState.orders[0].items[0].reservedQty,0);
+assert.equal(expState.stockMovements[0].type,'SAIDA_PEDIDO');
+assert.equal(expState.orders[0].expedition.status,'LIBERADO');
+expectError(()=>applyDomain('EXPEDICAO',expState,{orderId:'exp1',changes:{expedition:{releaseStock:true}}}),'EXPEDITION_STOCK_ALREADY_RELEASED');
