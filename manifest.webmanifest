@@ -8,13 +8,13 @@
   "description": "Simulador e Gestão Operacional Nova Era",
   "icons": [
     {
-      "src": "focado-icon.svg?v=20260827",
+      "src": "focado-app-icon.svg?v=20260827c",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "focado-icon.svg?v=20260827",
+      "src": "focado-app-icon.svg?v=20260827c",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"
