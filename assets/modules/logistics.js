@@ -11,7 +11,8 @@
   function status(o){
     const today=new Date().toISOString().slice(0,10);
     if(o.status==='ENTREGUE')return ['Entregue','ready'];
-    if(o.pcp?.logisticsPreRelease&&o.status==='PCP')return ['Pré-liberação logística','warn'];
+    if(o.status==='PCP'&&o.pcp?.logisticsPreRelease)return ['Pré-liberação logística','warn'];
+    if(o.status==='PCP')return ['Em PCP · frete pode ser adiantado','warn'];
     if(o.logistics?.deliveryDate&&o.logistics.deliveryDate<today)return ['Atrasado','bad'];
     if(o.status==='LOGISTICA'&&!o.logistics?.carrier)return ['Sem transportadora','warn'];
     if(o.status==='LOGISTICA'&&!o.logistics?.pickupDate)return ['Aguardando coleta','wait'];
@@ -19,7 +20,7 @@
     return ['Pronto','ready'];
   }
   function render(state){
-    const ops=load(),all=(ops.orders||[]).filter(o=>o.status==='LOGISTICA'||o.status==='ENTREGUE'||(o.pcp?.logisticsPreRelease&&o.status!=='ENTREGUE'));
+    const ops=load(),all=(ops.orders||[]).filter(o=>['PCP','LOGISTICA','ENTREGUE','ESTOQUE_PRODUCAO'].includes(o.status));
     const s=state||{q:'',status:'TODOS'};
     const rows=all.filter(o=>{
       const q=s.q.toLowerCase();
@@ -29,7 +30,7 @@
       return mq&&ms;
     });
     const inLog=all.filter(o=>o.status==='LOGISTICA').length;
-    const preReleased=all.filter(o=>o.status==='PCP'&&o.pcp?.logisticsPreRelease).length;
+    const preReleased=all.filter(o=>o.status==='PCP').length;
     const delivered=all.filter(o=>o.status==='ENTREGUE').length;
     const awaitingCarrier=all.filter(o=>o.status==='LOGISTICA'&&!o.logistics?.carrier).length;
     const awaitingPickup=all.filter(o=>o.status==='LOGISTICA'&&!o.logistics?.pickupDate).length;
@@ -38,7 +39,7 @@
     const budget=all.reduce((s,o)=>s+(Number(o.logisticsBudget)||0),0);
     content().innerHTML='<div class="fl-page">'+
       '<div class="fl-head"><div><h1>Logística</h1><p>Coleta, transporte, entrega e acompanhamento de lead time</p></div><div class="fl-actions"><button class="fl-btn primary" id="flRefresh">Atualizar</button></div></div>'+
-      '<div class="fl-kpis"><div class="fl-kpi"><span>Pré-liberados</span><strong>'+preReleased+'</strong><small>frete pode ser adiantado</small></div><div class="fl-kpi"><span>Na logística</span><strong>'+inLog+'</strong><small>pedidos em andamento</small></div><div class="fl-kpi"><span>Entregues</span><strong>'+delivered+'</strong><small>histórico concluído</small></div><div class="fl-kpi"><span>Sem transportadora</span><strong>'+awaitingCarrier+'</strong><small>exigem definição</small></div><div class="fl-kpi"><span>Aguardando coleta</span><strong>'+awaitingPickup+'</strong><small>pendentes de saída</small></div><div class="fl-kpi"><span>Atrasados</span><strong>'+late+'</strong><small>atenção imediata</small></div><div class="fl-kpi"><span>Frete registrado</span><strong>'+money(freight)+'</strong><small>valor acumulado</small></div><div class="fl-kpi"><span>Orçamento disponível</span><strong>'+money(budget)+'</strong><small>definido pelo Comercial</small></div></div>'+
+      '<div class="fl-kpis"><div class="fl-kpi"><span>Pré-liberados</span><strong>'+preReleased+'</strong><small>pedidos visíveis ainda no PCP</small></div><div class="fl-kpi"><span>Na logística</span><strong>'+inLog+'</strong><small>pedidos em andamento</small></div><div class="fl-kpi"><span>Entregues</span><strong>'+delivered+'</strong><small>histórico concluído</small></div><div class="fl-kpi"><span>Sem transportadora</span><strong>'+awaitingCarrier+'</strong><small>exigem definição</small></div><div class="fl-kpi"><span>Aguardando coleta</span><strong>'+awaitingPickup+'</strong><small>pendentes de saída</small></div><div class="fl-kpi"><span>Atrasados</span><strong>'+late+'</strong><small>atenção imediata</small></div><div class="fl-kpi"><span>Frete registrado</span><strong>'+money(freight)+'</strong><small>valor acumulado</small></div><div class="fl-kpi"><span>Orçamento disponível</span><strong>'+money(budget)+'</strong><small>definido pelo Comercial</small></div></div>'+
       '<div class="fl-grid"><div class="fl-panel"><h2>Pontos de atenção</h2>'+alerts(all)+'</div><div class="fl-panel"><h2>Indicadores de lead time</h2>'+leadSummary(all)+'</div></div>'+
       '<div class="fl-toolbar"><input class="fl-search" id="flSearch" placeholder="Buscar pedido, cliente, cidade ou transportadora" value="'+esc(s.q)+'"><select class="fl-select" id="flStatus"><option value="TODOS">Todos os status</option>'+['Pronto','Pré-liberação logística','Frete em planejamento','Sem transportadora','Aguardando coleta','Em trânsito','Atrasado','Entregue'].map(x=>'<option value="'+x+'" '+(s.status===x?'selected':'')+'>'+x+'</option>').join('')+'</select><span class="fl-muted">'+rows.length+' pedido(s)</span></div>'+
       '<div class="fl-table-wrap">'+table(rows)+'</div></div>';
@@ -49,11 +50,11 @@
   }
   function alerts(rows){
     const list=[];
-    const noCarrier=rows.filter(o=>(o.status==='LOGISTICA'||o.pcp?.logisticsPreRelease)&&!o.logistics?.carrier).length;
+    const noCarrier=rows.filter(o=>['PCP','LOGISTICA','ESTOQUE_PRODUCAO'].includes(o.status)&&!o.logistics?.carrier).length;
     const noPickup=rows.filter(o=>o.status==='LOGISTICA'&&!o.logistics?.pickupDate).length;
-    const waitingGoods=rows.filter(o=>o.status==='PCP'&&o.pcp?.logisticsPreRelease).length;
+    const waitingGoods=rows.filter(o=>o.status==='PCP').length;
     const late=rows.filter(o=>status(o)[1]==='bad').length;
-    if(waitingGoods)list.push(['◷',waitingGoods+' pedido(s) aguardando mercadoria','Frete pode ser contratado antecipadamente']);
+    if(waitingGoods)list.push(['◷',waitingGoods+' pedido(s) ainda em PCP','Logística já pode cotar e contratar frete']);
     if(noCarrier)list.push(['▰',noCarrier+' pedido(s) sem transportadora','Definir parceiro logístico']);
     if(noPickup)list.push(['↗',noPickup+' pedido(s) aguardando coleta','Revisar programação de retirada']);
     if(late)list.push(['!',late+' pedido(s) atrasado(s)','Prioridade de acompanhamento']);
@@ -68,7 +69,13 @@
   }
   function table(rows){
     if(!rows.length)return '<div class="fl-empty">Nenhum pedido logístico encontrado.</div>';
-    return '<table class="fl-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Disponibilidade</th><th>Retirada por item</th><th>Transportadora</th><th>Orçamento</th><th>Frete</th><th>Coleta</th><th>Entrega</th><th>Lead time</th><th>Status</th><th></th></tr></thead><tbody>'+rows.map(o=>{const st=status(o),lt=days(o.logistics?.pickupDate,o.logistics?.deliveryDate);const pickups=(o.items||[]).map(i=>'<div><b>'+esc(i.code||'')+'</b> · '+esc(i.name||'')+'<div class="fl-muted">'+esc(i.deliveryBase||o.pcp?.deliveryBase||'Base não definida')+' · '+Number(i.qty||0)+' cx</div></div>').join('');return '<tr><td><div class="fl-order">'+esc(o.number)+'</div><div class="fl-muted">'+dbr(o.orderDate)+'</div></td><td><div class="fl-client">'+esc(o.client)+'</div><div class="fl-muted">'+esc(o.city||'')+'</div></td><td>'+(o.status==='PCP'&&o.pcp?.logisticsPreRelease?'<span class="fl-chip warn">Ressalva</span><div class="fl-muted">Disponível em '+dbr(o.pcp?.logisticsAvailabilityDate)+'</div>':'Liberado')+'</td><td>'+pickups+'</td><td>'+esc(o.logistics?.carrier||'—')+'</td><td>'+money(o.logisticsBudget)+'</td><td>'+money(o.logistics?.freightValue)+'</td><td>'+dbr(o.logistics?.pickupDate)+'</td><td>'+dbr(o.logistics?.deliveryDate)+'</td><td>'+(lt==null?'—':lt+' dia(s)')+'</td><td><span class="fl-chip '+st[1]+'">'+st[0]+'</span></td><td><button class="fl-open" data-fl-open="'+esc(o.id)+'">Abrir</button></td></tr>'}).join('')+'</tbody></table>';
+    return '<table class="fl-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Disponibilidade</th><th>Retirada por item</th><th>Transportadora</th><th>Orçamento</th><th>Frete</th><th>Coleta</th><th>Entrega</th><th>Lead time</th><th>Status</th><th></th></tr></thead><tbody>'+rows.map(o=>{const st=status(o),lt=days(o.logistics?.pickupDate,o.logistics?.deliveryDate);const pickups=(o.items||[]).map(i=>'<div><b>'+esc(i.code||'')+'</b> · '+esc(i.name||'')+'<div class="fl-muted">'+esc(i.deliveryBase||o.pcp?.deliveryBase||'Base não definida')+' · '+Number(i.qty||0)+' cx</div></div>').join('');return '<tr><td><div class="fl-order">'+esc(o.number)+'</div><div class="fl-muted">'+dbr(o.orderDate)+'</div></td><td><div class="fl-client">'+esc(o.client)+'</div><div class="fl-muted">'+esc(o.city||'')+'</div></td><td>'+(o.status==='PCP'
+  ?(o.pcp?.logisticsPreRelease
+    ?'<span class="fl-chip warn">Ressalva</span><div class="fl-muted">Disponível em '+dbr(o.pcp?.logisticsAvailabilityDate)+'</div>'
+    :'<span class="fl-chip warn">Em PCP</span><div class="fl-muted">Aguardando definição/liberação do PCP</div>')
+  :(o.status==='ESTOQUE_PRODUCAO'
+    ?'<span class="fl-chip warn">Registro legado</span><div class="fl-muted">Aguardando migração para Logística</div>'
+    :'Liberado'))+'</td><td>'+pickups+'</td><td>'+esc(o.logistics?.carrier||'—')+'</td><td>'+money(o.logisticsBudget)+'</td><td>'+money(o.logistics?.freightValue)+'</td><td>'+dbr(o.logistics?.pickupDate)+'</td><td>'+dbr(o.logistics?.deliveryDate)+'</td><td>'+(lt==null?'—':lt+' dia(s)')+'</td><td><span class="fl-chip '+st[1]+'">'+st[0]+'</span></td><td><button class="fl-open" data-fl-open="'+esc(o.id)+'">Abrir</button></td></tr>'}).join('')+'</tbody></table>';
   }
   function openOrder(id){
     const ops=load(),o=(ops.orders||[]).find(x=>String(x.id)===String(id));
@@ -76,11 +83,11 @@
     renderDetail(o);
   }
   function renderDetail(o){
-    const pre=o.status==='PCP'&&o.pcp?.logisticsPreRelease;
+    const pre=o.status==='PCP';
     const pickups=(o.items||[]).map(i=>'<div class="fl-alert"><div class="fl-alert-icon">▰</div><div><b>'+esc(i.code||'')+' · '+esc(i.name||'')+'</b><small>'+Number(i.qty||0)+' cx · retirada em '+esc(i.deliveryBase||o.pcp?.deliveryBase||'Base não definida')+(i.pcpAvailabilityDate?' · saldo previsto '+dbr(i.pcpAvailabilityDate):'')+'</small></div></div>').join('');
     content().innerHTML='<div class="fl-page">'+
       '<div class="fl-head"><div><button class="fl-btn secondary" id="flBack">← Logística</button><h1>Logística · '+esc(o.number)+'</h1><p>'+esc(o.client||'')+'</p></div><div>'+(pre?'<span class="fl-chip warn">Pré-liberado com ressalva</span>':'<span class="fl-chip ready">'+esc(status(o)[0])+'</span>')+'</div></div>'+
-      (pre?'<div class="fl-alert"><div class="fl-alert-icon">!</div><div><b>Mercadoria ainda não liberada fisicamente</b><small>PCP prevê disponibilidade completa em '+dbr(o.pcp?.logisticsAvailabilityDate)+'. A contratação do frete pode ser adiantada, mas a coleta deve respeitar essa data.</small></div></div>':'')+
+      (pre?'<div class="fl-alert"><div class="fl-alert-icon">!</div><div><b>Pedido ainda está no PCP</b><small>'+(o.pcp?.logisticsAvailabilityDate?'PCP prevê disponibilidade em '+dbr(o.pcp.logisticsAvailabilityDate)+'. ':'A disponibilidade ainda está sendo definida pelo PCP. ')+'A Logística pode adiantar cotação e contratação, mas a coleta só deve ocorrer após a liberação do PCP.</small></div></div>':'')+
       '<div class="fl-grid"><div class="fl-panel"><h2>Retirada por item</h2>'+pickups+'</div><div class="fl-panel"><h2>Planejamento do frete</h2>'+
       '<label class="fl-field"><span>Transportadora</span><input id="flCarrier" value="'+esc(o.logistics?.carrier||'')+'" placeholder="Transportadora"></label>'+
       '<label class="fl-field"><span>Valor do frete</span><input id="flFreight" type="number" min="0" step="0.01" value="'+esc(o.logistics?.freightValue||'')+'"></label>'+
