@@ -61,6 +61,8 @@
     });
   }
   async function ensure(name){
+    const existing=contracts[name];
+    if(existing&&existing())return true;
     let def=defs[name];if(!def)return true;
     if(def.alias){await ensure(def.alias);verify(name);return true;}
     if(loaded.has(name))return loaded.get(name);
