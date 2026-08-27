@@ -12,7 +12,7 @@
     ['Logística',[['logistica','▰','Logística'],['entregas','✓','Entregas'],['transportadoras','⌁','Transportadoras']]],
     ['Cadastros',[['produtos','◫','Produtos'],['fichas','▧','Fichas Técnicas'],['bases','▦','Bases Produtivas']]],
     ['Relatórios',[['relatorios','▥','Relatórios','soon'],['indicadores','◉','Indicadores','soon']]],
-    ['Configurações',[['config','⚙','Configurações','soon'],['usuarios','♚','Usuários e Perfis','soon']]]
+    ['Configurações',[['system-health','◎','Saúde & Auditoria'],['config','⚙','Configurações','soon'],['usuarios','♚','Usuários e Perfis','soon']]]
   ];
 
   function navHtml(){
@@ -163,6 +163,7 @@
     if(id==='inputs'){open(()=>window.FocadoInventory?.render({tab:'inputs',q:'',filter:'TODOS'}));return}
     if(id==='purchases'){open(()=>window.FocadoPurchases?.render());return}
     if(id==='expedicao'){open(()=>window.FocadoExpedition?.render());return}
+    if(id==='system-health'){open(()=>window.FocadoSystemHealth?.render());return}
     if(id==='logistica'){open(()=>window.FocadoLogistics?.render({q:'',status:'TODOS'}));return}
     if(id==='entregas'){open(()=>window.FocadoLogistics?.renderDeliveries());return}
     if(id==='transportadoras'){open(()=>window.FocadoLogistics?.renderCarriers());return}
