@@ -7,7 +7,7 @@
 
   const navGroups=[
     ['Principal',[['dashboard','⌂','Dashboard'],['kanban','▦','Kanban Operacional']]],
-    ['Comercial',[['clientes','♙','Clientes'],['oportunidades','◎','Oportunidades','soon'],['pedidos','▤','Pedidos']]],
+    ['Comercial',[['clientes','♙','Clientes'],['oportunidades','◎','Oportunidades','soon'],['pedidos','▤','Pedidos Comerciais']]],
     ['Operações',[['pcp','⌘','PCP'],['production','⚙','Produção'],['inventory','▣','Estoque'],['inputs','◇','Insumos'],['finished','□','Produtos Acabados'],['movements','↕','Movimentações'],['inventario','✓','Inventário'],['purchases','↻','Reposição']]],
     ['Logística',[['logistica','▰','Logística'],['entregas','✓','Entregas'],['transportadoras','⌁','Transportadoras','soon']]],
     ['Cadastros',[['produtos','◫','Produtos','soon'],['fichas','▧','Fichas Técnicas'],['bases','▦','Bases Produtivas']]],
