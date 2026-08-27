@@ -11,7 +11,8 @@ const DOMAIN_PERMISSION = {
   LOGISTICA:"logistics.write",
   COMPRAS:"purchases.write",
   FINANCEIRO:"finance.write",
-  SOLICITACAO_PRODUCAO:"pcp.write"
+  SOLICITACAO_PRODUCAO:"pcp.write",
+  TRANSPORTADORAS:"logistics.write"
 };
 const FLOW = {
   COMERCIAL:{to:"PCP",permission:"orders.write"},
@@ -222,6 +223,17 @@ function applyLogistics(state,body){
 }
 function applyPurchases(state,body){state.purchasePlanning={...(state.purchasePlanning||{}),...(body.changes?.reorder||{})}}
 function applyFinance(state,body){state.finance={...(state.finance||{}),...pick(body.changes||{},["approvedFreight","paymentStatus","invoiceStatus","creditStatus","notes"])}}
+function applyCarriers(state,body){
+  const changes=body.changes||{};
+  state.carriers=Array.isArray(state.carriers)?state.carriers:[];
+  if(changes.carrier&&typeof changes.carrier==="object"){
+    const incoming=structuredClone(changes.carrier);
+    const idx=state.carriers.findIndex(x=>String(x.id)===String(incoming.id));
+    if(idx>=0)state.carriers[idx]=incoming;else state.carriers.unshift(incoming);
+  }
+  if(changes.deleteId)state.carriers=state.carriers.filter(x=>String(x.id)!==String(changes.deleteId));
+}
+
 function applyProductionRequest(state,body){
   const c=body.changes||{};
   state.productionRequests=Array.isArray(state.productionRequests)?state.productionRequests:[];
@@ -232,7 +244,7 @@ function applyProductionRequest(state,body){
     else state.productionRequests.unshift(incoming);
   }
 }
-const APPLY={COMERCIAL:applyCommercial,PCP:applyPCP,PRODUCAO:applyProduction,ESTOQUE:applyInventory,LOGISTICA:applyLogistics,COMPRAS:applyPurchases,FINANCEIRO:applyFinance,SOLICITACAO_PRODUCAO:applyProductionRequest};
+const APPLY={COMERCIAL:applyCommercial,PCP:applyPCP,PRODUCAO:applyProduction,ESTOQUE:applyInventory,LOGISTICA:applyLogistics,COMPRAS:applyPurchases,FINANCEIRO:applyFinance,SOLICITACAO_PRODUCAO:applyProductionRequest,TRANSPORTADORAS:applyCarriers};
 
 function validateTransition(order){
   switch(order.status){
