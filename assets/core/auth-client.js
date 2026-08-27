@@ -123,6 +123,10 @@
   function clear(){
     sessionStorage.removeItem(USER_KEY);
     sessionStorage.removeItem(ROLE_KEY);
+    sessionStorage.removeItem('nova-era-role');
+    sessionStorage.removeItem('nova-era-role-label');
+    sessionStorage.removeItem('nova-era-login-time');
+    sessionStorage.removeItem('nova-era-in-app');
     window.FocadoDataStore?.setSessionToken?.('');
   }
 
