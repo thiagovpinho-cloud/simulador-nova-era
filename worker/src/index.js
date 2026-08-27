@@ -159,7 +159,7 @@ function applyCommercial(state,body){
 }
 function applyPCP(state,body){
   const o=getOrder(state,body.orderId);if(!o)throw Object.assign(new Error("ORDER_NOT_FOUND"),{status:404});
-  o.pcp=o.pcp||{};Object.assign(o.pcp,pick(body.changes?.pcp||body.changes,["deliveryBase","productionDate","availableDate","separated","scheduledQty","autoScheduled","productionPlan"]));
+  o.pcp=o.pcp||{};Object.assign(o.pcp,pick(body.changes?.pcp||body.changes,["deliveryBase","productionDate","availableDate","separated","scheduledQty","autoScheduled","productionPlan","notes"]));
   if(Array.isArray(body.changes?.items)){
     const map=new Map((o.items||[]).map(i=>[String(i.id||i.code||i.productId),i]));
     for(const incoming of body.changes.items){const item=map.get(String(incoming.id||incoming.code||incoming.productId||""));if(item&&["ESTOQUE","PRODUCAO"].includes(incoming.source))item.source=incoming.source}
