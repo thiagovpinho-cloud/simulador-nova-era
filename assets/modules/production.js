@@ -46,9 +46,6 @@
     return 'SP-'+String(Math.max(0,...nums)+1).padStart(5,'0');
   }
   async function persist(ops){
-    if(window.FocadoDataStore?.isRemoteReady?.()){
-      return await window.FocadoDataStore.saveDomain('SOLICITACAO_PRODUCAO',{productionRequests:ops.productionRequests||[]},null);
-    }
     return await window.FocadoDataStore?.save?.(ops);
   }
   function requestStatus(r){
@@ -89,6 +86,7 @@
     const ops=load();ops.productionRequests=Array.isArray(ops.productionRequests)?ops.productionRequests:[];
     let r=id?ops.productionRequests.find(x=>x.id===id):null;
     if(!r){r=blankRequest(ops);ops.productionRequests.unshift(r)}
+    window.FocadoDataStore?.writeLocal?.(ops);
     renderEditor(r,ops);
   }
   function renderEditor(r,ops){
@@ -169,21 +167,23 @@
     }
     const result=await persist(ops);
     if(result?.mode==='conflict'||result?.ok===false){alert('Não foi possível salvar a solicitação. Atualize a tela e tente novamente.');return}
-    if(finalize){alert('Solicitação de produção finalizada e congelada para consulta.');renderViewer(r)}else{alert('Rascunho salvo.');render(currentFilter)}
+    if(finalize){renderViewer(r,true)}else{alert('Rascunho salvo.');render(currentFilter)}
   }
   function openRequest(id){
     const ops=load(),r=(ops.productionRequests||[]).find(x=>x.id===id);if(!r)return;
     if(r.status==='FINALIZADA')renderViewer(r);else if(canCreate())renderEditor(r,ops);else renderViewer(r);
   }
-  function renderViewer(r){
+  function renderViewer(r,justFinalized=false){
     const s=r.snapshot||r,st=requestStatus(r);
     content().innerHTML='<div class="fpr-page">'+
-      '<div class="fpr-head"><div><button class="fpr-btn secondary" id="fprBack">← Solicitações</button><h1>'+esc(r.number)+'</h1><p>Solicitação de Produção · '+esc(s.base)+'</p></div><div class="fpr-actions"><button class="fpr-btn secondary" id="fprPdf">Salvar PDF</button><button class="fpr-btn secondary" id="fprEmail">E-mail</button><button class="fpr-btn secondary" id="fprWhats">WhatsApp</button></div></div>'+
+      '<div class="fpr-head"><div><button class="fpr-btn secondary" id="fprBack">← Solicitações</button><div class="fpr-eyebrow">DOCUMENTO FINALIZADO</div><h1>'+esc(r.number)+'</h1><p>Solicitação de Produção · '+esc(s.base)+'</p></div><div class="fpr-actions"><button class="fpr-btn secondary" id="fprPreviewPdf">Visualizar PDF</button><button class="fpr-btn secondary" id="fprPdf">Salvar uma cópia</button><button class="fpr-btn secondary" id="fprEmail">Enviar por e-mail</button><button class="fpr-btn primary" id="fprWhats">Enviar por WhatsApp</button></div></div>'+
+      (justFinalized?'<div class="fpr-success"><div class="fpr-success-icon">✓</div><div><b>Solicitação finalizada com sucesso</b><span>O documento foi congelado e agora está disponível somente para consulta e compartilhamento.</span></div></div>':'')+
       '<div class="fpr-grid"><div class="fpr-panel"><h2>Dados</h2><div class="fpr-alert"><b>Base:</b> '+esc(s.base)+'</div><div class="fpr-alert"><b>Data:</b> '+dbr(s.requestDate)+'</div><div class="fpr-alert"><b>Necessidade para:</b> '+dbr(s.needByDate)+'</div><div class="fpr-alert"><b>Solicitante:</b> '+esc(s.requestedBy||'')+'</div></div><div class="fpr-panel"><h2>Status</h2><div class="fpr-alert"><span class="fpr-chip '+st[1]+'">'+st[0]+'</span></div><div class="fpr-alert"><b>Insumos:</b> '+(s.materialStatus==='COMPRAR'?'Há necessidade de compra':'Suficientes para a produção')+'</div></div></div>'+
       '<div class="fpr-panel"><h2>Produtos solicitados</h2>'+viewerItems(s.items||[])+'</div>'+
       '<div class="fpr-panel"><h2>Análise de insumos</h2>'+viewerMaterials(s.materials||[])+'</div>'+
       '<div class="fpr-panel"><h2>Observações</h2><div class="fpr-alert">'+esc(s.notes||'Sem observações')+'</div></div></div>';
     document.getElementById('fprBack').onclick=()=>render(currentFilter);
+    document.getElementById('fprPreviewPdf').onclick=()=>generatePdf(r,'preview');
     document.getElementById('fprPdf').onclick=()=>generatePdf(r,'save');
     document.getElementById('fprEmail').onclick=()=>share(r,'email');
     document.getElementById('fprWhats').onclick=()=>share(r,'whatsapp');
@@ -212,16 +212,86 @@
   function generatePdf(r,mode){
     const doc=pdfDoc(r);if(!doc){alert('Gerador de PDF indisponível.');return}
     if(mode==='blob')return doc.output('blob');
+    if(mode==='preview'){
+      const url=doc.output('bloburl');
+      window.open(url,'_blank');
+      return;
+    }
     doc.save('Solicitacao_Producao_'+r.number+'.pdf');
   }
-  function share(r,channel){
+  async function share(r,channel){
     const s=r.snapshot||r;
-    const msg='Solicitação de Produção '+r.number+'\nBase: '+s.base+'\nNecessidade: '+dbr(s.needByDate)+'\nStatus insumos: '+(s.materialStatus==='COMPRAR'?'COMPRA NECESSÁRIA':'OK')+'\n\nAbra o Focado para consultar e salvar o PDF.';
+    const msg='Solicitação de Produção '+r.number+'\nBase: '+s.base+'\nNecessidade: '+dbr(s.needByDate)+'\nStatus insumos: '+(s.materialStatus==='COMPRAR'?'COMPRA NECESSÁRIA':'OK');
+    const blob=generatePdf(r,'blob');
+    const file=blob?new File([blob],'Solicitacao_Producao_'+r.number+'.pdf',{type:'application/pdf'}):null;
+    if(file&&navigator.share&&navigator.canShare?.({files:[file]})){
+      try{
+        await navigator.share({title:'Solicitação de Produção '+r.number,text:msg,files:[file]});
+        return;
+      }catch(err){
+        if(err?.name==='AbortError')return;
+      }
+    }
+    generatePdf(r,'save');
     if(channel==='email'){
-      location.href='mailto:?subject='+encodeURIComponent('Solicitação de Produção '+r.number)+'&body='+encodeURIComponent(msg+'\n\nAnexe o PDF salvo pelo Focado.');
+      setTimeout(()=>{location.href='mailto:?subject='+encodeURIComponent('Solicitação de Produção '+r.number)+'&body='+encodeURIComponent(msg+'\n\nO PDF foi salvo no computador. Anexe o arquivo Solicitação de Produção '+r.number+'.');},250);
     }else{
-      window.open('https://wa.me/?text='+encodeURIComponent(msg+'\n\nAnexe o PDF salvo pelo Focado.'),'_blank');
+      setTimeout(()=>window.open('https://wa.me/?text='+encodeURIComponent(msg+'\n\nO PDF foi salvo no dispositivo para anexar nesta conversa.'),'_blank'),250);
     }
   }
+
+  function ensureStyles(){
+    if(document.getElementById('fprStyles'))return;
+    const style=document.createElement('style');style.id='fprStyles';
+    style.textContent=`
+      .fpr-page{max-width:1320px;margin:0 auto;padding:28px 28px 72px;color:#17251f}
+      .fpr-head{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:22px}
+      .fpr-head h1{margin:4px 0 4px;font-size:28px;line-height:1.15;color:#173f32;letter-spacing:-.4px}
+      .fpr-head p{margin:0;color:#748078;font-size:13px}
+      .fpr-eyebrow{font-size:10px;letter-spacing:1.2px;font-weight:800;color:#16815f;margin-top:10px}
+      .fpr-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+      .fpr-btn{border:1px solid #dce5df;background:#fff;color:#34443d;border-radius:11px;padding:10px 15px;font-size:12px;font-weight:750;cursor:pointer;box-shadow:0 1px 2px rgba(20,50,40,.03)}
+      .fpr-btn:hover{border-color:#a9c8bb;background:#f8fbf9}
+      .fpr-btn.primary{background:#07835f;color:#fff;border-color:#07835f}
+      .fpr-btn.primary:hover{background:#066f51}
+      .fpr-btn.secondary{background:#fff}
+      .fpr-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:18px}
+      .fpr-kpi{background:#fff;border:1px solid #e0e8e3;border-radius:16px;padding:18px 20px;box-shadow:0 4px 18px rgba(31,67,52,.035)}
+      .fpr-kpi span{display:block;color:#7b8780;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.45px}
+      .fpr-kpi strong{display:block;color:#174838;font-size:27px;margin:4px 0 2px}
+      .fpr-kpi small{color:#96a099;font-size:11px}
+      .fpr-panel{background:#fff;border:1px solid #e0e8e3;border-radius:17px;padding:20px;margin-bottom:16px;box-shadow:0 4px 20px rgba(31,67,52,.035)}
+      .fpr-panel h2{font-size:14px;margin:0 0 15px;color:#21372e}
+      .fpr-panel-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
+      .fpr-panel-head h2{margin:0 0 4px}.fpr-panel-head p{margin:0;color:#849089;font-size:12px}
+      .fpr-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+      .fpr-field{display:flex;flex-direction:column;gap:6px}
+      .fpr-field span{font-size:10px;color:#748078;text-transform:uppercase;letter-spacing:.45px;font-weight:750}
+      .fpr-field input,.fpr-field select,.fpr-panel textarea{width:100%;box-sizing:border-box;border:1px solid #dce5df;background:#fbfcfb;border-radius:10px;padding:10px 11px;font:inherit;font-size:12px;color:#263a31;outline:none}
+      .fpr-field input:focus,.fpr-field select:focus,.fpr-panel textarea:focus{border-color:#43a585;box-shadow:0 0 0 3px rgba(7,131,95,.08);background:#fff}
+      .fpr-toolbar{display:flex;gap:10px;align-items:center;background:#fff;border:1px solid #e0e8e3;border-radius:14px;padding:11px 12px;margin-bottom:14px}
+      .fpr-search{flex:1;min-width:220px}.fpr-search,.fpr-select{border:1px solid #dce5df;background:#fbfcfb;border-radius:9px;padding:9px 11px;font:inherit;font-size:12px}
+      .fpr-muted{font-size:10.5px;color:#89948e}
+      .fpr-table-wrap{overflow:auto;border:1px solid #e3eae6;border-radius:13px;background:#fff}
+      .fpr-table{width:100%;border-collapse:collapse;font-size:11.5px}
+      .fpr-table th{background:#f5f8f6;color:#738079;text-transform:uppercase;letter-spacing:.35px;font-size:9px;font-weight:800;text-align:left;padding:12px 11px;border-bottom:1px solid #e3eae6;white-space:nowrap}
+      .fpr-table td{padding:12px 11px;border-bottom:1px solid #edf1ee;vertical-align:middle;color:#2d4037}
+      .fpr-table tr:last-child td{border-bottom:none}
+      .fpr-table select,.fpr-table input{box-sizing:border-box;border:1px solid #d9e3dd;background:#fff;border-radius:8px;padding:7px 8px;font:inherit;font-size:11px;max-width:100%}
+      .fpr-table [data-product]{min-width:310px}
+      .fpr-open{border:1px solid #d6e3dc;background:#fff;color:#087a59;border-radius:9px;padding:7px 10px;font-size:10px;font-weight:750;cursor:pointer}
+      .fpr-chip{display:inline-flex;align-items:center;border-radius:999px;padding:5px 8px;font-size:9px;font-weight:800;white-space:nowrap}
+      .fpr-chip.ready{background:#e6f5ee;color:#167451}.fpr-chip.block{background:#fdeaea;color:#be3838}.fpr-chip.wait{background:#fff3d9;color:#98701b}
+      .fpr-alert{background:#f8faf9;border:1px solid #e5ebe7;border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:11.5px;color:#42544c}
+      .fpr-empty{padding:28px;text-align:center;color:#89948e;background:#fbfcfb;border:1px dashed #dfe7e2;border-radius:12px}
+      .fpr-success{display:flex;align-items:center;gap:13px;background:#eaf7f1;border:1px solid #bfe4d3;border-radius:14px;padding:14px 16px;margin-bottom:16px;color:#215b45}
+      .fpr-success-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#0d8a63;color:white;font-weight:900}
+      .fpr-success b{display:block;font-size:12px}.fpr-success span{display:block;font-size:11px;margin-top:2px;color:#5f766c}
+      @media(max-width:900px){.fpr-page{padding:18px 14px 60px}.fpr-head{flex-direction:column}.fpr-actions{justify-content:flex-start}.fpr-grid,.fpr-kpis{grid-template-columns:1fr}.fpr-toolbar{flex-wrap:wrap}.fpr-search{width:100%}.fpr-table [data-product]{min-width:240px}}
+    `;
+    document.head.appendChild(style);
+  }
+  ensureStyles();
+
   window.FocadoProduction={render,openRequest};
 })();
