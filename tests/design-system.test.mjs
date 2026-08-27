@@ -12,7 +12,9 @@ const modules=[
   ['Estoque','assets/modules/inventory.js','fi-'],
   ['Logística','assets/modules/logistics.js','fl-'],
   ['Clientes','assets/modules/customers.js','fc-'],
-  ['Produção','assets/modules/production.js','fpr-']
+  ['Produção','assets/modules/production.js','fpr-'],
+  ['Compras','assets/modules/purchases.js','fpur-'],
+  ['Expedição','assets/modules/expedition.js','fexp-']
 ];
 
 // Design System deve existir e estar carregado.
