@@ -158,11 +158,48 @@ function applyCommercial(state,body){
   }
 }
 function applyPCP(state,body){
-  const o=getOrder(state,body.orderId);if(!o)throw Object.assign(new Error("ORDER_NOT_FOUND"),{status:404});
-  o.pcp=o.pcp||{};Object.assign(o.pcp,pick(body.changes?.pcp||body.changes,["deliveryBase","productionDate","availableDate","separated","scheduledQty","autoScheduled","productionPlan","notes"]));
-  if(Array.isArray(body.changes?.items)){
-    const map=new Map((o.items||[]).map(i=>[String(i.id||i.code||i.productId),i]));
-    for(const incoming of body.changes.items){const item=map.get(String(incoming.id||incoming.code||incoming.productId||""));if(item&&["ESTOQUE","PRODUCAO"].includes(incoming.source))item.source=incoming.source}
+  const o=getOrder(state,body.orderId);
+  if(!o)throw Object.assign(new Error("ORDER_NOT_FOUND"),{status:404});
+  o.pcp=o.pcp||{};
+  Object.assign(o.pcp,pick(body.changes?.pcp||body.changes,["notes","logisticsPreRelease","logisticsAvailabilityDate","logisticsPreReleaseAt"]));
+  state.inventory=state.inventory||{};
+  state.stockMovements=Array.isArray(state.stockMovements)?state.stockMovements:[];
+  const map=new Map((o.items||[]).map(i=>[String(i.id||i.code||i.productId),i]));
+  const findInventory=item=>{
+    const keys=[item.code,item.productId,item.name].map(v=>String(v||"")).filter(Boolean);
+    for(const k of keys)if(state.inventory[k])return [k,state.inventory[k]];
+    const found=Object.entries(state.inventory).find(([,v])=>String(v?.code||"")===String(item.code||""));
+    if(found)return found;
+    const key=String(item.code||item.productId||item.name||"");
+    const inv={code:item.code||"",name:item.name||"",unit:"CX",physical:0,reserved:0,blocked:0};
+    state.inventory[key]=inv;return [key,inv];
+  };
+  for(const incoming of body.changes?.items||[]){
+    const item=map.get(String(incoming.id||incoming.code||incoming.productId||""));if(!item)continue;
+    const [invKey,inv]=findInventory(item);
+    const oldReserved=Math.max(0,Number(item.reservedQty||0));
+    const desired=Math.max(0,Number(incoming.reservedQty||0));
+    const free=Math.max(0,Number(inv.physical||0)-Number(inv.reserved||0)-Number(inv.blocked||0));
+    if(desired>oldReserved+free)throw Object.assign(new Error("INSUFFICIENT_STOCK"),{status:422});
+    const beforeReserved=Math.max(0,Number(inv.reserved||0));
+    inv.reserved=Math.max(0,beforeReserved-oldReserved+desired);
+    if(desired!==oldReserved){
+      state.stockMovements.unshift({
+        id:"mov_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),at:Date.now(),kind:"finished",key:invKey,
+        code:item.code||"",name:item.name||"",unit:"CX",type:desired>oldReserved?"RESERVA":"LIBERACAO_RESERVA",
+        qty:Math.abs(desired-oldReserved),reason:"PCP · pedido "+o.number,user:"Sistema",
+        before:{physical:Number(inv.physical||0),reserved:beforeReserved,blocked:Number(inv.blocked||0)},
+        after:{physical:Number(inv.physical||0),reserved:Number(inv.reserved||0),blocked:Number(inv.blocked||0)}
+      });
+    }
+    Object.assign(item,pick(incoming,["reservedQty","cutQty","pcpAvailabilityDate","deliveryBase","pcpBalanceDecision"]));
+    item.source="ESTOQUE";
+  }
+  const bases=[...new Set((o.items||[]).map(i=>i.deliveryBase).filter(Boolean))];
+  o.pcp.deliveryBase=bases.length===1?bases[0]:(bases.length?"MÚLTIPLAS":"");
+  if(body.changes?.pcp?.logisticsPreRelease){
+    o.events=Array.isArray(o.events)?o.events:[];
+    o.events.unshift({at:Date.now(),text:"Logística pré-liberada com ressalva de disponibilidade em "+String(o.pcp.logisticsAvailabilityDate||""),user:"PCP"});
   }
 }
 function applyProduction(state,body){
@@ -206,18 +243,26 @@ function validateTransition(order){
       if(!(Number(order.logisticsBudget)>0))return "Informe o orçamento de logística.";
       if((order.salesChannel||"REPRESENTANTE")==="REPRESENTANTE"&&!order.representative)return "Informe o representante.";
       if(["VENDAS_INTERNAS","BONIFICACAO"].includes(order.salesChannel)&&!String(order.salesJustification||"").trim())return "Informe a justificativa da venda.";
-      break;
+      return null;
     case "PCP":
-      if(!order.pcp?.deliveryBase)return "Defina a base de entrega/produção.";
-      if((order.items||[]).some(i=>!["ESTOQUE","PRODUCAO"].includes(i.source)))return "Defina Estoque ou Produção para todos os itens.";
-      if((order.items||[]).some(i=>i.source==="PRODUCAO")&&!order.pcp?.availableDate)return "Produção sem data disponível.";break;
+      for(const item of order.items||[]){
+        if(!item.deliveryBase)return "Defina a base de retirada de todos os itens.";
+        const qty=Math.max(0,Number(item.qty||0));
+        const reserved=Math.max(0,Number(item.reservedQty||0));
+        const cut=Math.max(0,Number(item.cutQty||0));
+        const missing=Math.max(0,qty-reserved-cut);
+        if(missing>0){
+          if(item.pcpBalanceDecision==="AGUARDAR"&&!item.pcpAvailabilityDate)return "Há item sem previsão de estoque disponível.";
+          return "Há item ainda não atendido. Reserve o saldo ou libere com corte.";
+        }
+      }
+      return null;
     case "LOGISTICA":
-      if(!order.logistics?.deliveryDate)return "Registre a data de entrega.";break;
+      if(!order.logistics?.deliveryDate)return "Registre a data de entrega.";
+      return null;
     default:return "Etapa não possui transição automática.";
   }
-  return null;
 }
-
 async function route(request,env){
   const url=new URL(request.url);
   let path=url.pathname.replace(/\/+$/,"")||"/";
