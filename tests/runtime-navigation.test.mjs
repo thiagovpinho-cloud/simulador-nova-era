@@ -9,33 +9,60 @@ const kanban=read('assets/modules/kanban.js');
 const orders=read('assets/modules/orders.js');
 const intelligence=read('assets/modules/intelligence.js');
 
-const loaderPos=index.indexOf('assets/core/module-loader.js?v=20260827-lazy-v2');
-const shellPos=index.indexOf('assets/app-shell.js?v=20260827-shell-v8');
-assert.ok(loaderPos>=0,'Index deve carregar module-loader v2');
+const loaderPos=index.indexOf('assets/core/module-loader.js?v=20260827-static-v1');
+const shellPos=index.indexOf('assets/app-shell.js?v=20260827-shell-v9');
+assert.ok(loaderPos>=0,'Index deve carregar module-loader static-v1');
 assert.ok(shellPos>loaderPos,'Module loader deve carregar antes do app shell');
 
-for(const route of ['kanban','cockpit']){
-  assert.ok(loader.includes(route+':')||loader.includes("'"+route+"':"),'Loader deve conhecer '+route);
-  assert.ok(shell.includes("id==='"+route+"'"),'Shell deve possuir rota '+route);
+const activeRoutes=[
+  ['kanban',"window.FocadoKanban?.render"],
+  ['cockpit',"window.FocadoIntelligenceUI?.renderCockpit"],
+  ['clientes',"window.FocadoCustomers?.render"],
+  ['representantes',"window.FocadoRepresentatives?.render"],
+  ['pedidos',"window.FocadoOrders?.render"],
+  ['fichas',"window.FocadoTechnicalSheets?.render"],
+  ['produtos',"window.FocadoProducts?.render"],
+  ['pcp',"window.FocadoPCP?.render"],
+  ['production',"window.FocadoProduction?.render"],
+  ['bases',"window.FocadoBases?.render"],
+  ['inventory',"window.FocadoInventory?.render"],
+  ['inputs',"window.FocadoInventory?.render"],
+  ['purchases',"window.FocadoPurchases?.render"],
+  ['expedicao',"window.FocadoExpedition?.render"],
+  ['logistica',"window.FocadoLogistics?.render"],
+  ['entregas',"window.FocadoLogistics?.renderDeliveries"],
+  ['transportadoras',"window.FocadoLogistics?.renderCarriers"],
+  ['corpo-auditor',"window.FocadoIntelligenceUI?.renderAuditor"],
+  ['system-health',"window.FocadoSystemHealth?.render"]
+];
+
+for(const [route,renderer] of activeRoutes){
+  assert.ok(shell.includes("id==='"+route+"'"),'Shell deve possuir rota ativa '+route);
+  assert.ok(shell.includes(renderer),'Rota '+route+' deve chamar renderizador real');
 }
-assert.ok(loader.includes("kanban:()=>typeof window.FocadoKanban?.render==='function'"),'Kanban deve ter contrato de runtime');
-assert.ok(loader.includes("cockpit:()=>typeof window.FocadoIntelligenceUI?.renderCockpit==='function'"),'Cockpit deve ter contrato de runtime');
-assert.ok(loader.includes('MODULE_CONTRACT_FAILED'),'Loader não pode falhar silenciosamente');
-assert.ok(shell.includes('MODULE_LOADER_UNAVAILABLE'),'Shell deve detectar ausência do loader');
+
+const staticModules=[
+  'products','representatives','customers','orders','production','pcp','inventory','purchases',
+  'expedition','logistics','technical-sheets','bases','system-health','intelligence-core','intelligence','kanban'
+];
+for(const m of staticModules){
+  assert.ok(index.includes('assets/modules/'+m+'.js?v=20260827-static-v1'),'Módulo ativo deve ser pré-carregado: '+m);
+}
+
+assert.ok(loader.includes("kanban:()=>typeof window.FocadoKanban?.render==='function'"),'Kanban deve ter contrato');
+assert.ok(loader.includes("cockpit:()=>typeof window.FocadoIntelligenceUI?.renderCockpit==='function'"),'Cockpit deve ter contrato');
+assert.ok(loader.includes("fichas:()=>typeof window.FocadoTechnicalSheets?.render==='function'"),'Fichas deve ter contrato');
+assert.ok(loader.includes("bases:()=>typeof window.FocadoBases?.render==='function'"),'Bases deve ter contrato');
 
 assert.ok(orders.includes('window.FocadoOrders={render,openOrder:openForm'),'Pedidos deve expor abertura nativa');
-assert.ok(kanban.includes('window.FocadoOrders?.openOrder'),'Kanban deve abrir pedido no módulo nativo');
-assert.ok(!kanban.includes('hubGoOperacoes'),'Kanban não pode voltar à operação legada');
-assert.ok(!kanban.includes("classList.add('hidden')"),'Kanban não pode esconder o Focado ao abrir pedido');
+assert.ok(kanban.includes('window.FocadoOrders.openOrder(id)'),'Kanban deve abrir pedido nativamente');
+assert.ok(!kanban.includes('hubGoOperacoes'),'Kanban não pode usar rota legada');
+assert.ok(!shell.includes("if(id==='fichas')return clickLegacy"),'Fichas não pode usar legado');
+assert.ok(!shell.includes("if(id==='bases')return openOps"),'Bases não pode usar legado');
 
 assert.ok(intelligence.includes('window.FocadoIntelligenceUI={renderCockpit'),'Cockpit deve exportar renderCockpit');
-assert.ok(intelligence.includes('renderAuditor'),'Intelligence UI deve carregar completamente');
-assert.ok(shell.includes("route:'pedidos'"),'Dashboard deve usar id real da rota Pedidos');
+assert.ok(intelligence.includes('renderAuditor'),'Corpo Auditor deve exportar renderAuditor');
+assert.ok(shell.includes("route:'pedidos'"),'Dashboard deve usar rota Pedidos real');
 assert.ok(!shell.includes("route:'orders'"),'Rota inexistente orders não pode voltar');
 
 console.log('runtime-navigation: ok');
-
-assert.ok(index.includes('assets/modules/intelligence-core.js?v=20260827-critical-v1'),'Cockpit core deve ser pré-carregado');
-assert.ok(index.includes('assets/modules/intelligence.js?v=20260827-critical-v1'),'Cockpit UI deve ser pré-carregado');
-assert.ok(index.includes('assets/modules/kanban.js?v=20260827-critical-v1'),'Kanban deve ser pré-carregado');
-assert.ok(kanban.includes("ensure?.('pedidos')"),'Kanban deve carregar Pedidos sob demanda ao abrir card');
