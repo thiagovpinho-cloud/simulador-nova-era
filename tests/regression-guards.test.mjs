@@ -51,3 +51,11 @@ assert.ok(pcpConsolidated.includes('Criar solicitação'),'PCP consolidado deve 
 assert.ok(pcpConsolidated.includes('productionRequestedByProduct'),'PCP deve descontar produção já solicitada');
 assert.ok(productionModule.includes('createFromPlan'),'Produção deve aceitar solicitação originada do PCP consolidado');
 assert.ok(productionModule.includes('PCP_CONSOLIDADO'),'Solicitação deve preservar origem do planejamento consolidado');
+
+const purchasesModule=read('assets/modules/purchases.js');
+const expeditionModule=read('assets/modules/expedition.js');
+assert.ok(purchasesModule.includes('ENTRADA')||purchasesModule.includes('Receber'),'Compras deve possuir fluxo de recebimento');
+assert.ok(purchasesModule.includes("saveDomain('COMPRAS'"),'Compras deve usar domínio oficial');
+assert.ok(expeditionModule.includes("saveDomain('EXPEDICAO'"),'Expedição deve usar domínio oficial');
+assert.ok(expeditionModule.includes('Liberar carga'),'Expedição deve possuir liberação de carga');
+assert.ok(!expeditionModule.includes('openLegacy'),'Expedição não pode abrir operação legada');
