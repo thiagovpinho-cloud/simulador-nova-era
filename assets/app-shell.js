@@ -8,7 +8,7 @@
   const navGroups=[
     ['Principal',[['dashboard','⌂','Dashboard'],['kanban','▦','Kanban Operacional']]],
     ['Comercial',[['clientes','♙','Clientes'],['representantes','♣','Representantes'],['oportunidades','◎','Oportunidades','soon'],['pedidos','▤','Pedidos Comerciais']]],
-    ['Operações',[['pcp','⌘','PCP'],['production','⚙','Produção'],['inventory','▣','Estoque'],['inputs','◇','Insumos'],['finished','□','Produtos Acabados'],['movements','↕','Movimentações'],['inventario','✓','Inventário'],['purchases','↻','Reposição']]],
+    ['Operações',[['pcp','⌘','PCP'],['production','⚙','Produção'],['inventory','▣','Estoque'],['inputs','◇','Insumos'],['finished','□','Produtos Acabados'],['inventario','✓','Inventário'],['movements','↕','Movimentações / Reposições']]],
     ['Logística',[['logistica','▰','Logística'],['entregas','✓','Entregas'],['transportadoras','⌁','Transportadoras','soon']]],
     ['Cadastros',[['produtos','◫','Produtos'],['fichas','▧','Fichas Técnicas'],['bases','▦','Bases Produtivas']]],
     ['Relatórios',[['relatorios','▥','Relatórios','soon'],['indicadores','◉','Indicadores','soon']]],
@@ -147,9 +147,8 @@
     if(id==='bases')return openOps('production');
     if(id==='inventory'||id==='finished'){showShell(); if(window.FocadoInventory) window.FocadoInventory.render({tab:id==='finished'?'finished':'inputs',q:'',filter:'TODOS'}); return}
     if(id==='inputs'){showShell(); if(window.FocadoInventory) window.FocadoInventory.render({tab:'inputs',q:'',filter:'TODOS'}); return}
-    if(id==='inventario'){showShell(); if(window.FocadoInventory) window.FocadoInventory.renderInventoryCounts('inputs'); return}
+    if(id==='inventario'){showShell(); if(window.FocadoInventory) window.FocadoInventory.renderInventoryCounts(); return}
     if(id==='movements'){showShell(); if(window.FocadoInventory) window.FocadoInventory.renderMovements(); return}
-    if(id==='purchases'){showShell(); if(window.FocadoInventory) window.FocadoInventory.renderReplenishment(); return}
     if(id==='logistica'||id==='entregas'){showShell(); if(window.FocadoLogistics) window.FocadoLogistics.render({q:'',status:id==='entregas'?'Entregue':'TODOS'}); return}
   }
   function bindDashboardLinks(){document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>navigate(b.dataset.open))}
