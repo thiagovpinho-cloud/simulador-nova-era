@@ -109,7 +109,7 @@
     setActive(id);
     if(id==='dashboard'){showShell();return}
     if(id==='clientes')return clickLegacy('hubGoCadastro');
-    if(id==='pedidos')return clickLegacy('hubGoSimulador');
+    if(id==='pedidos'){showShell(); if(window.FocadoOrders) window.FocadoOrders.render(); return}
     if(id==='fichas')return clickLegacy('hubGoFichas');
     if(id==='pcp')return openOps('orders');
     if(id==='production'||id==='bases')return openOps('production');
