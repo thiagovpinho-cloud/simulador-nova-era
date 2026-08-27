@@ -175,7 +175,10 @@ function validateTransition(order){
 }
 
 async function route(request,env){
-  const url=new URL(request.url),path=url.pathname.replace(/\/+$/,"")||"/";
+  const url=new URL(request.url);
+  let path=url.pathname.replace(/\/+$/,"")||"/";
+  if(path==="/api") path="/";
+  else if(path.startsWith("/api/")) path=path.slice(4);
   if(request.method==="OPTIONS")return new Response(null,{status:204,headers:corsHeaders(request,env)});
   if(path==="/health"&&request.method==="GET"){
     return json({service:"focado-api",runtime:"cloudflare-workers",version:"1",status:"ok",storage:Boolean(env.HYPERDRIVE)});
