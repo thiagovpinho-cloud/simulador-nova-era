@@ -32,7 +32,7 @@
     movements:['ADMIN','ESTOQUE'],
     inventario:['ADMIN','ESTOQUE'],
     purchases:['ADMIN','COMPRAS'],
-    expedicao:['ADMIN','ESTOQUE','LOGISTICA'],
+    expedicao:['ADMIN','ESTOQUE'],
     logistica:['ADMIN','LOGISTICA'],
     entregas:['ADMIN','LOGISTICA'],
     transportadoras:['ADMIN','LOGISTICA'],
