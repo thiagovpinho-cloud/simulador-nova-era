@@ -3388,12 +3388,39 @@ function goToHub(){
   showHub();
 }
 
-function attemptLogin(){
+async function attemptLogin(){
   const login = document.getElementById('loginUser').value.trim();
   const pass = document.getElementById('loginPassword').value;
+  const err = document.getElementById('loginError');
+  err.textContent = '';
+
+  if(window.FocadoAuth?.remoteConfigured?.()){
+    const result = await window.FocadoAuth.login(login, pass);
+    if(!result.ok){
+      err.textContent = result.code==='INVALID_CREDENTIALS'
+        ? 'Login ou senha incorretos. Tente novamente.'
+        : 'Não foi possível autenticar no servidor. Verifique a conexão.';
+      document.getElementById('loginPassword').value = '';
+      document.getElementById('loginPassword').focus();
+      return;
+    }
+    const legacyRole = result.user.role==='ADMIN' ? 'admin' : 'user';
+    const label = result.user.name || window.FocadoAuth.roleLabel(result.user.role);
+    applyRole(legacyRole, label);
+    resetSimulatorKeepingHistory();
+    renderBrandHeader();
+    renderEstadoOptions();
+    const all = renderTopBar();
+    renderProducts(all);
+    updateShareCount();
+    hideLogin();
+    showHub();
+    return;
+  }
+
   const match = CREDENTIALS.find(c => c.login.toLowerCase() === login.toLowerCase() && c.senha === pass);
   if(!match){
-    document.getElementById('loginError').textContent = 'Login ou senha incorretos. Tente novamente.';
+    err.textContent = 'Login ou senha incorretos. Tente novamente.';
     document.getElementById('loginPassword').value = '';
     document.getElementById('loginPassword').focus();
     return;
@@ -3401,6 +3428,7 @@ function attemptLogin(){
   sessionStorage.setItem('nova-era-role', match.role);
   sessionStorage.setItem('nova-era-role-label', match.label);
   sessionStorage.setItem('nova-era-login-time', String(Date.now()));
+  window.FocadoAuth?.adoptLegacy?.(match.role, match.label);
   applyRole(match.role, match.label);
   resetSimulatorKeepingHistory();
   renderBrandHeader();
@@ -3412,7 +3440,8 @@ function attemptLogin(){
   showHub();
 }
 
-function logout(){
+async function logout(){
+  try{ await window.FocadoAuth?.logout?.(); }catch(_){}
   sessionStorage.removeItem('nova-era-role');
   sessionStorage.removeItem('nova-era-role-label');
   sessionStorage.removeItem('nova-era-in-app');
@@ -4334,5 +4363,6 @@ init();
 })();
 </script>
 <!-- FOCADO_OPS_V6_END -->
-<script src="assets/core/data-store.js"></script>\n<script src="assets/modules/orders.js"></script>\n<script src="assets/modules/pcp.js"></script>\n<script src="assets/modules/production.js"></script>\n<script src="assets/modules/inventory.js"></script>\n<script src="assets/modules/logistics.js"></script>\n<script src="assets/modules/kanban.js"></script>\n<script src="assets/app-shell.js"></script>\n</body>
+<script src="assets/core/data-store.js"></script>
+<script src="assets/core/auth-client.js"></script>\n<script src="assets/modules/orders.js"></script>\n<script src="assets/modules/pcp.js"></script>\n<script src="assets/modules/production.js"></script>\n<script src="assets/modules/inventory.js"></script>\n<script src="assets/modules/logistics.js"></script>\n<script src="assets/modules/kanban.js"></script>\n<script src="assets/app-shell.js"></script>\n</body>
 </html>
