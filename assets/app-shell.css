@@ -7,9 +7,9 @@
 #focadoShell{position:fixed;inset:0;z-index:850;background:var(--fx-bg);display:grid;grid-template-columns:238px minmax(0,1fr);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--fx-text)}
 #focadoShell.hidden{display:none}
 .fx-sidebar{background:linear-gradient(180deg,var(--fx-sidebar),var(--fx-sidebar2));color:#fff;display:flex;flex-direction:column;min-height:0;overflow:auto}
-.fx-brand{display:flex;align-items:center;gap:11px;padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
-.fx-brand img{width:41px;height:41px;border-radius:10px;background:#fff;padding:4px}
-.fx-brand b{font-size:20px;letter-spacing:-.5px}.fx-brand small{display:block;font-size:9px;color:rgba(255,255,255,.55);font-weight:500;margin-top:1px}
+.fx-brand{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.08)}
+.fx-brand img{width:176px;height:auto;max-height:52px;object-fit:contain;object-position:left center;border-radius:0;background:transparent;padding:0}
+.fx-brand small{display:block;font-size:9px;color:rgba(255,255,255,.62);font-weight:500;margin:0 0 0 4px}
 .fx-menu{padding:14px 10px;flex:1}
 .fx-menu-label{font-size:9px;color:rgba(255,255,255,.42);text-transform:uppercase;letter-spacing:.75px;font-weight:800;padding:13px 10px 6px}
 .fx-nav{width:100%;display:flex;align-items:center;gap:10px;border:0;background:transparent;color:rgba(255,255,255,.8);padding:9px 10px;border-radius:9px;cursor:pointer;text-align:left;font-size:12px;transition:.15s}
