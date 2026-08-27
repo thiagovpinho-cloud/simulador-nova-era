@@ -1,6 +1,6 @@
 import pg from "pg";
 import { DOMAIN_PERMISSION, FLOW, RULES_VERSION, applyDomain, applyTransitionSideEffects, getOrder, validateTransition } from "../../shared/domain-rules.js";
-import { ensurePlatformV2, syncPlatformV2, appendChange, loginThrottle, auditSnapshot } from "./platform-v2.js";
+import { ensurePlatformV2, syncPlatformV2, appendChange, loginThrottle, auditSnapshot, readDomainV2, consistencyV2, passwordPolicy } from "./platform-v2.js";
 const { Client } = pg;
 
 const WORKSPACE = "default";
@@ -154,7 +154,8 @@ async function route(request,env){
       const email=String(form.get("email")||"").trim().toLowerCase();
       const name=String(form.get("name")||"").trim();
       const password=String(form.get("password")||"");
-      if(!email||!name||password.length<12)return setupPage("Confira os campos. A senha deve ter pelo menos 12 caracteres.");
+      const policy=passwordPolicy(password);
+      if(!email||!name||!policy.ok)return setupPage("Confira os campos. A senha deve ter 12+ caracteres, maiúscula, minúscula e número.");
 
       await db.query("begin");
       try{
@@ -260,6 +261,33 @@ async function route(request,env){
       });
     }
 
+    if(path.startsWith("/v2/domain/")&&request.method==="GET"){
+      await requireSession(request,db,"workspace.read");
+      const domain=path.slice("/v2/domain/".length);
+      const row=await readWorkspace(db,false);
+      await syncPlatformV2(db,row?.payload||{});
+      const data=await readDomainV2(db,domain);
+      return json({domain,data,source:"v2",revision:row?.revision||0});
+    }
+
+    if(path==="/v2/consistency"&&request.method==="GET"){
+      await requireSession(request,db,"users.manage");
+      const row=await readWorkspace(db,false);
+      await syncPlatformV2(db,row?.payload||{});
+      return json(await consistencyV2(db,row?.payload||{}));
+    }
+
+    if(path==="/security/health"&&request.method==="GET"){
+      const s=await requireSession(request,db,"users.manage");
+      const active=(await db.query("select count(*)::int as n from public.focado_sessions where revoked_at is null and expires_at>now()")).rows[0]?.n||0;
+      const blocked=(await db.query(`select count(*)::int as n from (
+        select email from public.focado_login_attempts where success=false and attempted_at>now()-interval '15 minutes'
+        group by email having count(*)>=5
+      ) x`)).rows[0]?.n||0;
+      const audit=(await db.query("select count(*)::int as n from public.focado_v2_change_log")).rows[0]?.n||0;
+      return json({ok:true,activeSessions:Number(active),temporarilyBlockedAccounts:Number(blocked),auditEvents:Number(audit),passwordPolicy:{minLength:12,uppercase:true,lowercase:true,number:true},checkedBy:String(s.userId)});
+    }
+
     if(path==="/state"&&request.method==="GET"){
       await requireSession(request,db,"workspace.read");
       const row=await readWorkspace(db,false);
@@ -339,7 +367,8 @@ async function route(request,env){
     if(path==="/users"&&request.method==="POST"){
       const s=await requireSession(request,db,"users.manage"),body=await request.json();
       const email=String(body.email||"").trim().toLowerCase(),name=String(body.name||"").trim(),role=String(body.role||"").toUpperCase(),password=String(body.password||"");
-      if(!email||!name||!ROLES.has(role)||password.length<12)return json({error:"INVALID_USER"},400);
+      const policy=passwordPolicy(password);
+      if(!email||!name||!ROLES.has(role)||!policy.ok)return json({error:"INVALID_USER",passwordProblems:policy.problems},400);
       const p=await passwordHash(password);
       try{
         const r=await db.query("insert into public.focado_users(email,name,role,password_salt,password_hash) values($1,$2,$3,$4,$5) returning id,email,name,role,active",[email,name,role,p.salt,`pbkdf2$${p.iterations}$${p.hash}`]);
