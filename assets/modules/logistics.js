@@ -49,11 +49,12 @@
     const overdue=all.filter(o=>status(o)[1]==='bad').length;
     const freight=all.reduce((s,o)=>s+Number(o.logistics?.freightValue||0),0),budget=all.reduce((s,o)=>s+Number(o.logisticsBudget||0),0);
     content().innerHTML='<div class="fl-page">'+
-      '<div class="fl-head"><div><h1>Logística</h1><p>Cotação, contratação, coleta, transporte e prazo de entrega</p></div><button class="fl-btn primary" id="flRefresh">Atualizar</button></div>'+
+      '<div class="fl-head"><div><h1>Logística</h1><p>Cotação, contratação, coleta, transporte e prazo de entrega</p></div><div class="fl-actions"><button class="fl-btn primary" id="flScore">Performance transportadoras</button><button class="fl-btn primary" id="flRefresh">Atualizar</button></div></div>'+
       '<div class="fl-kpis">'+kpi('Pedidos ainda no PCP',pcp,'frete pode ser adiantado')+kpi('Na logística',log,'pedidos liberados')+kpi('Entregues',del,'histórico concluído')+kpi('Sem transportadora',noCarrier,'precisam de contratação')+kpi('Prazo vencido',overdue,'entrega prevista vencida')+kpi('Frete contratado',money(freight),'valor acumulado')+kpi('Orçamento comercial',money(budget),'limite previsto')+'</div>'+
       '<div class="fl-grid"><div class="fl-panel"><h2>Pontos de atenção</h2>'+alerts(all)+'</div><div class="fl-panel"><h2>Indicadores</h2>'+leadSummary(all)+'</div></div>'+
       '<div class="fl-toolbar"><input class="fl-search" id="flSearch" placeholder="Buscar pedido, cliente, cidade ou transportadora" value="'+esc(listState.q)+'"><select class="fl-select" id="flStatus"><option value="TODOS">Todos os status</option>'+['Em PCP · frete pode ser adiantado','Pré-liberação logística','Sem transportadora','Aguardando coleta','Em planejamento','Prazo vencido','Entregue'].map(x=>'<option '+(listState.status===x?'selected':'')+'>'+x+'</option>').join('')+'</select><span class="fl-muted">'+rows.length+' pedido(s)</span></div>'+
       '<div class="fl-table-wrap">'+table(rows)+'</div></div>';
+    document.getElementById('flScore').onclick=()=>window.FocadoIntelligenceUI?.renderCarriers();
     document.getElementById('flRefresh').onclick=()=>render(listState);
     const q=document.getElementById('flSearch'),s=document.getElementById('flStatus');
     q.oninput=()=>render({q:q.value,status:s.value});s.onchange=()=>render({q:q.value,status:s.value});
