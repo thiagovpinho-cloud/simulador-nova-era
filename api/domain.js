@@ -44,7 +44,7 @@ function applyPCP(state,body){
   const o=getOrder(state,body.orderId);
   if(!o) throw Object.assign(new Error('ORDER_NOT_FOUND'),{status:404});
   o.pcp=o.pcp||{};
-  Object.assign(o.pcp,pick(body.changes?.pcp||body.changes,['notes']));
+  Object.assign(o.pcp,pick(body.changes?.pcp||body.changes,['notes','logisticsPreRelease','logisticsAvailabilityDate','logisticsPreReleaseAt']));
   state.inventory=state.inventory||{};
   state.stockMovements=Array.isArray(state.stockMovements)?state.stockMovements:[];
   const byId=new Map((o.items||[]).map(i=>[String(i.id||i.code||i.productId),i]));
@@ -83,6 +83,10 @@ function applyPCP(state,body){
   }
   const bases=[...new Set((o.items||[]).map(i=>i.deliveryBase).filter(Boolean))];
   o.pcp.deliveryBase=bases.length===1?bases[0]:(bases.length?'MÚLTIPLAS':'');
+  if(body.changes?.pcp?.logisticsPreRelease){
+    o.events=Array.isArray(o.events)?o.events:[];
+    o.events.unshift({at:Date.now(),text:'Logística pré-liberada com ressalva de disponibilidade em '+String(o.pcp.logisticsAvailabilityDate||''),user:'PCP'});
+  }
 }
 
 function applyProduction(state,body){
