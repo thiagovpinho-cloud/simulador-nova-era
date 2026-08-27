@@ -50,7 +50,7 @@
     const ops=loadOps(),orders=ops.orders||[],inputs=ops.inputInventory||{},bases=ops.productionBases||{};
     const counts={COMERCIAL:0,PCP:0,LOGISTICA:0,ENTREGUE:0}; orders.forEach(o=>{if(counts[o.status]!==undefined)counts[o.status]++});
     const open=orders.filter(o=>o.status!=='ENTREGUE'),today=new Date().toISOString().slice(0,10);
-    const deliveredToday=orders.filter(o=>o.status==='ENTREGUE'&&o.logistics?.deliveryDate===today).length;
+    const deliveredToday=orders.filter(o=>o.status==='ENTREGUE'&&(o.logistics?.actualDeliveryDate||o.logistics?.deliveryDate)===today).length;
     const late=orders.filter(o=>o.status!=='ENTREGUE'&&o.logistics?.deliveryDate&&o.logistics.deliveryDate<today).length;
     const alerts=Object.values(inputs).filter(inv=>{const rp=reorderPoint(inv);return rp>0&&inputAvailable(inv)<=rp});
     const recent=orders.slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,6);
