@@ -151,7 +151,7 @@ async function writeWorkspace(db,payload,expectedRevision){
 }
 function applyCommercial(state,body){
   const o=getOrder(state,body.orderId);if(!o)throw Object.assign(new Error("ORDER_NOT_FOUND"),{status:404});
-  Object.assign(o,pick(body.changes,["client","cnpj","city","state","orderDate","suggestedPickupDate","freightType","observation","brand"]));
+  Object.assign(o,pick(body.changes,["client","cnpj","city","state","orderDate","suggestedPickupDate","freightType","observation","brand","representative","salesChannel","salesJustification","requestedDeliveryDate","paymentTerms","logisticsBudget","deliveryAddress"]));
   if(Array.isArray(body.changes?.items)){
     const map=new Map((o.items||[]).map(i=>[String(i.id||i.code||i.productId),i]));
     for(const incoming of body.changes.items){const item=map.get(String(incoming.id||incoming.code||incoming.productId||""));if(item)Object.assign(item,pick(incoming,["qty","price","ipi","st","finalPrice","name","code","productId"]))}
@@ -190,7 +190,13 @@ const APPLY={COMERCIAL:applyCommercial,PCP:applyPCP,PRODUCAO:applyProduction,EST
 function validateTransition(order){
   switch(order.status){
     case "COMERCIAL":
-      if(!order.client||!(order.items||[]).length)return "Pedido incompleto para finalizar Comercial.";break;
+      if(!order.client||!(order.items||[]).length)return "Pedido incompleto para finalizar Comercial.";
+      if(!order.requestedDeliveryDate)return "Informe a data de entrega solicitada pelo cliente.";
+      if(!order.paymentTerms)return "Informe a condição de pagamento.";
+      if(!(Number(order.logisticsBudget)>0))return "Informe o orçamento de logística.";
+      if((order.salesChannel||"REPRESENTANTE")==="REPRESENTANTE"&&!order.representative)return "Informe o representante.";
+      if(["VENDAS_INTERNAS","BONIFICACAO"].includes(order.salesChannel)&&!String(order.salesJustification||"").trim())return "Informe a justificativa da venda.";
+      break;
     case "PCP":
       if(!order.pcp?.deliveryBase)return "Defina a base de entrega/produção.";
       if((order.items||[]).some(i=>!["ESTOQUE","PRODUCAO"].includes(i.source)))return "Defina Estoque ou Produção para todos os itens.";
