@@ -9,7 +9,7 @@
     ['Principal',[['dashboard','⌂','Dashboard']]],
     ['Comercial',[['clientes','♙','Clientes'],['oportunidades','◎','Oportunidades','soon'],['pedidos','▤','Pedidos']]],
     ['Operações',[['pcp','⌘','PCP'],['production','⚙','Produção'],['inventory','▣','Estoque'],['inputs','◇','Insumos'],['finished','□','Produtos Acabados'],['movements','↕','Movimentações'],['inventario','✓','Inventário'],['purchases','↻','Reposição']]],
-    ['Logística',[['expedicao','▱','Expedição','soon'],['entregas','▰','Entregas','soon'],['transportadoras','⌁','Transportadoras','soon']]],
+    ['Logística',[['logistica','▰','Logística'],['entregas','✓','Entregas'],['transportadoras','⌁','Transportadoras','soon']]],
     ['Cadastros',[['produtos','◫','Produtos','soon'],['fichas','▧','Fichas Técnicas'],['bases','▦','Bases Produtivas']]],
     ['Relatórios',[['relatorios','▥','Relatórios','soon'],['indicadores','◉','Indicadores','soon']]],
     ['Configurações',[['config','⚙','Configurações','soon'],['usuarios','♚','Usuários e Perfis','soon']]]
@@ -116,7 +116,7 @@
     if(id==='inventory'||id==='finished'){showShell(); if(window.FocadoInventory) window.FocadoInventory.render({tab:id==='finished'?'finished':'inputs',q:'',filter:'TODOS'}); return}
     if(id==='inputs'){showShell(); if(window.FocadoInventory) window.FocadoInventory.render({tab:'inputs',q:'',filter:'TODOS'}); return}\n    if(id==='inventario')return openOps('inputs');
     if(id==='movements')return openOps('movements');
-    if(id==='purchases')return openOps('purchases');
+    if(id==='purchases')return openOps('purchases');\n    if(id==='logistica'||id==='entregas'){showShell(); if(window.FocadoLogistics) window.FocadoLogistics.render({q:'',status:id==='entregas'?'Entregue':'TODOS'}); return}
   }
   function bindDashboardLinks(){document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>navigate(b.dataset.open))}
   document.querySelectorAll('[data-fx-nav]').forEach(b=>b.onclick=()=>{if(!b.querySelector('.fx-nav-soon'))navigate(b.dataset.fxNav)});
