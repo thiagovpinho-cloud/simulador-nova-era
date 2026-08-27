@@ -88,14 +88,20 @@
     content().innerHTML='<div class="fl-page">'+
       '<div class="fl-head"><div><button class="fl-btn secondary" id="flBack">← Logística</button><h1>Logística · '+esc(o.number)+'</h1><p>'+esc(o.client||'')+'</p></div><div>'+(pre?'<span class="fl-chip warn">Pré-liberado com ressalva</span>':'<span class="fl-chip ready">'+esc(status(o)[0])+'</span>')+'</div></div>'+
       (pre?'<div class="fl-alert"><div class="fl-alert-icon">!</div><div><b>Pedido ainda está no PCP</b><small>'+(o.pcp?.logisticsAvailabilityDate?'PCP prevê disponibilidade em '+dbr(o.pcp.logisticsAvailabilityDate)+'. ':'A disponibilidade ainda está sendo definida pelo PCP. ')+'A Logística pode adiantar cotação e contratação, mas a coleta só deve ocorrer após a liberação do PCP.</small></div></div>':'')+
-      '<div class="fl-grid"><div class="fl-panel"><h2>Retirada por item</h2>'+pickups+'</div><div class="fl-panel"><h2>Planejamento do frete</h2>'+
-      '<label class="fl-field"><span>Transportadora</span><input id="flCarrier" value="'+esc(o.logistics?.carrier||'')+'" placeholder="Transportadora"></label>'+
-      '<label class="fl-field"><span>Valor do frete</span><input id="flFreight" type="number" min="0" step="0.01" value="'+esc(o.logistics?.freightValue||'')+'"></label>'+
-      '<label class="fl-field"><span>Coleta prevista</span><input id="flPickup" type="date" value="'+esc(o.logistics?.pickupDate||'')+'"></label>'+
-      '<label class="fl-field"><span>Veículo</span><input id="flVehicle" value="'+esc(o.logistics?.vehicle||'')+'"></label>'+
-      '<label class="fl-field"><span>Motorista</span><input id="flDriver" value="'+esc(o.logistics?.driver||'')+'"></label>'+
-      '<label class="fl-field"><span>Observações</span><textarea id="flNotes">'+esc(o.logistics?.notes||'')+'</textarea></label>'+
-      '<div class="fl-actions" style="margin-top:12px"><button class="fl-btn primary" id="flSavePlan">Salvar planejamento de frete</button></div></div></div></div>';
+      '<div class="fl-detail-grid">'+
+        '<div class="fl-panel"><div class="fl-panel-title"><div><span class="fl-eyebrow">COLETA</span><h2>Retirada por item</h2></div><span class="fl-chip '+(pre?'warn':'ready')+'">'+(pre?'PCP em andamento':'Liberado')+'</span></div><div class="fl-pickup-list">'+pickups+'</div></div>'+
+        '<div class="fl-panel"><div class="fl-panel-title"><div><span class="fl-eyebrow">PLANEJAMENTO</span><h2>Planejamento do frete</h2></div></div>'+
+          '<div class="fl-form-grid">'+
+            '<label class="fl-field fl-span-2"><span>Transportadora</span><input id="flCarrier" value="'+esc(o.logistics?.carrier||'')+'" placeholder="Informe a transportadora"></label>'+
+            '<label class="fl-field"><span>Valor do frete</span><input id="flFreight" type="number" min="0" step="0.01" value="'+esc(o.logistics?.freightValue||'')+'" placeholder="R$ 0,00"></label>'+
+            '<label class="fl-field"><span>Coleta prevista</span><input id="flPickup" type="date" value="'+esc(o.logistics?.pickupDate||'')+'"></label>'+
+            '<label class="fl-field"><span>Veículo</span><input id="flVehicle" value="'+esc(o.logistics?.vehicle||'')+'" placeholder="Placa / tipo de veículo"></label>'+
+            '<label class="fl-field"><span>Motorista</span><input id="flDriver" value="'+esc(o.logistics?.driver||'')+'" placeholder="Nome do motorista"></label>'+
+            '<label class="fl-field fl-span-2"><span>Observações</span><textarea id="flNotes" placeholder="Negociação, restrições, janela de coleta e demais observações">'+esc(o.logistics?.notes||'')+'</textarea></label>'+
+          '</div>'+
+          '<div class="fl-actions fl-form-actions"><button class="fl-btn primary" id="flSavePlan">Salvar planejamento de frete</button></div>'+
+        '</div>'+
+      '</div></div>';
     document.getElementById('flBack').onclick=()=>render({q:'',status:'TODOS'});
     document.getElementById('flSavePlan').onclick=()=>saveFreightPlan(o);
   }
