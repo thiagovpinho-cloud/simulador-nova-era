@@ -59,13 +59,16 @@
       (src.prod?'<span class="fk-tag prod">Produção '+src.prod+' cx</span>':'')+
       '<span class="fk-tag '+r[1]+'">'+r[0]+'</span></div></article>';
   }
-  function openOrder(id){
+  async function openOrder(id){
     active=false;
-    if(window.FocadoOrders?.openOrder){
+    try{
+      await window.FocadoModules?.ensure?.('pedidos');
+      if(!window.FocadoOrders?.openOrder)throw new Error('KANBAN_ORDER_RENDERER_UNAVAILABLE');
       window.FocadoOrders.openOrder(id);
-      return;
+    }catch(err){
+      console.error('[FocadoKanban]',err);
+      alert('Não foi possível abrir este pedido. Atualize a página e tente novamente.');
     }
-    throw new Error('KANBAN_ORDER_RENDERER_UNAVAILABLE');
   }
   function refreshIfActive(){if(active&&document.getElementById('focadoShell')&&!document.getElementById('focadoShell').classList.contains('hidden'))render(lastState)}
   window.addEventListener('focado:ops-updated',refreshIfActive);
