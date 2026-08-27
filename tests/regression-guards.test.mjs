@@ -43,3 +43,11 @@ assert.ok(!shell.includes("['inventario'"),'Inventário não deve voltar à barr
 assert.ok(!shell.includes("['movements'"),'Movimentações não deve voltar à barra lateral');
 
 console.log('regression-guards: ok');
+
+const pcpConsolidated=read('assets/modules/pcp.js');
+const productionModule=read('assets/modules/production.js');
+assert.ok(pcpConsolidated.includes('Planejamento consolidado'),'PCP deve possuir visão consolidada');
+assert.ok(pcpConsolidated.includes('Criar solicitação'),'PCP consolidado deve criar solicitação de produção');
+assert.ok(pcpConsolidated.includes('productionRequestedByProduct'),'PCP deve descontar produção já solicitada');
+assert.ok(productionModule.includes('createFromPlan'),'Produção deve aceitar solicitação originada do PCP consolidado');
+assert.ok(productionModule.includes('PCP_CONSOLIDADO'),'Solicitação deve preservar origem do planejamento consolidado');
