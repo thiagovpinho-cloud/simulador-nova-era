@@ -59,7 +59,9 @@ export async function ensurePlatformV2(db){
     `create index if not exists focado_login_attempts_email_time_idx on public.focado_login_attempts(email,attempted_at desc)`,
     `create index if not exists focado_v2_orders_status_idx on public.focado_v2_orders(status)`,
     `create index if not exists focado_v2_order_items_code_idx on public.focado_v2_order_items(code)`,
-    `create index if not exists focado_v2_change_log_entity_idx on public.focado_v2_change_log(entity_type,entity_id,occurred_at desc)`
+    `create index if not exists focado_v2_change_log_entity_idx on public.focado_v2_change_log(entity_type,entity_id,occurred_at desc)`,
+    `create or replace function public.focado_v2_change_log_immutable() returns trigger language plpgsql as $ begin raise exception 'FOCADO_AUDIT_IMMUTABLE'; end $`,
+    `do $ begin if not exists (select 1 from pg_trigger where tgname='focado_v2_change_log_no_update') then create trigger focado_v2_change_log_no_update before update or delete on public.focado_v2_change_log for each row execute function public.focado_v2_change_log_immutable(); end if; end $`
   ];
   for(const sql of ddl)await db.query(sql);
   schemaReady=true;
