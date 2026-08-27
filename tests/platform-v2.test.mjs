@@ -28,3 +28,8 @@ assert.ok(worker.includes('/v2/domain/'),'Worker deve expor leitura v2 autentica
 assert.ok(worker.includes('/v2/consistency'),'Worker deve expor consistência v2 para administrador');
 assert.ok(worker.includes('/security/health'),'Worker deve expor diagnóstico de segurança');
 assert.ok(worker.includes('passwordProblems'),'Criação de usuário deve informar violações da política de senha');
+
+assert.ok(platform.includes("as $audit$ begin raise exception 'FOCADO_AUDIT_IMMUTABLE'; end $audit$"),'Função PostgreSQL da auditoria deve usar delimitador válido');
+assert.ok(platform.includes("do $audit$ begin if not exists"),'Bloco DO PostgreSQL deve usar delimitador válido');
+assert.ok(!platform.includes("language plpgsql as $ begin"),'Delimitador SQL inválido não pode voltar');
+assert.ok(!platform.includes("do $ begin"),'Bloco DO com delimitador SQL inválido não pode voltar');
