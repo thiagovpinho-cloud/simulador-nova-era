@@ -105,9 +105,9 @@
     const editable=o.status==='PCP',st=planningStatus(o);
     content().innerHTML='<div class="fpcp-page">'+
       '<div class="fpcp-head"><div><button class="fpcp-back" id="fpBack">← Fila PCP</button><h1>PCP · '+esc(o.number)+'</h1><p>'+esc(o.client||'')+' · '+esc([o.city,o.uf].filter(Boolean).join('/'))+'</p></div><div class="fpcp-actions">'+
-        (editable?'<button class="fpcp-btn secondary" id="fpSave">Salvar planejamento</button><button class="fpcp-btn primary" id="fpFinish">Liberar PCP → Operação</button>':'<span class="fpcp-status done">PCP concluído</span>')+
+        (editable?'<button class="fpcp-btn secondary" id="fpSave">Salvar planejamento</button><button class="fpcp-btn primary" id="fpFinish">Liberar PCP → Logística</button>':'<span class="fpcp-status done">PCP concluído</span>')+
       '</div></div>'+
-      '<div class="fpcp-flowline"><span class="done">Comercial ✓</span><i>→</i><span class="'+(editable?'active':'done')+'">PCP'+(editable?'':' ✓')+'</span><i>→</i><span class="'+(!editable?'active':'')+'">Produção / Estoque</span><i>→</i><span>Logística</span></div>'+
+      '<div class="fpcp-flowline"><span class="done">Comercial ✓</span><i>→</i><span class="'+(editable?'active':'done')+'">PCP'+(editable?'':' ✓')+'</span><i>→</i><span class="'+(!editable?'active':'')+'">Logística</span><i>→</i><span>Entrega</span></div>'+
       '<div class="fpcp-commercial-readonly"><h2>Dados recebidos do Comercial</h2><div class="fpcp-read-grid">'+read('Cliente',o.client)+read('CNPJ',o.cnpj)+read('E-mail',o.email)+read('Representante',o.representative)+read('Data do pedido',dbr(o.orderDate))+read('Entrega solicitada',dbr(o.requestedDeliveryDate))+read('Frete',o.freightType)+read('Condição de pagamento',o.paymentTerms)+read('Local de entrega',o.deliveryAddress)+'</div></div>'+
       '<div class="fpcp-panel"><div class="fpcp-panel-head"><div><h2>Atendimento PCP dos itens</h2><p>O saldo disponível vem do estoque central do código: físico − reservado − bloqueado. Não é editável nesta tela.</p></div><div><span class="fpcp-status '+st[1]+'">'+st[0]+'</span>'+(o.pcp?.logisticsPreRelease?'<div class="fpcp-muted" style="margin-top:6px">Logística avisada com ressalva</div>':'')+'</div></div>'+
       '<div class="fpcp-item-table-wrap"><table class="fpcp-item-table"><thead><tr><th>Código</th><th>Produto</th><th>Pedido</th><th>Disponível agora</th><th>Reservar</th><th>Saldo faltante</th><th>Decisão</th><th>Previsão do saldo</th><th>Base retirada</th></tr></thead><tbody>'+
@@ -192,7 +192,7 @@
       btn.dataset.mode='prelogistics';
       return;
     }
-    btn.textContent='Liberar PCP → Operação';
+    btn.textContent='Liberar PCP → Logística';
     btn.onclick=()=>savePlanning(o,true,false);
     btn.dataset.mode='release';
   }
