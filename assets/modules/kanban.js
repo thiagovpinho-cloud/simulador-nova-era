@@ -61,9 +61,11 @@
   }
   function openOrder(id){
     active=false;
-    document.getElementById('focadoShell')?.classList.add('hidden');
-    const btn=document.getElementById('hubGoOperacoes');if(!btn)return;btn.click();
-    setTimeout(()=>document.querySelector('[data-open-order="'+CSS.escape(id)+'"]')?.click(),20);
+    if(window.FocadoOrders?.openOrder){
+      window.FocadoOrders.openOrder(id);
+      return;
+    }
+    throw new Error('KANBAN_ORDER_RENDERER_UNAVAILABLE');
   }
   function refreshIfActive(){if(active&&document.getElementById('focadoShell')&&!document.getElementById('focadoShell').classList.contains('hidden'))render(lastState)}
   window.addEventListener('focado:ops-updated',refreshIfActive);
