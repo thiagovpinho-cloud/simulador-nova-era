@@ -1,0 +1,72 @@
+(function(){
+  'use strict';
+  const KEY='focado-operacoes-v2';
+  const content=()=>document.getElementById('fxContent');
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const dbr=v=>{if(!v)return '—';const d=new Date(v+(String(v).length===10?'T12:00:00':''));return isNaN(d)?'—':d.toLocaleDateString('pt-BR')};
+  const load=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(_){return {}}};
+  const value=o=>(o.items||[]).reduce((s,i)=>s+(Number(i.qty)||0)*(Number(i.price)||0),0);
+  function days(a,b){if(!a||!b)return null;const x=new Date(a+'T12:00:00'),y=new Date(b+'T12:00:00');if(isNaN(x)||isNaN(y))return null;return Math.round((y-x)/86400000)}
+  function status(o){
+    const today=new Date().toISOString().slice(0,10);
+    if(o.status==='ENTREGUE')return ['Entregue','ready'];
+    if(o.logistics?.deliveryDate&&o.logistics.deliveryDate<today)return ['Atrasado','bad'];
+    if(o.status==='LOGISTICA'&&!o.logistics?.carrier)return ['Sem transportadora','warn'];
+    if(o.status==='LOGISTICA'&&!o.logistics?.pickupDate)return ['Aguardando coleta','wait'];
+    if(o.status==='LOGISTICA'&&o.logistics?.pickupDate&&!o.logistics?.deliveryDate)return ['Em trânsito','wait'];
+    return ['Pronto','ready'];
+  }
+  function render(state){
+    const ops=load(),all=(ops.orders||[]).filter(o=>o.status==='LOGISTICA'||o.status==='ENTREGUE');
+    const s=state||{q:'',status:'TODOS'};
+    const rows=all.filter(o=>{
+      const q=s.q.toLowerCase();
+      const mq=!q||[o.number,o.client,o.city,o.logistics?.carrier].some(v=>String(v||'').toLowerCase().includes(q));
+      const st=status(o)[0];
+      const ms=s.status==='TODOS'||st===s.status;
+      return mq&&ms;
+    });
+    const inLog=all.filter(o=>o.status==='LOGISTICA').length;
+    const delivered=all.filter(o=>o.status==='ENTREGUE').length;
+    const awaitingCarrier=all.filter(o=>o.status==='LOGISTICA'&&!o.logistics?.carrier).length;
+    const awaitingPickup=all.filter(o=>o.status==='LOGISTICA'&&!o.logistics?.pickupDate).length;
+    const late=all.filter(o=>status(o)[1]==='bad').length;
+    const freight=all.reduce((s,o)=>s+(Number(o.logistics?.freightValue)||0),0);
+    content().innerHTML='<div class="fl-page">'+
+      '<div class="fl-head"><div><h1>Logística</h1><p>Coleta, transporte, entrega e acompanhamento de lead time</p></div><div class="fl-actions"><button class="fl-btn secondary" id="flRefresh">Atualizar</button><button class="fl-btn primary" id="flLegacy">Abrir operação detalhada</button></div></div>'+
+      '<div class="fl-kpis"><div class="fl-kpi"><span>Na logística</span><strong>'+inLog+'</strong><small>pedidos em andamento</small></div><div class="fl-kpi"><span>Entregues</span><strong>'+delivered+'</strong><small>histórico concluído</small></div><div class="fl-kpi"><span>Sem transportadora</span><strong>'+awaitingCarrier+'</strong><small>exigem definição</small></div><div class="fl-kpi"><span>Aguardando coleta</span><strong>'+awaitingPickup+'</strong><small>pendentes de saída</small></div><div class="fl-kpi"><span>Atrasados</span><strong>'+late+'</strong><small>atenção imediata</small></div><div class="fl-kpi"><span>Frete registrado</span><strong>'+money(freight)+'</strong><small>valor acumulado</small></div></div>'+
+      '<div class="fl-grid"><div class="fl-panel"><h2>Pontos de atenção</h2>'+alerts(all)+'</div><div class="fl-panel"><h2>Indicadores de lead time</h2>'+leadSummary(all)+'</div></div>'+
+      '<div class="fl-toolbar"><input class="fl-search" id="flSearch" placeholder="Buscar pedido, cliente, cidade ou transportadora" value="'+esc(s.q)+'"><select class="fl-select" id="flStatus"><option value="TODOS">Todos os status</option>'+['Pronto','Sem transportadora','Aguardando coleta','Em trânsito','Atrasado','Entregue'].map(x=>'<option value="'+x+'" '+(s.status===x?'selected':'')+'>'+x+'</option>').join('')+'</select><span class="fl-muted">'+rows.length+' pedido(s)</span></div>'+
+      '<div class="fl-table-wrap">'+table(rows)+'</div></div>';
+    document.getElementById('flRefresh').onclick=()=>render(s);
+    document.getElementById('flLegacy').onclick=()=>openLegacy();
+    const q=document.getElementById('flSearch'),st=document.getElementById('flStatus');
+    q.oninput=()=>render({q:q.value,status:st.value});st.onchange=()=>render({q:q.value,status:st.value});
+    document.querySelectorAll('[data-fl-open]').forEach(b=>b.onclick=()=>openOrder(b.dataset.flOpen));
+  }
+  function alerts(rows){
+    const list=[];
+    const noCarrier=rows.filter(o=>o.status==='LOGISTICA'&&!o.logistics?.carrier).length;
+    const noPickup=rows.filter(o=>o.status==='LOGISTICA'&&!o.logistics?.pickupDate).length;
+    const late=rows.filter(o=>status(o)[1]==='bad').length;
+    if(noCarrier)list.push(['▰',noCarrier+' pedido(s) sem transportadora','Definir parceiro logístico']);
+    if(noPickup)list.push(['↗',noPickup+' pedido(s) aguardando coleta','Revisar programação de retirada']);
+    if(late)list.push(['!',late+' pedido(s) atrasado(s)','Prioridade de acompanhamento']);
+    if(!list.length)return '<div class="fl-alert"><div class="fl-alert-icon">✓</div><div><b>Nenhuma pendência crítica</b><small>Fluxo logístico sem exceções registradas</small></div></div>';
+    return list.map(a=>'<div class="fl-alert"><div class="fl-alert-icon">'+a[0]+'</div><div><b>'+a[1]+'</b><small>'+a[2]+'</small></div></div>').join('');
+  }
+  function leadSummary(rows){
+    const done=rows.filter(o=>o.logistics?.pickupDate&&o.logistics?.deliveryDate).map(o=>days(o.logistics.pickupDate,o.logistics.deliveryDate)).filter(v=>v!=null);
+    const total=rows.filter(o=>o.orderDate&&o.logistics?.deliveryDate).map(o=>days(o.orderDate,o.logistics.deliveryDate)).filter(v=>v!=null);
+    const avg=a=>a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):'—';
+    return '<div class="fl-alert"><div class="fl-alert-icon">↗</div><div><b>'+avg(done)+' dia(s)</b><small>média coleta → entrega</small></div></div><div class="fl-alert"><div class="fl-alert-icon">◷</div><div><b>'+avg(total)+' dia(s)</b><small>média pedido → entrega</small></div></div><div class="fl-alert"><div class="fl-alert-icon">▰</div><div><b>'+done.length+' entrega(s) mensuradas</b><small>base atual de cálculo</small></div></div>';
+  }
+  function table(rows){
+    if(!rows.length)return '<div class="fl-empty">Nenhum pedido logístico encontrado.</div>';
+    return '<table class="fl-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Transportadora</th><th>Frete</th><th>Coleta</th><th>Entrega</th><th>Lead time</th><th>Status</th><th></th></tr></thead><tbody>'+rows.map(o=>{const st=status(o),lt=days(o.logistics?.pickupDate,o.logistics?.deliveryDate);return '<tr><td><div class="fl-order">'+esc(o.number)+'</div><div class="fl-muted">'+dbr(o.orderDate)+'</div></td><td><div class="fl-client">'+esc(o.client)+'</div><div class="fl-muted">'+esc(o.city||'')+'</div></td><td>'+esc(o.logistics?.carrier||'—')+'</td><td>'+money(o.logistics?.freightValue)+'</td><td>'+dbr(o.logistics?.pickupDate)+'</td><td>'+dbr(o.logistics?.deliveryDate)+'</td><td>'+(lt==null?'—':lt+' dia(s)')+'</td><td><span class="fl-chip '+st[1]+'">'+st[0]+'</span></td><td><button class="fl-open" data-fl-open="'+esc(o.id)+'">Abrir</button></td></tr>'}).join('')+'</tbody></table>';
+  }
+  function openOrder(id){document.getElementById('focadoShell')?.classList.add('hidden');const btn=document.getElementById('hubGoOperacoes');if(!btn)return;btn.click();setTimeout(()=>document.querySelector('[data-open-order="'+CSS.escape(id)+'"]')?.click(),20)}
+  function openLegacy(){document.getElementById('focadoShell')?.classList.add('hidden');const btn=document.getElementById('hubGoOperacoes');if(btn)btn.click()}
+  window.FocadoLogistics={render,openOrder,openLegacy};
+})();
