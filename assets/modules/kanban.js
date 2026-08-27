@@ -11,7 +11,6 @@
   const cols=[
     ['COMERCIAL','Comercial'],
     ['PCP','PCP'],
-    ['ESTOQUE_PRODUCAO','Produção / Estoque'],
     ['LOGISTICA','Logística'],
     ['ENTREGUE','Entregue']
   ];
@@ -39,7 +38,7 @@
     });
     const open=filtered.filter(o=>o.status!=='ENTREGUE');
     content().innerHTML='<div class="fk-page">'+
-      '<div class="fk-head"><div><h1>Kanban Operacional</h1><p>Fluxo automático Comercial → PCP → Produção/Estoque → Logística → Entrega</p></div><div class="fk-actions"><button class="fk-btn secondary" id="fkRefresh">Atualizar</button><button class="fk-btn primary" id="fkOrders">Ver carteira</button></div></div>'+
+      '<div class="fk-head"><div><h1>Kanban Operacional</h1><p>Fluxo automático Comercial → PCP → Logística → Entrega</p></div><div class="fk-actions"><button class="fk-btn secondary" id="fkRefresh">Atualizar</button><button class="fk-btn primary" id="fkOrders">Ver carteira</button></div></div>'+
       '<div class="fk-summary">'+cols.map(c=>{const n=filtered.filter(o=>o.status===c[0]).length;return '<div class="fk-stat"><span>'+c[1]+'</span><strong>'+n+'</strong><small>'+ (c[0]==='ENTREGUE'?'concluído(s)':'pedido(s) na etapa') +'</small></div>'}).join('')+'</div>'+
       '<div class="fk-toolbar"><input class="fk-search" id="fkSearch" placeholder="Buscar pedido, cliente, CNPJ ou cidade" value="'+esc(s.q||'')+'"><select class="fk-select" id="fkBrand"><option value="TODAS">Todas as marcas</option>'+Array.from(new Set(orders.map(o=>o.brand).filter(Boolean))).map(b=>'<option value="'+esc(b)+'" '+(s.brand===b?'selected':'')+'>'+esc(b)+'</option>').join('')+'</select><span class="fk-muted">'+open.length+' pedido(s) em fluxo</span></div>'+
       '<div class="fk-board">'+cols.map(c=>column(c[0],c[1],filtered.filter(o=>o.status===c[0]))).join('')+'</div></div>';
