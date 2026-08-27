@@ -47,7 +47,7 @@ export async function ensurePlatformV2(db){
       data jsonb not null default '{}'::jsonb, updated_at timestamptz not null default now()
     )`,
     `create table if not exists public.focado_v2_change_log(
-      id bigserial primary key, occurred_at timestamptz not null default now(), user_id bigint,
+      id bigserial primary key, occurred_at timestamptz not null default now(), user_id text,
       action text not null, entity_type text not null, entity_id text,
       revision bigint, reason text, before_data jsonb, after_data jsonb, metadata jsonb not null default '{}'::jsonb
     )`,
@@ -150,6 +150,19 @@ export async function loginThrottle(db,email,ipHash){
   if(Number(r.rows[0]?.n||0)>=5)throw Object.assign(new Error('LOGIN_TEMPORARILY_BLOCKED'),{status:429,code:'LOGIN_TEMPORARILY_BLOCKED'});
   return async success=>{
     await db.query('insert into public.focado_login_attempts(email,ip_hash,success) values($1,$2,$3)',[email,ipHash||null,Boolean(success)]);
-    if(success)await db.query(`delete from public.focado_login_attempts where email=$1 and success=false and attempted_at<now()-interval '1 minute'`,[email]);
+    if(success)await db.query(`delete from public.focado_login_attempts where email=$1 and success=false`,[email]);
   };
+}
+
+export function auditSnapshot(state,domain,orderId){
+  const d=String(domain||'').toUpperCase();
+  const order=()=> (state.orders||[]).find(o=>String(o.id||o.number)===String(orderId||''));
+  if(['COMERCIAL','PCP','PRODUCAO','LOGISTICA','EXPEDICAO'].includes(d))return order()||null;
+  if(d==='CLIENTES')return state.customers||[];
+  if(d==='TRANSPORTADORAS')return state.carriers||[];
+  if(d==='SOLICITACAO_PRODUCAO')return state.productionRequests||[];
+  if(d==='COMPRAS')return {purchaseRequests:state.purchaseRequests||[],suppliers:state.suppliers||[],inputInventory:state.inputInventory||{}};
+  if(d==='ESTOQUE')return {inventory:state.inventory||{},inputInventory:state.inputInventory||{},stockMovements:(state.stockMovements||[]).slice(0,25)};
+  if(d==='FINANCEIRO')return state.finance||{};
+  return null;
 }
