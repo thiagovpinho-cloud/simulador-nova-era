@@ -219,7 +219,11 @@ function applyInventory(state,body){
 }
 function applyLogistics(state,body){
   const o=getOrder(state,body.orderId);if(!o)throw Object.assign(new Error("ORDER_NOT_FOUND"),{status:404});
-  o.logistics=o.logistics||{};Object.assign(o.logistics,pick(body.changes?.logistics||body.changes,["freightValue","pickupDate","deliveryDate","carrier","trackingCode","vehicle","driver","notes"]));
+  o.logistics=o.logistics||{};
+  Object.assign(o.logistics,pick(body.changes?.logistics||body.changes,[
+    "freightValue","pickupDate","deliveryDate","carrier","carrierId","trackingCode","vehicle","driver","notes",
+    "deliveryConfirmed","deliveredOnTime","actualDeliveryDate","deliveryDelayReason","deliveryConfirmedAt","deliveryConfirmedBy"
+  ]));
 }
 function applyPurchases(state,body){state.purchasePlanning={...(state.purchasePlanning||{}),...(body.changes?.reorder||{})}}
 function applyFinance(state,body){state.finance={...(state.finance||{}),...pick(body.changes||{},["approvedFreight","paymentStatus","invoiceStatus","creditStatus","notes"])}}
