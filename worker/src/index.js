@@ -361,11 +361,16 @@ async function route(request,env){
 
 export default {
   async fetch(request,env,ctx){
+    const pathname=new URL(request.url).pathname.replace(/\/+$/,"")||"/";
+    const isSetup=pathname==="/setup";
     try{
       const response=await route(request,env);
-      return withCors(response,request,env);
+      return isSetup ? response : withCors(response,request,env);
     }catch(err){
-      console.error(JSON.stringify({event:"request_error",message:String(err?.message||err),code:err?.code||null,status:err?.status||500}));
+      console.error(JSON.stringify({event:"request_error",message:String(err?.message||err),name:err?.name||null,code:err?.code??null,status:err?.status||500}));
+      if(isSetup){
+        return setupPage("Erro interno: "+String(err?.name||"Error")+" — "+String(err?.message||err));
+      }
       const status=err?.status|| (err?.code==="STORE_NOT_CONFIGURED"?503:500);
       const payload=status>=500?{error:err?.code||"INTERNAL_ERROR"}:{error:err?.code||String(err.message),message:status===422?String(err.message):undefined,currentRevision:err?.currentRevision};
       return withCors(json(payload,status),request,env);
