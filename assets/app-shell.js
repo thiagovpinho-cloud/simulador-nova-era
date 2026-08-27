@@ -161,11 +161,11 @@
     if(id==='clientes'){open(()=>window.FocadoCustomers?.render());return}
     if(id==='representantes'){open(()=>window.FocadoRepresentatives?.render());return}
     if(id==='pedidos'){open(()=>window.FocadoOrders?.render());return}
-    if(id==='fichas')return clickLegacy('hubGoFichas');
+    if(id==='fichas'){open(()=>window.FocadoTechnicalSheets?.render());return}
     if(id==='produtos'){open(()=>window.FocadoProducts?.render());return}
     if(id==='pcp'){open(()=>window.FocadoPCP?.render());return}
     if(id==='production'){open(()=>window.FocadoProduction?.render());return}
-    if(id==='bases')return openOps('production');
+    if(id==='bases'){open(()=>window.FocadoBases?.render());return}
     if(id==='inventory'){open(()=>window.FocadoInventory?.render({tab:'finished',q:'',filter:'TODOS'}));return}
     if(id==='inputs'){open(()=>window.FocadoInventory?.render({tab:'inputs',q:'',filter:'TODOS'}));return}
     if(id==='purchases'){open(()=>window.FocadoPurchases?.render());return}
