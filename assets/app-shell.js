@@ -16,7 +16,17 @@
   ];
 
   function navHtml(){
-    return navGroups.map(([label,items])=>'<div class="fx-menu-label">'+label+'</div>'+items.map(([id,icon,text,flag])=>'<button class="fx-nav '+(id==='dashboard'?'active':'')+'" data-fx-nav="'+id+'"><span class="fx-nav-icon">'+icon+'</span><span>'+text+'</span>'+(flag?'<span class="fx-nav-soon">em breve</span>':'')+'</button>').join('')).join('');
+    return navGroups.map(([label,items])=>{
+      const visible=items.filter(([id])=>!window.FocadoAuth||window.FocadoAuth.can(id));
+      if(!visible.length)return '';
+      return '<div class="fx-menu-label">'+label+'</div>'+visible.map(([id,icon,text,flag])=>'<button class="fx-nav '+(id==='dashboard'?'active':'')+'" data-fx-nav="'+id+'"><span class="fx-nav-icon">'+icon+'</span><span>'+text+'</span>'+(flag?'<span class="fx-nav-soon">em breve</span>':'')+'</button>').join('');
+    }).join('');
+  }
+  function refreshNav(){
+    const menu=shell.querySelector('.fx-menu');
+    if(!menu)return;
+    menu.innerHTML=navHtml();
+    bindNav();
   }
   shell.innerHTML='<aside class="fx-sidebar" id="fxSidebar"><div class="fx-brand"><img src="focado-icon.svg" alt="Focado"><div><b>Focado</b><small>Gestão Comercial e Operacional</small></div></div><div class="fx-menu">'+navHtml()+'</div><div class="fx-version">Versão 1.0 · Novo Frontend</div></aside><main class="fx-main"><header class="fx-topbar"><button class="fx-menu-toggle" id="fxMenuToggle">☰</button><div class="fx-search"><span>⌕</span><input id="fxSearch" placeholder="Buscar pedidos, clientes, produtos, insumos..."></div><div class="fx-user"><div class="fx-avatar" id="fxAvatar">A</div><div class="fx-user-meta"><b id="fxUserName">Administrador</b><small id="fxUserRole">Administrador</small></div><button class="fx-logout" id="fxLogout">Sair</button></div></header><section class="fx-content" id="fxContent"></section></main>';
   document.body.appendChild(shell);
@@ -91,8 +101,13 @@
     if(!sessionStorage.getItem('nova-era-role'))return;
     const hub=$('#hubScreen'); if(hub)hub.classList.add('hidden');
     shell.classList.remove('hidden');
-    const label=sessionStorage.getItem('nova-era-role-label')||'Administrador';
-    $('#fxUserName').textContent=label; $('#fxUserRole').textContent=sessionStorage.getItem('nova-era-role')||'usuário'; $('#fxAvatar').textContent=label.charAt(0).toUpperCase();
+    const user=window.FocadoAuth?.getUser?.();
+    const label=user?.name||sessionStorage.getItem('nova-era-role-label')||'Usuário';
+    const role=user?.role||window.FocadoAuth?.getRole?.()||sessionStorage.getItem('nova-era-role')||'usuário';
+    refreshNav();
+    $('#fxUserName').textContent=label;
+    $('#fxUserRole').textContent=window.FocadoAuth?.roleLabel?.(role)||role;
+    $('#fxAvatar').textContent=label.charAt(0).toUpperCase();
     dashboard(); setActive('dashboard');
   }
   function hideShell(){shell.classList.add('hidden')}
@@ -106,6 +121,10 @@
     if(view&&view!=='orders')setTimeout(()=>{const t=document.querySelector('#opsBody [data-view="'+view+'"]');if(t)t.click()},0);
   }
   function navigate(id){
+    if(window.FocadoAuth && !window.FocadoAuth.can(id)){
+      alert('Seu perfil não possui acesso a esta área.');
+      return;
+    }
     setActive(id);
     if(id==='dashboard'){showShell();return}\n    if(id==='kanban'){showShell(); if(window.FocadoKanban) window.FocadoKanban.render({q:'',brand:'TODAS'}); return}
     if(id==='clientes')return clickLegacy('hubGoCadastro');
@@ -119,11 +138,13 @@
     if(id==='purchases')return openOps('purchases');\n    if(id==='logistica'||id==='entregas'){showShell(); if(window.FocadoLogistics) window.FocadoLogistics.render({q:'',status:id==='entregas'?'Entregue':'TODOS'}); return}
   }
   function bindDashboardLinks(){document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>navigate(b.dataset.open))}
-  document.querySelectorAll('[data-fx-nav]').forEach(b=>b.onclick=()=>{if(!b.querySelector('.fx-nav-soon'))navigate(b.dataset.fxNav)});
+  function bindNav(){document.querySelectorAll('[data-fx-nav]').forEach(b=>b.onclick=()=>{if(!b.querySelector('.fx-nav-soon'))navigate(b.dataset.fxNav)})}
+  bindNav();
   $('#fxMenuToggle').onclick=()=>$('#fxSidebar').classList.toggle('open');
-  $('#fxLogout').onclick=()=>{hideShell();document.getElementById('hubLogoutBtn')?.click()};
+  $('#fxLogout').onclick=async()=>{hideShell();try{await window.FocadoAuth?.logout?.()}catch(_){} document.getElementById('hubLogoutBtn')?.click()};
   $('#fxSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){const q=e.target.value.trim();if(q)navigate('pedidos')}});
 
+  window.addEventListener('focado:auth-changed',()=>{if(!shell.classList.contains('hidden'))showShell()});
   const observer=new MutationObserver(()=>{
     const hub=$('#hubScreen');
     if(hub&&!hub.classList.contains('hidden')&&sessionStorage.getItem('nova-era-role'))showShell();
