@@ -32,7 +32,10 @@
   document.body.appendChild(shell);
 
   function syncBrandLogo(){
-    const source=document.getElementById('loginLogo')?.src || document.getElementById('hubLogo')?.src || '';
+    const source=(typeof LOGO_FOCADO_URI!=='undefined' && LOGO_FOCADO_URI)
+      || document.getElementById('loginLogo')?.src
+      || document.getElementById('hubLogo')?.src
+      || '';
     const target=document.getElementById('fxBrandLogo');
     if(target && source) target.src=source;
   }
