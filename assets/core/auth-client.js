@@ -40,7 +40,8 @@
     relatorios:['ADMIN','FINANCEIRO'],
     indicadores:['ADMIN','FINANCEIRO'],
     config:['ADMIN'],
-    usuarios:['ADMIN']
+    usuarios:['ADMIN'],
+    'system-health':['ADMIN']
   };
 
   function apiBase(){
