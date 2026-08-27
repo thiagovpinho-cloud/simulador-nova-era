@@ -7,8 +7,7 @@ const WORKSPACE='default';
 
 const FLOW={
   COMERCIAL:{to:'PCP',permission:'orders.write'},
-  PCP:{to:'ESTOQUE_PRODUCAO',permission:'pcp.write'},
-  ESTOQUE_PRODUCAO:{to:'LOGISTICA',permission:'production.write'},
+  PCP:{to:'LOGISTICA',permission:'pcp.write'},
   LOGISTICA:{to:'ENTREGUE',permission:'logistics.write'}
 };
 
@@ -29,9 +28,6 @@ function validate(order){
           return 'Há item ainda não atendido. Reserve o saldo ou libere com corte.';
         }
       }
-      return null;
-    case 'ESTOQUE_PRODUCAO':
-      if((order.items||[]).some(i=>i.source==='PRODUCAO'&&!i.productionCompleted)) return 'Há item de produção ainda não concluído.';
       return null;
     case 'LOGISTICA':
       if(!order.logistics?.deliveryDate) return 'Registre a data de entrega.';
