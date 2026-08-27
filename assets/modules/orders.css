@@ -27,3 +27,8 @@
 .fo-money-input span{padding:0 0 0 8px;font-size:9px;font-weight:800;color:#52665e;white-space:nowrap}
 .fo-money-input input{border:0!important;background:transparent!important;text-align:right;min-width:72px;padding-left:5px!important;font-variant-numeric:tabular-nums}
 .fo-money-input input:focus{box-shadow:none!important;outline:0}
+
+.fo-rep-select{display:flex;gap:6px;align-items:stretch}
+.fo-rep-select select{flex:1;min-width:0}
+.fo-rep-select button{width:36px;border:1px solid #0b6a51;background:#e8f5ef;color:#075f48;border-radius:8px;font-size:16px;font-weight:800;cursor:pointer}
+.fo-rep-select button:hover{background:#dff1e9}
