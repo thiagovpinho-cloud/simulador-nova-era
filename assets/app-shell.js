@@ -127,14 +127,6 @@
   }
   function hideShell(){shell.classList.add('hidden')}
   function setActive(id){document.querySelectorAll('[data-fx-nav]').forEach(b=>b.classList.toggle('active',b.dataset.fxNav===id))}
-  function clickLegacy(id){hideShell();const b=document.getElementById(id);if(b)b.click()}
-  function openOps(view){
-    hideShell();
-    const btn=document.getElementById('hubGoOperacoes');
-    if(!btn){showShell();return}
-    btn.click();
-    if(view&&view!=='orders')setTimeout(()=>{const t=document.querySelector('#opsBody [data-view="'+view+'"]');if(t)t.click()},0);
-  }
   async function navigate(id){
     if(window.FocadoAuth && !window.FocadoAuth.can(id)){
       alert('Seu perfil não possui acesso a esta área.');
