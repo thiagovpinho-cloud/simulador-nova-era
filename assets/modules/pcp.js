@@ -63,7 +63,7 @@
   function render(state){
     filters=state||filters;
     const ops=ensureOrderIds(load());
-    const all=(ops.orders||[]).filter(o=>o.status==='PCP'||o.status==='LOGISTICA');
+    const all=(ops.orders||[]).filter(o=>o.status==='PCP');
     const knownBases=['SENIR','GREENTECH','TOPLAND'];
     const rows=all.filter(o=>{
       const q=filters.q.toLowerCase();
@@ -73,7 +73,7 @@
     });
     const awaiting=all.filter(o=>o.status==='PCP').length;
     const ready=all.filter(o=>o.status==='PCP'&&planningStatus(o)[1]==='ready').length;
-    const done=all.filter(o=>o.status==='LOGISTICA').length;
+    const done=(ops.orders||[]).filter(o=>['LOGISTICA','ENTREGUE'].includes(o.status)).length;
     const reserved=all.reduce((s,o)=>s+(o.items||[]).reduce((a,i)=>a+Number(i.reservedQty||0),0),0);
     content().innerHTML='<div class="fpcp-page">'+
       '<div class="fpcp-head"><div><h1>PCP</h1><p>Estoque real por código · reserva · disponibilidade · base de retirada</p></div></div>'+
