@@ -131,8 +131,9 @@
     function applyCnpjData(d){
       if(!d)return;
       document.getElementById('frName').value=d.razaoSocial||d.nomeFantasia||'';
-      document.getElementById('frPhone').value=d.dddTelefone1||'';
-      document.getElementById('frEmail').value=d.email||'';
+      const phoneEl=document.getElementById('frPhone'),emailEl=document.getElementById('frEmail');
+      if(phoneEl&&!phoneEl.value.trim()&&d.dddTelefone1)phoneEl.value=d.dddTelefone1;
+      if(emailEl&&!emailEl.value.trim()&&d.email)emailEl.value=d.email;
       document.getElementById('frCity').value=d.municipio||'';
       document.getElementById('frUf').value=(d.uf||'').toUpperCase();
       setAutoFields(true);
