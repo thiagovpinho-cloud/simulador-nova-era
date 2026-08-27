@@ -150,7 +150,7 @@
     const done=(ops.orders||[]).filter(o=>['LOGISTICA','ENTREGUE'].includes(o.status)).length;
     const reserved=all.reduce((s,o)=>s+(o.items||[]).reduce((a,i)=>a+Number(i.reservedQty||0),0),0);
     content().innerHTML='<div class="fpcp-page">'+
-      '<div class="fpcp-head"><div><h1>PCP</h1><p>Estoque real por código · reserva · disponibilidade · base de retirada</p></div><div class="fpcp-actions"><button class="fpcp-btn primary" id="fpConsolidated">Planejamento consolidado</button></div></div>'+
+      '<div class="fpcp-head"><div><h1>PCP</h1><p>Estoque real por código · reserva · disponibilidade · base de retirada</p></div><div class="fpcp-actions"><button class="fpcp-btn primary" id="fpMRP">MRP / Capacidade</button><button class="fpcp-btn primary" id="fpConsolidated">Planejamento consolidado</button></div></div>'+
       '<div class="fpcp-kpis">'+
         kpiFilter('Aguardando análise',awaiting,'pedidos ainda não trabalhados','AGUARDANDO')+
         kpiFilter('Em planejamento',planning,'PCP já iniciou o atendimento','PLANEJAMENTO')+
@@ -161,6 +161,7 @@
       '<div class="fpcp-guide"><b>Como operar:</b><span>1. Abra o pedido</span><span>2. Confira o saldo atual</span><span>3. Reserve total ou parcialmente</span><span>4. Informe previsão do saldo ou corte</span><span>5. Defina a base por item e libere</span></div>'+
       '<div class="fpcp-toolbar"><input class="fpcp-search" id="fpSearch" placeholder="Buscar pedido, cliente, CNPJ, representante ou produto" value="'+esc(filters.q)+'"><select class="fpcp-select" id="fpBase"><option value="TODAS">Todas as bases</option>'+knownBases.map(b=>'<option value="'+b+'" '+(filters.base===b?'selected':'')+'>'+b+'</option>').join('')+'</select><span class="fpcp-muted">'+rows.length+' pedido(s)</span></div>'+
       '<div class="fpcp-table-wrap">'+table(rows)+'</div></div>';
+    document.getElementById('fpMRP').onclick=()=>window.FocadoIntelligenceUI?.renderMRP();
     document.getElementById('fpConsolidated').onclick=()=>renderConsolidated();
     const q=document.getElementById('fpSearch'),base=document.getElementById('fpBase');let t;
     q.oninput=()=>{clearTimeout(t);t=setTimeout(()=>render({q:q.value,base:base.value,stage:filters.stage}),180)};
