@@ -120,5 +120,8 @@ assert.ok(index.includes('assets/modules/customers.js?v=20260828-master-v1'),'Cl
 assert.ok(index.includes('assets/modules/customers.css?v=20260828-master-v1'),'Clientes deve publicar CSS da consulta de CNPJ');
 assert.ok(index.includes('assets/modules/representatives.js?v=20260828-fantasy-v1'),'Representantes deve publicar revisão com Nome Fantasia');
 
-assert.ok(index.includes('assets/modules/orders.js?v=20260828-customer-master-v1'),'Pedidos deve publicar revisão que consome cadastro mestre do cliente');
+assert.ok(index.includes('assets/modules/orders.js?v=20260828-order-stability-v1'),'Pedidos deve publicar revisão que consome cadastro mestre do cliente');
 assert.ok(index.includes('assets/modules/customers.js?v=20260828-master-v1'),'Clientes deve publicar Condição de Pagamento mestre');
+
+assert.ok(index.includes('assets/app-shell.js?v=20260828-order-stability-v1'),'Shell deve publicar proteção contra rerender de formulário');
+assert.ok(index.includes('assets/modules/orders.js?v=20260828-order-stability-v1'),'Pedidos deve publicar proteção de formulário ativo');
