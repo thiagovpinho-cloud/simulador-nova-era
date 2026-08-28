@@ -35,6 +35,7 @@ const activeRoutes=[
   ['transportadoras',"window.FocadoLogistics?.renderCarriers"],
   ['corpo-auditor',"window.FocadoIntelligenceUI?.renderAuditor"],
   ['system-health',"window.FocadoSystemHealth?.render"],
+  ['regras-margem',"window.FocadoMarginRules?.render"],
   ['config',"window.FocadoSettings?.render"],
   ['usuarios',"window.FocadoUsers?.render"],
   ['financeiro',"window.FocadoFinance?.render"],
@@ -105,3 +106,9 @@ assert.ok(index.includes('assets/modules/simulator.css?v=20260828-simulator-v3')
 assert.ok(index.includes('assets/modules/simulator.js?v=20260828-simulator-v3'),'Simulador deve ser pré-carregado com JavaScript');
 const publishedHead=index.split('</head>',1)[0];
 assert.ok(!publishedHead.includes('\\n'),'Head não pode conter \\n literal visível no primeiro paint');
+
+assert.ok(loader.includes("'regras-margem':{css:'margin-rules.css',js:'margin-rules.js'}"),'Regras de Margem deve estar registrada no loader');
+assert.ok(loader.includes("'regras-margem':()=>typeof window.FocadoMarginRules?.render==='function'"),'Regras de Margem deve possuir contrato');
+assert.ok(shell.includes("['regras-margem','%','Regras de Margem']"),'Regras de Margem deve aparecer em Configurações');
+assert.ok(index.includes('assets/modules/margin-rules.css?v=20260828-margin-rules-v1'),'Regras de Margem deve ser pré-carregada com CSS');
+assert.ok(index.includes('assets/modules/margin-rules.js?v=20260828-margin-rules-v1'),'Regras de Margem deve ser pré-carregada com JavaScript');
