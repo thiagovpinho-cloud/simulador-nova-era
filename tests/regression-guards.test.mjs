@@ -99,3 +99,17 @@ assert.ok(ordersStage2.includes("saveDomain('COMERCIAL'"),'Pedidos deve usar esc
 assert.ok(!dataStoreV2.includes("JSON.stringify({domain,changes,orderId,revision})"),'Domínios não devem conflitar por revisão global');
 assert.ok(dataStoreV2.includes('expectedStatus'),'Gravação por pedido deve proteger mudança concorrente de etapa');
 assert.ok(worker.includes('ORDER_STATE_CHANGED'),'Backend deve rejeitar transição com estado obsoleto');
+
+const productionFinal=read('assets/modules/production.js');
+const inventoryFinal=read('assets/modules/inventory.js');
+const indicatorsFinal=read('assets/modules/indicators.js');
+assert.ok(shared.includes("c.movements"),'Estoque deve aceitar lote atômico de movimentos');
+assert.ok(shared.includes("PRODUCTION_ALREADY_COMPLETED"),'Produção deve impedir apontamento duplicado');
+assert.ok(shared.includes("CONSUMO_PRODUCAO"),'Produção deve consumir insumos auditavelmente');
+assert.ok(shared.includes("PERDA_PRODUCAO"),'Produção deve registrar perdas');
+assert.ok(productionFinal.includes('Apontar produção'),'Produção deve possuir apontamento de chão de fábrica');
+assert.ok(productionFinal.includes("saveDomain?.('SOLICITACAO_PRODUCAO',{complete:"),'Apontamento deve usar domínio transacional');
+assert.ok(inventoryFinal.includes("saveDomain?.('ESTOQUE',{movements,inventoryCount})"),'Inventário deve usar movimentos atômicos');
+assert.ok(inventoryFinal.includes("deltaPhysical:qty"),'Entrada de estoque deve ser movimento incremental');
+assert.ok(indicatorsFinal.includes('RASTREABILIDADE DO KPI'),'Indicadores devem explicar a origem do KPI');
+assert.ok(indicatorsFinal.includes('data-kpi-order'),'Drill-down deve abrir o registro causador');
