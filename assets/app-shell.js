@@ -169,7 +169,10 @@
     if(id==='regras-margem'){open(()=>window.FocadoMarginRules?.render());return}
     if(id==='pedidos'){
       open(()=>window.FocadoOrders?.render());
-      refreshInBackground('orders',()=>window.FocadoOrders?.render());
+      refreshInBackground('orders',()=>{
+        if(window.FocadoOrders?.isFormOpen?.())return;
+        window.FocadoOrders?.render();
+      });
       return
     }
     if(id==='fichas'){open(()=>window.FocadoTechnicalSheets?.render());return}
@@ -222,17 +225,23 @@
 
   window.addEventListener('focado:auth-changed',e=>{
     if(e.detail?.user){
-      showShell(true);
+      const active=document.querySelector('[data-fx-nav].active')?.dataset?.fxNav||'dashboard';
+      showShell(active==='dashboard');
       document.getElementById('loginScreen')?.classList.add('hidden');
       document.getElementById('hubScreen')?.classList.add('hidden');
     }else hideShell();
   });
   window.addEventListener('focado:cache-hydrated',()=>{
-    if(!shell.classList.contains('hidden'))dashboard();
+    if(shell.classList.contains('hidden'))return;
+    const active=document.querySelector('[data-fx-nav].active')?.dataset?.fxNav||'dashboard';
+    if(active==='dashboard')dashboard();
   });
   const observer=new MutationObserver(()=>{
     const hub=$('#hubScreen');
-    if(hub&&!hub.classList.contains('hidden')&&sessionStorage.getItem('nova-era-role'))showShell();
+    if(hub&&!hub.classList.contains('hidden')&&sessionStorage.getItem('nova-era-role')){
+      const active=document.querySelector('[data-fx-nav].active')?.dataset?.fxNav||'dashboard';
+      showShell(active==='dashboard');
+    }
   });
   const hub=$('#hubScreen'); if(hub)observer.observe(hub,{attributes:true,attributeFilter:['class']});
   window.addEventListener('load',()=>{setTimeout(()=>{
