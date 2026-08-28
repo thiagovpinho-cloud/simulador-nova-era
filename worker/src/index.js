@@ -1,6 +1,6 @@
 import pg from "pg";
 import { DOMAIN_PERMISSION, FLOW, RULES_VERSION, applyDomain, applyTransitionSideEffects, getOrder, validateTransition } from "../../shared/domain-rules.js";
-import { ensurePlatformV2, syncPlatformV2, appendChange, loginThrottle, auditSnapshot, readDomainV2, consistencyV2, passwordPolicy } from "./platform-v2.js";
+import { ensurePlatformV2, syncPlatformV2, appendChange, loginThrottle, auditSnapshot, readDomainV2, consistencyV2, passwordPolicy, resetOperationalData20260828, operationalResetStatus } from "./platform-v2.js";
 const { Client } = pg;
 
 const WORKSPACE = "default";
@@ -146,6 +146,14 @@ async function route(request,env){
   }
   if(path==="/setup"&&request.method==="GET"){
     return setupPage();
+  }
+
+  if(path==="/maintenance/operational-reset-20260828"&&request.method==="GET"){
+    return withDb(env,async db=>{
+      const result=await resetOperationalData20260828(db);
+      const status=await operationalResetStatus(db);
+      return json({ok:true,result,status});
+    });
   }
 
   return withDb(env,async db=>{
