@@ -26,7 +26,8 @@
     config:{css:'settings.css',js:'settings.js'},
     usuarios:{css:'users.css',js:'users.js'},
     indicadores:{css:'indicators.css',js:'indicators.js'},
-    'bi-config':{css:'bi-config.css',js:'bi-config.js'}
+    'bi-config':{css:'bi-config.css',js:'bi-config.js'},
+    financeiro:{css:'finance.css',js:'finance.js'}
   };
   const contracts={
     produtos:()=>typeof window.FocadoProducts?.render==='function',
@@ -48,7 +49,8 @@
     config:()=>typeof window.FocadoSettings?.render==='function',
     usuarios:()=>typeof window.FocadoUsers?.render==='function',
     indicadores:()=>typeof window.FocadoIndicators?.render==='function',
-    'bi-config':()=>typeof window.FocadoBIConfig?.render==='function'
+    'bi-config':()=>typeof window.FocadoBIConfig?.render==='function',
+    financeiro:()=>typeof window.FocadoFinance?.render==='function'
   };
   function verify(name){
     const key=defs[name]?.alias||name;
