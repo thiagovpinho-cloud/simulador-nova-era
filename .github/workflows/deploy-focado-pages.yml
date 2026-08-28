@@ -77,25 +77,33 @@ jobs:
           READY=0
           for i in {1..18}; do
             if curl -fsS --retry 2 --retry-delay 2 "$BASE/" -o /tmp/focado-index.html \
-              && grep -q "assets/modules/simulator.js?v=20260828-simulator-v3" /tmp/focado-index.html \
-              && grep -q "assets/modules/simulator.css?v=20260828-simulator-v3" /tmp/focado-index.html; then
+              && grep -q "assets/modules/simulator.js?v=20260828-simulator-v4" /tmp/focado-index.html \
+              && grep -q "assets/modules/simulator.css?v=20260828-simulator-v4" /tmp/focado-index.html \
+              && grep -q "assets/modules/margin-rules.js?v=20260828-margin-rules-v1" /tmp/focado-index.html; then
               READY=1
-              echo "Production alias is serving simulator-v3."
+              echo "Production alias is serving simulator-v4."
               break
             fi
             echo "Waiting for focado.pages.dev to switch to validated revision... attempt $i/18"
             sleep 5
           done
           test "$READY" = "1"
-          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/simulator.js?v=20260828-simulator-v3" -o /tmp/simulator.js
-          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/simulator.css?v=20260828-simulator-v3" -o /tmp/simulator.css
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/simulator.js?v=20260828-simulator-v4" -o /tmp/simulator.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/simulator.css?v=20260828-simulator-v4" -o /tmp/simulator.css
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/margin-rules.js?v=20260828-margin-rules-v1" -o /tmp/margin-rules.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/margin-rules.css?v=20260828-margin-rules-v1" -o /tmp/margin-rules.css
           grep -q "window.FocadoSimulator={render}" /tmp/simulator.js
+          grep -q "(document.getElementById('focadoShell')||document.body).appendChild(modal)" /tmp/simulator.js
           grep -q "Cadastrar insumo" /tmp/simulator.js
           grep -q "Manual por caixa" /tmp/simulator.js
           grep -q "data-comp-unit" /tmp/simulator.js
           grep -q "data-comp-qty" /tmp/simulator.js
           grep -q "data-comp-loss" /tmp/simulator.js
           grep -q ".fsim-page" /tmp/simulator.css
+          grep -q "window.FocadoMarginRules={render}" /tmp/margin-rules.js
+          grep -q "Custo do Produto" /tmp/margin-rules.js
+          grep -q "Regras de Margem" /tmp/margin-rules.js
+          grep -q ".fmr-page" /tmp/margin-rules.css
           python - <<'PY'
           from pathlib import Path
           html=Path('/tmp/focado-index.html').read_text(errors='replace')
