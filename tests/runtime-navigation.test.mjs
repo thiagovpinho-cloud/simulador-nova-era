@@ -116,6 +116,6 @@ assert.ok(index.includes('assets/modules/margin-rules.js?v=20260828-margin-rules
 assert.ok(shell.includes("id==='cockpit'?'indicadores':id"),'Cockpit deve carregar o módulo de Indicadores');
 assert.ok(shell.includes("if(id==='cockpit'){open(()=>window.FocadoIndicators?.render());return}"),'Cockpit deve renderizar o mesmo dashboard executivo');
 
-assert.ok(index.includes('assets/modules/customers.js?v=20260828-cnpj-v1'),'Clientes deve publicar revisão com consulta de CNPJ');
-assert.ok(index.includes('assets/modules/customers.css?v=20260828-cnpj-v1'),'Clientes deve publicar CSS da consulta de CNPJ');
+assert.ok(index.includes('assets/modules/customers.js?v=20260828-replink-v1'),'Clientes deve publicar revisão com consulta de CNPJ');
+assert.ok(index.includes('assets/modules/customers.css?v=20260828-replink-v1'),'Clientes deve publicar CSS da consulta de CNPJ');
 assert.ok(index.includes('assets/modules/representatives.js?v=20260828-fantasy-v1'),'Representantes deve publicar revisão com Nome Fantasia');
