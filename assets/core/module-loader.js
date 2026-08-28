@@ -23,6 +23,7 @@
     transportadoras:{alias:'logistica'},
     kanban:{css:'kanban.css',js:'kanban.js',deps:['pedidos']},
     'system-health':{css:'system-health.css',js:'system-health.js'},
+    config:{css:'settings.css',js:'settings.js'},
     usuarios:{css:'users.css',js:'users.js'}
   };
   const contracts={
@@ -42,6 +43,7 @@
     cockpit:()=>typeof window.FocadoIntelligenceUI?.renderCockpit==='function',
     'corpo-auditor':()=>typeof window.FocadoIntelligenceUI?.renderAuditor==='function',
     'system-health':()=>typeof window.FocadoSystemHealth?.render==='function',
+    config:()=>typeof window.FocadoSettings?.render==='function',
     usuarios:()=>typeof window.FocadoUsers?.render==='function'
   };
   function verify(name){
