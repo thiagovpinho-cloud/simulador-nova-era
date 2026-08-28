@@ -140,19 +140,34 @@
       alert('Esta área não foi carregada corretamente. Atualize a página e tente novamente. Se persistir, informe o Administrador.');
       return;
     }
-    if(id==='clientes')await window.FocadoDataStore?.refreshDomainV2?.('customers');
-    if(id==='pedidos')await window.FocadoDataStore?.refreshDomainV2?.('orders');
     const open=(fn)=>{
       showShell(false);
       if(typeof fn==='function')fn();
       setActive(id);
       document.getElementById('fxSidebar')?.classList.remove('open');
     };
+    const refreshInBackground=(domain,rerender)=>{
+      Promise.resolve(window.FocadoDataStore?.refreshDomainV2?.(domain))
+        .then(result=>{
+          if(result?.ok&&typeof rerender==='function'&&document.querySelector('[data-fx-nav="'+id+'"].active')){
+            rerender();
+          }
+        })
+        .catch(err=>console.warn('[FocadoDataStore] atualização em segundo plano falhou para '+domain,err));
+    };
     if(id==='dashboard'){showShell(true);return}
     if(id==='kanban'){open(()=>window.FocadoKanban?.render({q:'',brand:'TODAS'}));return}
-    if(id==='clientes'){open(()=>window.FocadoCustomers?.render());return}
+    if(id==='clientes'){
+      open(()=>window.FocadoCustomers?.render());
+      refreshInBackground('customers',()=>window.FocadoCustomers?.render());
+      return
+    }
     if(id==='representantes'){open(()=>window.FocadoRepresentatives?.render());return}
-    if(id==='pedidos'){open(()=>window.FocadoOrders?.render());return}
+    if(id==='pedidos'){
+      open(()=>window.FocadoOrders?.render());
+      refreshInBackground('orders',()=>window.FocadoOrders?.render());
+      return
+    }
     if(id==='fichas'){open(()=>window.FocadoTechnicalSheets?.render());return}
     if(id==='produtos'){open(()=>window.FocadoProducts?.render());return}
     if(id==='pcp'){open(()=>window.FocadoPCP?.render());return}
