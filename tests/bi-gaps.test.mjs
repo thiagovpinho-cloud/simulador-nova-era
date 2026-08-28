@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {applyDomain} from '../shared/domain-rules.js';
 import {
@@ -88,3 +89,19 @@ assert.equal(all.kpis.target_vs_actual.achievement,.5);
 assert.equal(JSON.stringify(state),before,'Analytics must remain read-only');
 
 console.log('BI gaps closed: OK');
+
+
+const worker=fs.readFileSync(new URL('../worker/src/index.js',import.meta.url),'utf8');
+const platform=fs.readFileSync(new URL('../worker/src/platform-v2.js',import.meta.url),'utf8');
+const shell=fs.readFileSync(new URL('../assets/app-shell.js',import.meta.url),'utf8');
+const loader=fs.readFileSync(new URL('../assets/core/module-loader.js',import.meta.url),'utf8');
+const configUi=fs.readFileSync(new URL('../assets/modules/bi-config.js',import.meta.url),'utf8');
+
+assert.ok(worker.includes('buildBiAnalytics'),'Worker de produção deve usar a camada analítica oficial');
+assert.ok(worker.includes('path==="/bi-analytics"'),'Worker deve expor /api/bi-analytics');
+assert.ok(platform.includes("if(d==='BASES')"),'Auditoria deve cobrir capacidade produtiva');
+assert.ok(platform.includes('monthlyTargets'),'Auditoria financeira deve cobrir metas');
+assert.ok(shell.includes("['bi-config','⚙','Parâmetros BI']"),'Menu deve expor governança BI');
+assert.ok(loader.includes("'bi-config':{css:'bi-config.css',js:'bi-config.js'}"),'Loader deve registrar governança BI');
+assert.ok(configUi.includes("saveDomain('FINANCEIRO'"),'Dados financeiros devem usar domínio auditável');
+assert.ok(configUi.includes("saveDomain('ESTOQUE'"),'Política de estoque deve usar domínio auditável');
