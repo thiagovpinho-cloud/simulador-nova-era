@@ -178,6 +178,7 @@
     st.onchange=()=>render({q:q.value,stage:st.value});
     document.querySelectorAll('[data-fo-open]').forEach(b=>b.onclick=()=>openForm(b.dataset.foOpen,false));
     document.querySelectorAll('[data-fo-edit]').forEach(b=>b.onclick=()=>openForm(b.dataset.foEdit,true));
+    document.querySelectorAll('[data-fo-delete]').forEach(b=>b.onclick=()=>deleteOrder(b.dataset.foDelete));
   }
   function stat(label,n,sub){return '<div class="fo-stat"><span>'+label+'</span><strong>'+n+'</strong><small>'+sub+'</small></div>'}
   function table(rows){
@@ -185,8 +186,27 @@
     const allowEdit=canEditExisting();
     return '<table class="fo-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>CNPJ</th><th>Representante</th><th>Data</th><th>Itens</th><th>Valor</th><th>Status</th><th>Previsão</th><th></th></tr></thead><tbody>'+rows.map(o=>{
       const s=stage(o.status);
-      return '<tr><td><div class="fo-order">'+esc(o.number)+'</div></td><td><div class="fo-client">'+esc(o.client||'—')+'</div><div class="fo-muted">'+esc([o.city,o.uf].filter(Boolean).join('/'))+'</div></td><td>'+esc(formatCnpj(o.cnpj)||'—')+'</td><td>'+esc(o.representative||'—')+'</td><td>'+dbr(o.orderDate)+'</td><td>'+(o.items||[]).length+'</td><td>'+money(value(o))+'</td><td><span class="fo-stage '+s[1]+'">'+s[0]+'</span></td><td>'+dbr(o.pcp?.availableDate||o.requestedDeliveryDate)+'</td><td><div class="fo-actions"><button class="fo-open" data-fo-open="'+esc(o.id)+'">Abrir</button>'+(allowEdit?'<button class="fo-open" data-fo-edit="'+esc(o.id)+'">Editar</button>':'')+'</div></td></tr>';
+      const canDelete=allowEdit&&o.status==='COMERCIAL';
+      return '<tr><td><div class="fo-order">'+esc(o.number)+'</div></td><td><div class="fo-client">'+esc(o.client||'—')+'</div><div class="fo-muted">'+esc([o.city,o.uf].filter(Boolean).join('/'))+'</div></td><td>'+esc(formatCnpj(o.cnpj)||'—')+'</td><td>'+esc(o.representative||'—')+'</td><td>'+dbr(o.orderDate)+'</td><td>'+(o.items||[]).length+'</td><td>'+money(value(o))+'</td><td><span class="fo-stage '+s[1]+'">'+s[0]+'</span></td><td>'+dbr(o.pcp?.availableDate||o.requestedDeliveryDate)+'</td><td><div class="fo-actions"><button class="fo-open" data-fo-open="'+esc(o.id)+'">Abrir</button>'+(allowEdit?'<button class="fo-open" data-fo-edit="'+esc(o.id)+'">Editar</button>':'')+(canDelete?'<button class="fo-open fo-delete-order" data-fo-delete="'+esc(o.id)+'">Excluir</button>':'')+'</div></td></tr>';
     }).join('')+'</tbody></table>';
+  }
+
+  async function deleteOrder(id){
+    if(!canEditExisting()){alert('Seu perfil não possui permissão para excluir pedidos.');return}
+    const ops=load(),order=(ops.orders||[]).find(o=>String(o.id)===String(id));
+    if(!order){alert('Pedido não encontrado.');return}
+    if(order.status!=='COMERCIAL'){alert('Este pedido já avançou no fluxo e não pode ser excluído. Use Editar para corrigir os dados.');return}
+    const ok=confirm('Excluir o pedido '+String(order.number||'')+'?\n\nEsta ação removerá o rascunho em preenchimento e não poderá ser desfeita.');
+    if(!ok)return;
+    try{
+      const result=await window.FocadoDataStore.saveDomain('COMERCIAL',{deleteOrderId:order.id},order.id);
+      if(!result?.ok){alert('Não foi possível excluir o pedido. Atualize a tela e tente novamente.');return}
+      if(result.payload)window.FocadoDataStore.writeLocal(result.payload);
+      render(currentFilters);
+    }catch(err){
+      console.error('[FocadoOrders] delete',err);
+      alert(err?.code==='ORDER_DELETE_BLOCKED_AFTER_COMMERCIAL'?'Este pedido já avançou no fluxo e não pode ser excluído.':'Não foi possível excluir o pedido.');
+    }
   }
 
   function openForm(id,requestEdit=false){
