@@ -39,6 +39,10 @@ function recognized(order,state){
   const rule=String(state?.biPolicy?.revenueRecognition||'DELIVERED').toUpperCase();
   if(rule==='DELIVERED')return String(order?.status||'').toUpperCase()==='ENTREGUE' || Boolean(order?.logistics?.deliveryConfirmed);
   if(rule==='EXPEDITION_RELEASED')return Boolean(order?.expedition?.stockReleasedAt);
+  if(rule==='INVOICED'){
+    const f=financialFactFor(state,order?.id);
+    return Boolean(f?.invoice_number && f?.invoice_date && String(f?.invoice_status||'').toUpperCase()!=='CANCELADA');
+  }
   return true;
 }
 
