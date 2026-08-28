@@ -217,12 +217,26 @@
   $('#fxLogout').onclick=async()=>{hideShell();try{await window.FocadoAuth?.logout?.()}catch(_){} document.getElementById('hubLogoutBtn')?.click()};
   $('#fxSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){const q=e.target.value.trim();if(q)navigate('pedidos')}});
 
-  window.addEventListener('focado:auth-changed',()=>{if(!shell.classList.contains('hidden'))showShell()});
+  window.addEventListener('focado:auth-changed',e=>{
+    if(e.detail?.user){
+      showShell(true);
+      document.getElementById('loginScreen')?.classList.add('hidden');
+      document.getElementById('hubScreen')?.classList.add('hidden');
+    }else hideShell();
+  });
+  window.addEventListener('focado:cache-hydrated',()=>{
+    if(!shell.classList.contains('hidden'))dashboard();
+  });
   const observer=new MutationObserver(()=>{
     const hub=$('#hubScreen');
     if(hub&&!hub.classList.contains('hidden')&&sessionStorage.getItem('nova-era-role'))showShell();
   });
   const hub=$('#hubScreen'); if(hub)observer.observe(hub,{attributes:true,attributeFilter:['class']});
-  window.addEventListener('load',()=>{setTimeout(()=>{if(sessionStorage.getItem('nova-era-role')&&$('#hubScreen')&&!$('#hubScreen').classList.contains('hidden'))showShell()},50)});
+  window.addEventListener('load',()=>{setTimeout(()=>{
+    if(sessionStorage.getItem('nova-era-role')){
+      document.getElementById('hubScreen')?.classList.add('hidden');
+      showShell(true);
+    }
+  },0)});
   window.FocadoShell={show:showShell,refresh:dashboard,navigate};
 })();
