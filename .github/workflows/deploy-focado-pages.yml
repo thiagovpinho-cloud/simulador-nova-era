@@ -7,6 +7,7 @@ on:
     paths:
       - "index.html"
       - "assets/**"
+      - "shared/**"
       - "manifest.webmanifest"
       - "focado-*.svg"
       - "Catalogo_*.pdf"
@@ -43,6 +44,7 @@ jobs:
           mkdir -p _site
           cp index.html manifest.webmanifest focado-*.svg _site/
           cp -R assets _site/assets
+          cp -R shared _site/shared
           for f in Catalogo_*.pdf Ficha_*.pdf; do
             [ -f "$f" ] && cp "$f" _site/
           done
