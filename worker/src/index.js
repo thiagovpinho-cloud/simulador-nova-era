@@ -212,7 +212,7 @@ async function route(request,env){
       await db.query("begin");
       try{
         const p=await passwordHash(password);
-        await db.query("update public.focado_users set password_salt=$1,password_hash=$2 where id=$3",[p.salt,`pbkdf2${p.iterations}${p.hash}`,user.id]);
+        await db.query("update public.focado_users set password_salt=$1,password_hash=$2 where id=$3",[p.salt,`pbkdf2$${p.iterations}$${p.hash}`,user.id]);
         await db.query("update public.focado_sessions set revoked_at=now() where user_id=$1 and revoked_at is null",[user.id]);
         await db.query("delete from public.focado_login_attempts where email=$1",[email]);
         await db.query("insert into public.focado_system_migrations(key,applied_at) values($1,now())",[ADMIN_RESET_KEY]);
@@ -256,7 +256,7 @@ async function route(request,env){
       await recordLogin(true);
       if(repairLegacyResetHash){
         const fixed=storedHash.match(/^pbkdf2(100000)([0-9a-f]{64})$/i);
-        if(fixed)await db.query("update public.focado_users set password_hash=$1 where id=$2",[`pbkdf2${fixed[1]}${fixed[2]}`,user.id]);
+        if(fixed)await db.query("update public.focado_users set password_hash=$1 where id=$2",[`pbkdf2$${fixed[1]}$${fixed[2]}`,user.id]);
       }
       const token=newToken(),tokenHash=await sha256Text(token);
       const expiresAt=new Date(Date.now()+12*60*60*1000).toISOString();
@@ -325,7 +325,6 @@ async function route(request,env){
       await requireSession(request,db,"workspace.read");
       const domain=path.slice("/v2/domain/".length);
       const row=await readWorkspace(db,false);
-      await syncPlatformV2(db,row?.payload||{});
       const data=await readDomainV2(db,domain);
       return json({domain,data,source:"v2",revision:row?.revision||0});
     }
@@ -389,7 +388,10 @@ async function route(request,env){
       await db.query("begin");
       try{
         const row=await readWorkspace(db,true),revision=row?.revision||0,state=structuredClone(row?.payload||{});
-        if(body.revision!=null&&Number(body.revision)!==revision)throw Object.assign(new Error("REVISION_CONFLICT"),{status:409,currentRevision:revision});
+        if(body.orderId&&body.expectedStatus){
+          const current=getOrder(state,body.orderId);
+          if(current&&String(current.status)!==String(body.expectedStatus))throw Object.assign(new Error("ORDER_STATE_CHANGED"),{status:409,currentStatus:current.status});
+        }
         const before=auditSnapshot(state,domain,body.orderId);
         applyDomain(domain,state,body);
         const after=auditSnapshot(state,domain,body.orderId);
@@ -407,9 +409,9 @@ async function route(request,env){
       await db.query("begin");
       try{
         const row=await readWorkspace(db,true),revision=row?.revision||0,state=structuredClone(row?.payload||{});
-        if(body.revision!=null&&Number(body.revision)!==revision)throw Object.assign(new Error("REVISION_CONFLICT"),{status:409,currentRevision:revision});
         const before=structuredClone(getOrder(state,body.orderId)||null);
         const order=getOrder(state,body.orderId);if(!order)throw Object.assign(new Error("ORDER_NOT_FOUND"),{status:404});
+        if(body.expectedStatus&&String(order.status)!==String(body.expectedStatus))throw Object.assign(new Error("ORDER_STATE_CHANGED"),{status:409,currentStatus:order.status});
         const rule=FLOW[order.status];if(!rule)throw Object.assign(new Error("INVALID_TRANSITION"),{status:400});
         const s=await requireSession(request,db);
         if(s.role!=="ADMIN"&&!(await hasPermission(db,s.role,rule.permission)))throw Object.assign(new Error("FORBIDDEN"),{status:403});
@@ -446,7 +448,7 @@ async function route(request,env){
       if(!email||!name||!ROLES.has(role)||!policy.ok)return json({error:"INVALID_USER",passwordProblems:policy.problems},400);
       const p=await passwordHash(password);
       try{
-        const r=await db.query("insert into public.focado_users(email,name,role,password_salt,password_hash,active) values($1,$2,$3,$4,$5,true) returning id,email,name,role,active,created_at as \"createdAt\",last_login_at as \"lastLoginAt\"",[email,name,role,p.salt,`pbkdf2${p.iterations}${p.hash}`]);
+        const r=await db.query("insert into public.focado_users(email,name,role,password_salt,password_hash,active) values($1,$2,$3,$4,$5,true) returning id,email,name,role,active,created_at as \"createdAt\",last_login_at as \"lastLoginAt\"",[email,name,role,p.salt,`pbkdf2$${p.iterations}$${p.hash}`]);
         await db.query("insert into public.focado_audit_events(user_id,action,entity_type,entity_id,metadata) values($1,'USER_CREATED','user',$2,$3::jsonb)",[s.userId,String(r.rows[0].id),JSON.stringify({role,email})]);
         return json({user:r.rows[0]},201);
       }catch(e){if(String(e.message||"").includes("unique"))return json({error:"USER_EXISTS"},409);throw e}
@@ -471,7 +473,7 @@ async function route(request,env){
         const password=String(body.password||""),policy=passwordPolicy(password);
         if(!policy.ok)return json({error:"INVALID_PASSWORD",passwordProblems:policy.problems},400);
         const p=await passwordHash(password);
-        await db.query("update public.focado_users set role=$1,active=$2,password_salt=$3,password_hash=$4 where id=$5",[nextRole,nextActive,p.salt,`pbkdf2${p.iterations}${p.hash}`,id]);
+        await db.query("update public.focado_users set role=$1,active=$2,password_salt=$3,password_hash=$4 where id=$5",[nextRole,nextActive,p.salt,`pbkdf2$${p.iterations}$${p.hash}`,id]);
         passwordChanged=true;
       }else{
         await db.query("update public.focado_users set role=$1,active=$2 where id=$3",[nextRole,nextActive,id]);
