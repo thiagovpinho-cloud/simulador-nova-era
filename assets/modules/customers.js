@@ -214,6 +214,7 @@
       updatedAt:Date.now()
     };
     if(!customer.name){alert('Informe o nome do cliente.');return}
+    if(!customer.paymentTerms){alert('Informe a condição de pagamento do cliente.');return}
     if(customer.cnpj&&customer.cnpj.length!==14){alert('Informe um CNPJ válido com 14 dígitos.');return}
     if(customer.email&&!/^\S+@\S+\.\S+$/.test(customer.email)){alert('Informe um e-mail válido.');return}
     const res=await window.FocadoDataStore.saveDomain('CLIENTES',{customer},null);
