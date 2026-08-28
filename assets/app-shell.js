@@ -172,11 +172,27 @@
     if(id==='fichas'){open(()=>window.FocadoTechnicalSheets?.render());return}
     if(id==='produtos'){open(()=>window.FocadoProducts?.render());return}
     if(id==='pcp'){open(()=>window.FocadoPCP?.render());return}
-    if(id==='production'){open(()=>window.FocadoProduction?.render());return}
+    if(id==='production'){
+      open(()=>window.FocadoProduction?.render());
+      refreshInBackground('production',()=>window.FocadoProduction?.render());
+      return
+    }
     if(id==='bases'){open(()=>window.FocadoBases?.render());return}
-    if(id==='inventory'){open(()=>window.FocadoInventory?.render({tab:'finished',q:'',filter:'TODOS'}));return}
-    if(id==='inputs'){open(()=>window.FocadoInventory?.render({tab:'inputs',q:'',filter:'TODOS'}));return}
-    if(id==='purchases'){open(()=>window.FocadoPurchases?.render());return}
+    if(id==='inventory'){
+      open(()=>window.FocadoInventory?.render({tab:'finished',q:'',filter:'TODOS'}));
+      refreshInBackground('inventory',()=>window.FocadoInventory?.render({tab:'finished',q:'',filter:'TODOS'}));
+      return
+    }
+    if(id==='inputs'){
+      open(()=>window.FocadoInventory?.render({tab:'inputs',q:'',filter:'TODOS'}));
+      refreshInBackground('inventory',()=>window.FocadoInventory?.render({tab:'inputs',q:'',filter:'TODOS'}));
+      return
+    }
+    if(id==='purchases'){
+      open(()=>window.FocadoPurchases?.render());
+      refreshInBackground('purchases',()=>window.FocadoPurchases?.render());
+      return
+    }
     if(id==='expedicao'){open(()=>window.FocadoExpedition?.render());return}
     if(id==='cockpit'){open(()=>window.FocadoIntelligenceUI?.renderCockpit());return}
     if(id==='corpo-auditor'){open(()=>window.FocadoIntelligenceUI?.renderAuditor());return}
@@ -188,7 +204,11 @@
     if(id==='financeiro'){open(()=>window.FocadoFinance?.render());return}
     if(id==='logistica'){open(()=>window.FocadoLogistics?.render({q:'',status:'TODOS'}));return}
     if(id==='entregas'){open(()=>window.FocadoLogistics?.renderDeliveries());return}
-    if(id==='transportadoras'){open(()=>window.FocadoLogistics?.renderCarriers());return}
+    if(id==='transportadoras'){
+      open(()=>window.FocadoLogistics?.renderCarriers());
+      refreshInBackground('carriers',()=>window.FocadoLogistics?.renderCarriers());
+      return
+    }
   }
   function bindDashboardLinks(){document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>navigate(b.dataset.open))}
   function bindNav(){document.querySelectorAll('[data-fx-nav]').forEach(b=>b.onclick=()=>{if(!b.querySelector('.fx-nav-soon'))navigate(b.dataset.fxNav)})}
