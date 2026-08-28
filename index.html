@@ -1,6 +1,20 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<script>
+(function(){
+  try{
+    const role=sessionStorage.getItem('nova-era-role');
+    const token=sessionStorage.getItem('focado-api-session-token');
+    const modern=sessionStorage.getItem('nova-era-modern-shell');
+    if(role&&token&&modern==='1')document.documentElement.classList.add('focado-modern-session');
+  }catch(_){}
+})();
+</script>
+<style>
+html.focado-modern-session body > :not(#focadoShell):not(script){display:none!important}
+html.focado-modern-session body{background:#f6f8f7!important}
+</style>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Focado</title>
@@ -3388,6 +3402,7 @@ function applyRole(role, label){
 }
 
 function showLogin(){
+  document.documentElement.classList.remove('focado-modern-session');
   document.getElementById('loginScreen').classList.remove('hidden');
   document.getElementById('hubScreen').classList.add('hidden');
   document.getElementById('clientScreen').classList.add('hidden');
@@ -3448,6 +3463,7 @@ async function attemptLogin(){
     hideLogin();
     document.getElementById('hubScreen').classList.add('hidden');
     sessionStorage.setItem('nova-era-modern-shell','1');
+    document.documentElement.classList.add('focado-modern-session');
     window.FocadoShell?.show?.(true);
     return;
   }
