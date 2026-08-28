@@ -11,7 +11,8 @@ export const DOMAIN_PERMISSION=Object.freeze({
   SOLICITACAO_PRODUCAO:'pcp.write',
   TRANSPORTADORAS:'logistics.write',
   CLIENTES:'commercial.write',
-  EXPEDICAO:'inventory.write'
+  EXPEDICAO:'inventory.write',
+  BASES:'production.write'
 });
 
 export const FLOW=Object.freeze({
@@ -340,6 +341,31 @@ function applyCarriers(state,body){
   if(c.deleteId)state.carriers=state.carriers.filter(x=>String(x.id)!==String(c.deleteId));
 }
 
+function applyBases(state,body){
+  const c=body.changes||{};
+  if(!c.base||typeof c.base!=='object')throw Object.assign(new Error('BASE_REQUIRED'),{status:422});
+  const incoming=structuredClone(c.base);
+  const name=String(incoming.name||'').trim().toUpperCase();
+  if(!name)throw Object.assign(new Error('BASE_NAME_REQUIRED'),{status:422});
+  const previous=state.productionBases?.[name]||{};
+  const capacityPerDay=Math.max(0,Number(incoming.capacityPerDay||0));
+  const active=incoming.active!==false;
+  state.productionBases=state.productionBases||{};
+  state.productionBases[name]={...previous,capacityPerDay,active,updatedAt:Date.now()};
+  state.productionCapacityHistory=Array.isArray(state.productionCapacityHistory)?state.productionCapacityHistory:[];
+  if(Number(previous.capacityPerDay)!==capacityPerDay || previous.active!==active){
+    state.productionCapacityHistory.unshift({
+      id:'cap_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+      base:name,
+      effectiveDate:String(incoming.effectiveDate||new Date().toISOString().slice(0,10)),
+      capacityPerDay,
+      active,
+      previousCapacityPerDay:Number(previous.capacityPerDay||0),
+      at:Date.now()
+    });
+  }
+}
+
 function applyProductionRequest(state,body){
   const c=body.changes||{};
   state.productionRequests=Array.isArray(state.productionRequests)?state.productionRequests:[];
@@ -362,7 +388,8 @@ const DOMAIN_APPLIERS=Object.freeze({
   SOLICITACAO_PRODUCAO:applyProductionRequest,
   TRANSPORTADORAS:applyCarriers,
   CLIENTES:applyCustomers,
-  EXPEDICAO:applyExpedition
+  EXPEDICAO:applyExpedition,
+  BASES:applyBases
 });
 
 export function applyDomain(domain,state,body){
