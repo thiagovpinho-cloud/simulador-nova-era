@@ -47,7 +47,8 @@ function applyCommercial(state,body){
       status:'COMERCIAL',
       createdAt:Number(src.createdAt||Date.now()),
       brand:String(src.brand||'Nova Era'),
-      client:String(src.client||''),cnpj:String(src.cnpj||''),representative:String(src.representative||''),
+      customerId:String(src.customerId||''),client:String(src.client||''),cnpj:String(src.cnpj||''),
+      representativeId:String(src.representativeId||''),representative:String(src.representative||''),
       salesChannel:String(src.salesChannel||'REPRESENTANTE'),salesJustification:String(src.salesJustification||''),
       city:String(src.city||''),uf:String(src.uf||src.state||''),cep:String(src.cep||''),bairro:String(src.bairro||''),
       email:String(src.email||''),phone:String(src.phone||''),orderDate:String(src.orderDate||''),
@@ -72,8 +73,8 @@ function applyCommercial(state,body){
   const o=getOrder(state,body.orderId);
   if(!o)throw Object.assign(new Error('ORDER_NOT_FOUND'),{status:404});
   Object.assign(o,pick(changes,[
-    'client','cnpj','city','state','uf','orderDate','suggestedPickupDate','suggestedPickup','freightType','observation','notes','brand',
-    'representative','salesChannel','salesJustification','requestedDeliveryDate','paymentTerms',
+    'customerId','client','cnpj','city','state','uf','orderDate','suggestedPickupDate','suggestedPickup','freightType','observation','notes','brand',
+    'representativeId','representative','salesChannel','salesJustification','requestedDeliveryDate','paymentTerms',
     'logisticsBudget','deliveryAddress','email','phone','cep','bairro'
   ]));
   if(Array.isArray(changes.items)){
