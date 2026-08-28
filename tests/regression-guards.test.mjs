@@ -235,3 +235,10 @@ assert.ok(customerMasterOrders.includes("representativeId:fd.get('representative
 assert.ok(shared.includes("customerId:String(src.customerId||'')"),'Backend deve persistir customerId no pedido');
 assert.ok(shared.includes("representativeId:String(src.representativeId||'')"),'Backend deve persistir representativeId no pedido');
 assert.ok(!customerMasterOrders.includes("bindCnpjLookup(ops,o)"),'Pedido não deve voltar a consultar CNPJ externo em vez do cadastro mestre');
+
+const orderStability=read('assets/modules/orders.js');
+const shellStability=read('assets/app-shell.js');
+assert.ok(orderStability.includes("function isFormOpen(){return Boolean(document.getElementById('foOrderForm'))}"),'Pedidos deve expor estado de formulário aberto');
+assert.ok(shellStability.includes("if(window.FocadoOrders?.isFormOpen?.())return;"),'Refresh em segundo plano não pode fechar pedido em preenchimento');
+assert.ok(shellStability.includes("if(active==='dashboard')dashboard();"),'Cache hidratado só pode redesenhar Dashboard quando Dashboard estiver ativo');
+assert.ok(shellStability.includes("showShell(active==='dashboard');"),'Restauração do shell deve preservar a rota atual');
