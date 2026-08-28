@@ -25,7 +25,8 @@
     'system-health':{css:'system-health.css',js:'system-health.js'},
     config:{css:'settings.css',js:'settings.js'},
     usuarios:{css:'users.css',js:'users.js'},
-    indicadores:{css:'indicators.css',js:'indicators.js'}
+    indicadores:{css:'indicators.css',js:'indicators.js'},
+    'bi-config':{css:'bi-config.css',js:'bi-config.js'}
   };
   const contracts={
     produtos:()=>typeof window.FocadoProducts?.render==='function',
@@ -46,7 +47,8 @@
     'system-health':()=>typeof window.FocadoSystemHealth?.render==='function',
     config:()=>typeof window.FocadoSettings?.render==='function',
     usuarios:()=>typeof window.FocadoUsers?.render==='function',
-    indicadores:()=>typeof window.FocadoIndicators?.render==='function'
+    indicadores:()=>typeof window.FocadoIndicators?.render==='function',
+    'bi-config':()=>typeof window.FocadoBIConfig?.render==='function'
   };
   function verify(name){
     const key=defs[name]?.alias||name;
