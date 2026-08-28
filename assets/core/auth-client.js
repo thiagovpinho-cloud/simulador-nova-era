@@ -44,6 +44,7 @@
     indicadores:['ADMIN','FINANCEIRO'],
     financeiro:['ADMIN','FINANCEIRO'],
     'bi-config':['ADMIN','FINANCEIRO','ESTOQUE'],
+    'regras-margem':['ADMIN','FINANCEIRO'],
     config:['ADMIN'],
     usuarios:['ADMIN'],
     'system-health':['ADMIN']
