@@ -6,11 +6,12 @@ on:
     branches: [main]
     paths:
       - "assets/**"
+      - "worker/**"
       - "index.html"
       - "tests/**"
       - "shared/**"
       - "package.json"
-      - ".github/workflows/validate-focado-frontend.yml"
+      - ".github/workflows/**"
 
 permissions:
   contents: read
@@ -39,6 +40,16 @@ jobs:
         run: |
           node --check assets/design-system.js
           node --check assets/app-shell.js
+          node --check assets/core/module-loader.js
           for f in assets/modules/*.js; do
             node --check "$f"
           done
+
+      - name: Validate production package contents
+        shell: bash
+        run: |
+          test -f assets/modules/indicators.js
+          test -f assets/modules/indicators.css
+          test -f shared/bi-analytics.js
+          grep -q "indicadores:{css:'indicators.css',js:'indicators.js'}" assets/core/module-loader.js
+          grep -q "shared/bi-analytics.js" assets/modules/indicators.js
