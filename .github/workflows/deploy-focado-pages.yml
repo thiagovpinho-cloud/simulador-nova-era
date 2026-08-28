@@ -1,0 +1,74 @@
+name: Deploy Focado Cloudflare Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "assets/**"
+      - "manifest.webmanifest"
+      - "focado-*.svg"
+      - "Catalogo_*.pdf"
+      - "Ficha_*.pdf"
+      - ".github/workflows/deploy-focado-pages.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: focado-cloudflare-pages-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Wrangler
+        working-directory: worker
+        run: npm install --no-audit --no-fund
+
+      - name: Build static package
+        shell: bash
+        run: |
+          rm -rf _site
+          mkdir -p _site
+          cp index.html manifest.webmanifest focado-*.svg _site/
+          cp -R assets _site/assets
+          for f in Catalogo_*.pdf Ficha_*.pdf; do
+            [ -f "$f" ] && cp "$f" _site/
+          done
+
+      - name: Ensure Pages project
+        shell: bash
+        env:
+          CF_TOKEN_RAW: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_RAW: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CF_TOKEN_RAW" | tr -d '\r\n' | xargs)"
+          export CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$CF_ACCOUNT_RAW" | tr -d '\r\n' | xargs)"
+          if cd worker && npx wrangler pages project list 2>/dev/null | grep -Eq '(^|[[:space:]│])focado([[:space:]│]|$)'; then
+            echo "Pages project focado already exists."
+          else
+            cd worker
+            npx wrangler pages project create focado --production-branch main
+          fi
+
+      - name: Deploy Pages
+        shell: bash
+        env:
+          CF_TOKEN_RAW: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_RAW: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CF_TOKEN_RAW" | tr -d '\r\n' | xargs)"
+          export CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$CF_ACCOUNT_RAW" | tr -d '\r\n' | xargs)"
+          cd worker
+          npx wrangler pages deploy ../_site --project-name focado --branch main --commit-dirty=true
