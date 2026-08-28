@@ -54,8 +54,8 @@
     '</div>';
   }
 
-  function kpiCard(label,value,sub,tone,id){
-    return '<button class="fbi-kpi '+(tone||'')+'" data-scroll="'+id+'"><span>'+esc(label)+'</span><strong>'+value+'</strong><small>'+esc(sub)+'</small></button>';
+  function kpiCard(label,value,sub,tone,id,kpiKey){
+    return '<button class="fbi-kpi '+(tone||'')+'" data-scroll="'+id+'" '+(kpiKey?'data-kpi-detail="'+esc(kpiKey)+'"':'')+'><span>'+esc(label)+'</span><strong>'+value+'</strong><small>'+esc(sub)+'</small></button>';
   }
 
   function brandBars(rows,total){
@@ -102,14 +102,14 @@
         '<div class="fbi-head"><div><span class="fbi-eyebrow">FOCADO · BUSINESS INTELLIGENCE</span><h1>Indicadores Executivos</h1><p>Visão analítica conectada à operação, com filtros e rastreabilidade até o pedido.</p></div><div class="fbi-meta"><b>'+esc(sourceLabel)+'</b><span>Atualizado '+esc(stamp)+'</span></div></div>'+
         filterBar()+
         '<div class="fbi-kpis">'+
-          kpiCard('Volume vendido',num(k.sold_boxes?.value)+' cx','Quantidade dos pedidos filtrados','', 'fbiRanking')+
-          kpiCard('Faturamento bruto',money(k.gross_revenue?.value),'Reconhecido conforme regra oficial','green','fbiBrands')+
-          kpiCard('Faturamento líquido',k.net_revenue?.complete?money(k.net_revenue?.value):'Dados pendentes',k.net_revenue?.complete?'Após impostos e abatimentos':'Complete fatos financeiros dos pedidos',k.net_revenue?.complete?'green':'warn','fbiGovernance')+
-          kpiCard('Margem contribuição',k.contribution_margin?.complete&&k.contribution_margin?.value!=null?pct(k.contribution_margin.value):'Dados pendentes',k.contribution_margin?.complete?'Margem ponderada da carteira':'Complete custos e fatos financeiros',k.contribution_margin?.complete?'blue':'warn','fbiGovernance')+
-          kpiCard('OTIF',k.otif?.value==null?'—':pct(k.otif.value),(k.otif?.evaluated||0)+' pedido(s) avaliados · '+(k.otif?.excluded||0)+' excluído(s)',k.otif?.complete?'blue':'warn','fbiOtif')+
-          kpiCard('Meta × realizado',k.target_vs_actual?.complete&&k.target_vs_actual?.achievement!=null?pct(k.target_vs_actual.achievement):'Sem meta',k.target_vs_actual?.complete?(money(k.target_vs_actual.actualRevenue)+' realizado'):'Cadastre a meta do período',k.target_vs_actual?.complete?'green':'warn','fbiGovernance')+
-          kpiCard('Lead time médio',lead.averagesDays?.total==null?'—':fmtDays(lead.averagesDays.total),'Pedido → entrega','blue','fbiLead')+
-          kpiCard('Pedidos atrasados',num(k.delayed_orders?.value),'Entregues ou abertos fora da data','danger','fbiDelayed')+
+          kpiCard('Volume vendido',num(k.sold_boxes?.value)+' cx','Quantidade dos pedidos filtrados','', 'fbiRanking','sold_boxes')+
+          kpiCard('Faturamento bruto',money(k.gross_revenue?.value),'Reconhecido conforme regra oficial','green','fbiBrands','gross_revenue')+
+          kpiCard('Faturamento líquido',k.net_revenue?.complete?money(k.net_revenue?.value):'Dados pendentes',k.net_revenue?.complete?'Após impostos e abatimentos':'Complete fatos financeiros dos pedidos',k.net_revenue?.complete?'green':'warn','fbiGovernance','net_revenue')+
+          kpiCard('Margem contribuição',k.contribution_margin?.complete&&k.contribution_margin?.value!=null?pct(k.contribution_margin.value):'Dados pendentes',k.contribution_margin?.complete?'Margem ponderada da carteira':'Complete custos e fatos financeiros',k.contribution_margin?.complete?'blue':'warn','fbiGovernance','contribution_margin')+
+          kpiCard('OTIF',k.otif?.value==null?'—':pct(k.otif.value),(k.otif?.evaluated||0)+' pedido(s) avaliados · '+(k.otif?.excluded||0)+' excluído(s)',k.otif?.complete?'blue':'warn','fbiOtif','otif')+
+          kpiCard('Meta × realizado',k.target_vs_actual?.complete&&k.target_vs_actual?.achievement!=null?pct(k.target_vs_actual.achievement):'Sem meta',k.target_vs_actual?.complete?(money(k.target_vs_actual.actualRevenue)+' realizado'):'Cadastre a meta do período',k.target_vs_actual?.complete?'green':'warn','fbiGovernance','target_vs_actual')+
+          kpiCard('Lead time médio',lead.averagesDays?.total==null?'—':fmtDays(lead.averagesDays.total),'Pedido → entrega','blue','fbiLead','lead_time')+
+          kpiCard('Pedidos atrasados',num(k.delayed_orders?.value),'Entregues ou abertos fora da data','danger','fbiDelayed','delayed_orders')+
         '</div>'+
         '<div class="fbi-grid">'+
           '<section class="fbi-panel" id="fbiBrands"><div class="fbi-panel-head"><div><h2>Share de vendas por marca</h2><p>Clique em uma marca para filtrar todo o dashboard.</p></div></div>'+brandBars(k.brand_share?.rows,k.brand_share?.totalRevenue)+'</section>'+
@@ -190,12 +190,55 @@
     modal.querySelectorAll('[data-open-modal-order]').forEach(b=>b.onclick=()=>{const id=b.dataset.openModalOrder;modal.remove();openOrder(id)});
   }
 
+  function showKpiDetail(key){
+    const k=analytics?.kpis?.[key];if(!k)return;
+    const titles={
+      sold_boxes:'Volume vendido',gross_revenue:'Faturamento bruto',net_revenue:'Faturamento líquido',
+      contribution_margin:'Margem de contribuição',otif:'OTIF',target_vs_actual:'Meta × realizado',
+      lead_time:'Lead time',delayed_orders:'Pedidos atrasados'
+    };
+    let rows=[];
+    if(Array.isArray(k.rows))rows=k.rows;
+    else if(key==='lead_time')rows=k.rows||[];
+    else if(key==='target_vs_actual')rows=(analytics?.kpis?.gross_revenue?.rows||[]);
+    const modal=document.createElement('div');modal.className='fbi-modal';
+    const body=rows.length?rows.slice(0,30).map(r=>{
+      const id=r.orderId||r.id||'';
+      let metric='';
+      if(key==='gross_revenue')metric=money(r.revenue);
+      if(key==='net_revenue')metric=money(r.net)+' líquido · '+money(r.deductions)+' deduções';
+      if(key==='contribution_margin')metric=(r.margin==null?'—':pct(r.margin))+' · '+money(r.contribution)+' contribuição';
+      if(key==='otif')metric=(r.otif?'Dentro do OTIF':'Fora do OTIF')+' · '+(r.onTime?'prazo OK':'atraso')+' · '+(r.inFull?'quantidade OK':'quantidade incompleta');
+      if(key==='lead_time')metric=r.days?.total==null?'Lead incompleto':fmtDays(r.days.total);
+      if(key==='delayed_orders')metric=num(r.delayDays)+' dia(s) de atraso';
+      if(key==='sold_boxes')metric=num(r.boxes)+' cx · '+esc(r.sku||'');
+      if(key==='target_vs_actual')metric=money(r.revenue||0);
+      return '<button data-kpi-order="'+esc(id)+'"><b>'+esc(r.orderNumber||id||'Registro')+'</b><span>'+esc(r.client||'')+'</span><em>'+metric+(id?' · Abrir origem →':'')+'</em></button>';
+    }).join(''):'<div class="fbi-empty">Não há registros detalhados para este indicador no filtro atual.</div>';
+    let explanation='';
+    if(key==='otif')explanation='Prazo e quantidade são avaliados por pedido entregue. Um único pedido fora do prazo ou incompleto reduz o indicador.';
+    if(key==='net_revenue')explanation='Parte do faturamento bruto e desconta impostos, descontos, devoluções e bonificações registrados no Financeiro.';
+    if(key==='contribution_margin')explanation='Usa receita líquida menos custo variável dos SKUs, comissão e frete alocado.';
+    if(key==='target_vs_actual')explanation='Compara o faturamento reconhecido no período com a meta oficial cadastrada.';
+    if(key==='gross_revenue')explanation='Soma os pedidos reconhecidos conforme a política oficial de reconhecimento de receita.';
+    modal.innerHTML='<div class="fbi-modal-card"><div class="fbi-modal-head"><div><span>RASTREABILIDADE DO KPI</span><h3>'+esc(titles[key]||key)+'</h3></div><button class="fbi-modal-close">×</button></div>'+
+      (explanation?'<div class="fbi-note">'+esc(explanation)+'</div>':'')+
+      '<div class="fbi-modal-list">'+body+'</div></div>';
+    document.body.appendChild(modal);
+    modal.querySelector('.fbi-modal-close').onclick=()=>modal.remove();
+    modal.onclick=e=>{if(e.target===modal)modal.remove()};
+    modal.querySelectorAll('[data-kpi-order]').forEach(b=>b.onclick=()=>{const id=b.dataset.kpiOrder;if(!id)return;modal.remove();openOrder(id)});
+  }
+
   function bind(){
     $('#fbiApply').onclick=()=>render(readFilters());
     $('#fbiClear').onclick=()=>render({from:'',to:'',brand:'',client:'',sku:'',status:'',asOf:new Date().toISOString().slice(0,10)});
     $('#fbiGoLogistics').onclick=()=>{active=false;window.FocadoShell?.navigate?.('logistica')};
     if($('#fbiOpenGovernance'))$('#fbiOpenGovernance').onclick=()=>{active=false;window.FocadoShell?.navigate?.('bi-config')};
-    document.querySelectorAll('[data-scroll]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.scroll)?.scrollIntoView({behavior:'smooth',block:'start'}));
+    document.querySelectorAll('[data-scroll]').forEach(b=>b.onclick=e=>{
+      if(b.dataset.kpiDetail){showKpiDetail(b.dataset.kpiDetail);return}
+      document.getElementById(b.dataset.scroll)?.scrollIntoView({behavior:'smooth',block:'start'});
+    });
     document.querySelectorAll('[data-brand-filter]').forEach(b=>b.onclick=()=>render({...current,brand:b.dataset.brandFilter}));
     document.querySelectorAll('[data-open-order]').forEach(b=>b.onclick=()=>openOrder(b.dataset.openOrder));
     document.querySelectorAll('[data-sku-detail]').forEach(r=>r.onclick=()=>showSkuDetail(r.dataset.skuDetail));
