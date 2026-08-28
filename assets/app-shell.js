@@ -6,7 +6,7 @@
   shell.id='focadoShell'; shell.className='hidden';
 
   const navGroups=[
-    ['Principal',[['dashboard','⌂','Dashboard'],['cockpit','◉','Cockpit Operacional'],['kanban','▦','Kanban Operacional']]],
+    ['Principal',[['dashboard','⌂','Dashboard'],['cockpit','◉','Cockpit Executivo'],['kanban','▦','Kanban Operacional']]],
     ['Comercial',[['clientes','♙','Clientes'],['representantes','♣','Representantes'],['pedidos','▤','Pedidos Comerciais'],['simulador','∑','Simulador']]],
     ['Operações',[['pcp','⌘','PCP'],['production','⚙','Produção'],['inventory','▣','Estoque'],['inputs','◇','Insumos'],['purchases','↻','Compras'],['expedicao','⇱','Expedição']]],
     ['Logística',[['logistica','▰','Logística'],['entregas','✓','Entregas'],['transportadoras','⌁','Transportadoras']]],
@@ -136,7 +136,7 @@
     }
     try{
       if(id!=='dashboard'&&!window.FocadoModules?.ensure)throw new Error('MODULE_LOADER_UNAVAILABLE');
-      await window.FocadoModules?.ensure?.(id);
+      await window.FocadoModules?.ensure?.(id==='cockpit'?'indicadores':id);
     }catch(err){
       console.error('[FocadoModules]',err);
       alert('Esta área não foi carregada corretamente. Atualize a página e tente novamente. Se persistir, informe o Administrador.');
@@ -197,7 +197,7 @@
       return
     }
     if(id==='expedicao'){open(()=>window.FocadoExpedition?.render());return}
-    if(id==='cockpit'){open(()=>window.FocadoIntelligenceUI?.renderCockpit());return}
+    if(id==='cockpit'){open(()=>window.FocadoIndicators?.render());return}
     if(id==='corpo-auditor'){open(()=>window.FocadoIntelligenceUI?.renderAuditor());return}
     if(id==='system-health'){open(()=>window.FocadoSystemHealth?.render());return}
     if(id==='config'){open(()=>window.FocadoSettings?.render());return}
