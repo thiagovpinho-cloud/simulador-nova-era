@@ -35,6 +35,42 @@ function orderBoxes(order){
   return (order?.items||[]).reduce((sum,item)=>sum+num(item.qty),0);
 }
 
+function recognized(order,state){
+  const rule=String(state?.biPolicy?.revenueRecognition||'DELIVERED').toUpperCase();
+  if(rule==='DELIVERED')return String(order?.status||'').toUpperCase()==='ENTREGUE' || Boolean(order?.logistics?.deliveryConfirmed);
+  if(rule==='EXPEDITION_RELEASED')return Boolean(order?.expedition?.stockReleasedAt);
+  return true;
+}
+
+function financialFactFor(state,orderId){
+  return (Array.isArray(state?.financialFacts)?state.financialFacts:[]).find(x=>String(x.order_id)===String(orderId))||null;
+}
+
+function effectiveSkuCost(state,sku,date){
+  const rows=(Array.isArray(state?.skuCosts)?state.skuCosts:[])
+    .filter(x=>String(x.sku||'')===String(sku||'') && String(x.effective_from||'')<=String(date||'9999-12-31'))
+    .sort((x,y)=>String(y.effective_from||'').localeCompare(String(x.effective_from||'')));
+  return rows[0]||null;
+}
+
+function promisedDate(order,state){
+  const rule=String(state?.biPolicy?.promisedDateRule||'REQUESTED_THEN_LOGISTICS').toUpperCase();
+  if(rule==='REQUESTED_ONLY')return order?.requestedDeliveryDate||'';
+  return order?.requestedDeliveryDate||order?.logistics?.deliveryDate||'';
+}
+
+function confirmedRequestedQty(item){
+  return num(item?.originalRequestedQty!=null?item.originalRequestedQty:item?.qty);
+}
+
+function hasDispatchEvidence(order){
+  return (order?.items||[]).every(i=>i.dispatchedQty!=null || order?.expedition?.stockReleasedAt);
+}
+
+function dispatchedQty(item){
+  return item?.dispatchedQty!=null?num(item.dispatchedQty):num(item.qty);
+}
+
 function normalizeFilters(filters={}){
   return {
     from:text(filters.from),
@@ -212,6 +248,92 @@ export function delayedOrders(state,filters={}){
   return {id:'delayed_orders',value:rows.length,unit:'pedidos',rows};
 }
 
+
+export function grossRevenue(state,filters={}){
+  const {orders}=filteredOrders(state,filters);
+  const rows=orders.filter(o=>recognized(o,state)).map(order=>({...orderRef(order),revenue:orderValue(order)}));
+  return {id:'gross_revenue',value:rows.reduce((s,r)=>s+r.revenue,0),unit:'BRL',rows};
+}
+
+export function netRevenue(state,filters={}){
+  const {orders}=filteredOrders(state,filters);
+  const rows=orders.filter(o=>recognized(o,state)).map(order=>{
+    const gross=orderValue(order);
+    const f=financialFactFor(state,order.id)||{};
+    const deductions=['taxes','discounts','returns','bonuses'].reduce((s,k)=>s+num(f[k]),0);
+    return {...orderRef(order),gross,deductions,net:gross-deductions,financialFactFound:Boolean(financialFactFor(state,order.id))};
+  });
+  const complete=rows.every(r=>r.financialFactFound);
+  return {id:'net_revenue',value:rows.reduce((s,r)=>s+r.net,0),unit:'BRL',complete,rows};
+}
+
+export function contributionMargin(state,filters={}){
+  const {orders}=filteredOrders(state,filters);
+  const rows=[];
+  let complete=true;
+  for(const order of orders.filter(o=>recognized(o,state))){
+    const f=financialFactFor(state,order.id);
+    if(!f)complete=false;
+    const gross=orderValue(order);
+    const deductions=['taxes','discounts','returns','bonuses'].reduce((s,k)=>s+num(f?.[k]),0);
+    const net=gross-deductions;
+    let productCost=0;
+    const missingCosts=[];
+    for(const item of order.items||[]){
+      const sku=item.code||item.productId||item.name||'';
+      const c=effectiveSkuCost(state,sku,orderDate(order));
+      if(!c){complete=false;missingCosts.push(sku);continue}
+      productCost+=num(c.unit_variable_cost)*num(item.qty);
+    }
+    const variableCosts=productCost+num(f?.commission)+num(f?.freight_allocated);
+    const contribution=net-variableCosts;
+    rows.push({...orderRef(order),net,variableCosts,contribution,margin:net>0?contribution/net:null,financialFactFound:Boolean(f),missingCosts});
+  }
+  const netTotal=rows.reduce((s,r)=>s+r.net,0), contributionTotal=rows.reduce((s,r)=>s+r.contribution,0);
+  return {id:'contribution_margin',value:netTotal>0?contributionTotal/netTotal:null,complete,netRevenue:netTotal,contribution:contributionTotal,rows};
+}
+
+export function otif(state,filters={}){
+  const {orders}=filteredOrders(state,filters);
+  const delivered=orders.filter(o=>String(o.status||'').toUpperCase()==='ENTREGUE'||o.logistics?.deliveryConfirmed);
+  const rows=[]; let excluded=0;
+  for(const order of delivered){
+    const promised=promisedDate(order,state);
+    const actual=order.logistics?.actualDeliveryDate||'';
+    if(!promised||!actual||!hasDispatchEvidence(order)){excluded++;continue}
+    const onTime=actual<=promised;
+    const inFull=(order.items||[]).every(i=>dispatchedQty(i)>=confirmedRequestedQty(i));
+    rows.push({...orderRef(order),promisedDate:promised,actualDeliveryDate:actual,onTime,inFull,otif:onTime&&inFull});
+  }
+  const pass=rows.filter(r=>r.otif).length;
+  return {id:'otif',value:rows.length?pass/rows.length:null,evaluated:rows.length,passed:pass,excluded,complete:excluded===0,rows};
+}
+
+export function targetVsActual(state,filters={}){
+  const f=normalizeFilters(filters);
+  const targets=Array.isArray(state?.monthlyTargets)?state.monthlyTargets:[];
+  const gross=grossRevenue(state,filters);
+  const period=(f.from&&f.from.slice(0,7)===f.to?.slice(0,7))?f.from.slice(0,7):(f.from?f.from.slice(0,7):new Date().toISOString().slice(0,7));
+  const scopeType=f.brand?'BRAND':'COMPANY',scopeId=f.brand||'ALL';
+  const target=targets.find(t=>String(t.period)===period&&String(t.scope_type||'COMPANY').toUpperCase()===scopeType&&String(t.scope_id||'ALL')===scopeId)||
+    targets.find(t=>String(t.period)===period&&String(t.scope_type||'COMPANY').toUpperCase()==='COMPANY'&&String(t.scope_id||'ALL')==='ALL')||null;
+  const revenueTarget=num(target?.target_revenue);
+  return {id:'target_vs_actual',period,scopeType,scopeId,target:target||null,actualRevenue:gross.value,achievement:revenueTarget>0?gross.value/revenueTarget:null,complete:Boolean(target)};
+}
+
+export function inventoryRisk(state){
+  const inventory=state?.inventory||{};
+  const policies=state?.inventoryPolicy||{};
+  const rows=Object.entries(inventory).map(([key,inv])=>{
+    const sku=String(inv?.code||key);
+    const p=policies[sku]||policies[key]||null;
+    const available=Math.max(0,num(inv?.physical)-num(inv?.reserved)-num(inv?.blocked));
+    const threshold=p?Math.max(num(p.reorder_point),num(p.minimum_stock)):null;
+    return {key,sku,name:inv?.name||'',available,threshold,atRisk:threshold!=null?available<=threshold:null,policyFound:Boolean(p),policy:p};
+  });
+  return {id:'inventory_risk',value:rows.filter(r=>r.atRisk===true).length,complete:rows.every(r=>r.policyFound),rows};
+}
+
 export function buildBiAnalytics(state,filters={}){
   const f=normalizeFilters(filters);
   const sold=soldBoxes(state,f);
@@ -219,6 +341,12 @@ export function buildBiAnalytics(state,filters={}){
   const ranking=skuRanking(state,f);
   const lead=leadTime(state,f);
   const delayed=delayedOrders(state,f);
+  const gross=grossRevenue(state,f);
+  const net=netRevenue(state,f);
+  const margin=contributionMargin(state,f);
+  const otifKpi=otif(state,f);
+  const targets=targetVsActual(state,f);
+  const inventory=inventoryRisk(state);
   return {
     ok:true,
     version:BI_ANALYTICS_VERSION,
@@ -228,10 +356,21 @@ export function buildBiAnalytics(state,filters={}){
       soldBoxes:sold.value,
       delayedOrders:delayed.value,
       averageLeadTimeDays:lead.averagesDays.total,
-      grossRevenueForShare:share.totalRevenue
+      grossRevenueForShare:share.totalRevenue,
+      recognizedGrossRevenue:gross.value,
+      netRevenue:net.complete?net.value:null,
+      contributionMargin:margin.complete?margin.value:null,
+      otif:otifKpi.value,
+      targetAchievement:targets.achievement
     },
     kpis:{
       sold_boxes:sold,
+      gross_revenue:gross,
+      net_revenue:net,
+      contribution_margin:margin,
+      otif:otifKpi,
+      target_vs_actual:targets,
+      inventory_risk:inventory,
       brand_share:share,
       sku_ranking:ranking,
       lead_time:lead,
