@@ -524,11 +524,19 @@ function applyProductionRequest(state,body){
       });
     }
     for(const loss of Array.isArray(done.losses)?done.losses:[]){
+      const kind=String(loss.kind||'input').toLowerCase()==='finished'?'finished':'input';
       const key=String(loss.code||loss.name||''),qty=Math.max(0,Number(loss.qty||0)); if(!(qty>0))continue;
+      const collection=kind==='finished'?state.inventory:state.inputInventory;
+      const inv=collection[key]||Object.values(collection).find(x=>String(x?.code||'')===String(loss.code||''))||null;
+      if(!inv)throw Object.assign(new Error('PRODUCTION_LOSS_ITEM_NOT_FOUND'),{status:422,item:loss.code||loss.name});
+      const before=Number(inv.physical||0);
+      if(before<qty)throw Object.assign(new Error('PRODUCTION_LOSS_EXCEEDS_STOCK'),{status:422,item:loss.code||loss.name,available:before,loss:qty});
+      inv.physical=before-qty;
       state.stockMovements.unshift({
-        id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),at:Number(done.at||Date.now()),kind:String(loss.kind||'input'),
+        id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),at:Number(done.at||Date.now()),kind,
         key,code:loss.code||'',name:loss.name||'',unit:loss.unit||'',type:'PERDA_PRODUCAO',qty,lot:String(done.lot||''),
-        reason:String(loss.reason||('Perda na produção '+String(req.number||req.id))),user:String(done.user||'Produção')
+        reason:String(loss.reason||('Perda na produção '+String(req.number||req.id))),user:String(done.user||'Produção'),
+        before:{physical:before},after:{physical:Number(inv.physical||0)}
       });
     }
     req.execution={
