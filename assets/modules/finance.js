@@ -26,7 +26,7 @@
     const gross=invoiced.reduce((sum,o)=>sum+orderValue(o),0);
     const net=invoiced.reduce((sum,o)=>sum+netValue(o,facts.get(String(o.id))),0);
     root().innerHTML='<div class="ffin-page">'+
-      '<div class="ffin-head"><div><span>FINANCEIRO</span><h1>Faturamento e Margem</h1><p>Dados fiscais e financeiros vinculados ao pedido original.</p></div><button class="ffin-btn primary" id="ffinTarget">Metas mensais</button></div>'+
+      '<div class="ffin-head"><div><span>FINANCEIRO</span><h1>Faturamento e Margem</h1><p>Dados fiscais e financeiros vinculados ao pedido original.</p></div><div class="ffin-actions"><button class="ffin-btn" id="ffinCosts">Custos por SKU</button><button class="ffin-btn primary" id="ffinTarget">Metas mensais</button></div></div>'+
       '<div class="ffin-kpis">'+
         kpi('Pedidos faturados',invoiced.length,'com NF válida')+
         kpi('Faturamento bruto',money(gross),'somente NFs não canceladas')+
@@ -39,6 +39,7 @@
       '</tbody></table></div></div>';
     $('#ffinFilter').value=filter;$('#ffinFilter').onchange=e=>{filter=e.target.value;render()};
     $('#ffinTarget').onclick=renderTargets;
+    $('#ffinCosts').onclick=renderCosts;
     document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openOrder(b.dataset.edit));
   }
 
@@ -80,6 +81,30 @@
       const r=await window.FocadoDataStore?.saveDomain?.('FINANCEIRO',{financialFact:fact});
       if(!r?.ok){alert('Não foi possível salvar os dados financeiros.');return}
       await window.FocadoDataStore?.load?.();openOrder(o.id);
+    };
+  }
+
+  function renderCosts(){
+    const s=state(),costs=(s.skuCosts||[]).slice().sort((a,b)=>String(a.sku).localeCompare(String(b.sku))||String(b.effective_from).localeCompare(String(a.effective_from)));
+    const map=new Map();
+    (s.orders||[]).forEach(o=>(o.items||[]).forEach(i=>{const sku=String(i.code||i.productId||i.name||'').trim();if(sku&&!map.has(sku))map.set(sku,i.name||sku)}));
+    Object.entries(s.inventory||{}).forEach(([k,v])=>{const sku=String(v?.code||k);if(sku&&!map.has(sku))map.set(sku,v?.name||sku)});
+    root().innerHTML='<div class="ffin-page"><div class="ffin-head"><div><button class="ffin-btn" id="ffinBackCosts">← Financeiro</button><h1>Custos variáveis por SKU</h1><p>Histórico de custo com vigência. O BI usa o custo válido na data do pedido.</p></div></div>'+
+      '<section class="ffin-card"><div class="ffin-form three">'+
+        '<label class="ffin-field"><span>SKU</span><select id="fcSku"><option value="">Selecione</option>'+[...map.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([sku,name])=>'<option value="'+esc(sku)+'">'+esc(sku)+' · '+esc(name)+'</option>').join('')+'</select></label>'+
+        field('Vigência','fcDate',new Date().toISOString().slice(0,10),'date')+
+        numberField('Custo variável por caixa','fcCost','')+
+      '</div><div class="ffin-actions"><button class="ffin-btn primary" id="fcSave">Salvar custo</button></div></section>'+
+      '<div class="ffin-table-wrap"><table class="ffin-table"><thead><tr><th>SKU</th><th>Vigência</th><th>Custo variável/cx</th></tr></thead><tbody>'+
+      costs.map(c=>'<tr><td><b>'+esc(c.sku)+'</b></td><td>'+esc(c.effective_from)+'</td><td>'+money(c.unit_variable_cost)+'</td></tr>').join('')+
+      '</tbody></table></div></div>';
+    $('#ffinBackCosts').onclick=render;
+    $('#fcSave').onclick=async()=>{
+      const cost={sku:$('#fcSku').value,effective_from:$('#fcDate').value,unit_variable_cost:$('#fcCost').value};
+      if(!cost.sku||!cost.effective_from){alert('Selecione o SKU e informe a vigência.');return}
+      const r=await window.FocadoDataStore?.saveDomain?.('FINANCEIRO',{skuCost:cost});
+      if(!r?.ok){alert('Não foi possível salvar o custo.');return}
+      await window.FocadoDataStore?.load?.();renderCosts();
     };
   }
 
