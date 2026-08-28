@@ -100,7 +100,7 @@
       '<label><span>Grupo</span><select id="fsimNewGroup">'+[...groups,'Outros'].filter((x,i,a)=>a.indexOf(x)===i).map(g=>'<option>'+esc(g)+'</option>').join('')+'</select></label>'+
       '<label><span>Preço</span><div class="fsim-money-input"><span>R$</span><input id="fsimNewPrice" type="number" min="0" step="0.0001" value="0"></div></label>'+
       '</div><div class="fsim-modal-actions"><button class="secondary" id="fsimModalCancel">Cancelar</button><button class="primary" id="fsimModalSave">Cadastrar insumo</button></div></div>';
-    document.body.appendChild(modal);
+    (document.getElementById('focadoShell')||document.body).appendChild(modal);
     const close=()=>modal.remove();
     $('#fsimModalClose').onclick=close;$('#fsimModalCancel').onclick=close;
     modal.onclick=e=>{if(e.target===modal)close()};
