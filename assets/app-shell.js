@@ -11,6 +11,7 @@
     ['Operações',[['pcp','⌘','PCP'],['production','⚙','Produção'],['inventory','▣','Estoque'],['inputs','◇','Insumos'],['purchases','↻','Compras'],['expedicao','⇱','Expedição']]],
     ['Logística',[['logistica','▰','Logística'],['entregas','✓','Entregas'],['transportadoras','⌁','Transportadoras']]],
     ['Cadastros',[['produtos','◫','Produtos'],['fichas','▧','Fichas Técnicas'],['bases','▦','Bases Produtivas']]],
+    ['Financeiro',[['financeiro','₿','Faturamento e Margem']]],
     ['Relatórios',[['relatorios','▥','Relatórios','soon'],['indicadores','◉','Indicadores'],['bi-config','⚙','Parâmetros BI']]],
     ['Configurações',[['corpo-auditor','◇','Corpo Auditor'],['system-health','◎','Saúde & Auditoria'],['config','⚙','Configurações'],['usuarios','♚','Usuários e Perfis']]]
   ];
@@ -184,6 +185,7 @@
     if(id==='usuarios'){open(()=>window.FocadoUsers?.render());return}
     if(id==='indicadores'){open(()=>window.FocadoIndicators?.render());return}
     if(id==='bi-config'){open(()=>window.FocadoBIConfig?.render());return}
+    if(id==='financeiro'){open(()=>window.FocadoFinance?.render());return}
     if(id==='logistica'){open(()=>window.FocadoLogistics?.render({q:'',status:'TODOS'}));return}
     if(id==='entregas'){open(()=>window.FocadoLogistics?.renderDeliveries());return}
     if(id==='transportadoras'){open(()=>window.FocadoLogistics?.renderCarriers());return}
