@@ -12,7 +12,7 @@ export const DOMAIN_PERMISSION=Object.freeze({
   TRANSPORTADORAS:'logistics.write',
   CLIENTES:'commercial.write',
   EXPEDICAO:'inventory.write',
-  BASES:'production.write'
+  BASES:'workspace.write'
 });
 
 export const FLOW=Object.freeze({
