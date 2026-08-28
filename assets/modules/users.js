@@ -34,9 +34,9 @@
   function errorMessage(code){
     return ({
       USER_EXISTS:'Já existe um usuário com este e-mail.',
-      INVALID_USER:'Revise nome, e-mail, perfil e senha. A senha deve ter pelo menos 10 caracteres.',
+      INVALID_USER:'Revise nome, e-mail, perfil e senha. A senha deve ter pelo menos 12 caracteres, com maiúscula, minúscula e número.',
       INVALID_ROLE:'Perfil inválido.',
-      INVALID_PASSWORD:'A nova senha deve ter pelo menos 10 caracteres.',
+      INVALID_PASSWORD:'A nova senha deve ter pelo menos 12 caracteres, com maiúscula, minúscula e número.',
       CANNOT_DISABLE_SELF:'Você não pode desativar o próprio usuário.',
       LAST_ADMIN:'É necessário manter ao menos um Administrador ativo.',
       USER_NOT_FOUND:'Usuário não encontrado.'
@@ -64,7 +64,7 @@
             '<label>Nome completo<input id="fuName" required maxlength="120" autocomplete="name" placeholder="Ex.: Maria Silva"></label>'+
             '<label>E-mail<input id="fuEmail" type="email" required maxlength="160" autocomplete="email" placeholder="nome@empresa.com.br"></label>'+
             '<label>Perfil<select id="fuRole" required>'+roleOptions('COMERCIAL')+'</select></label>'+
-            '<div class="fu-two"><label>Senha inicial<input id="fuPassword" type="password" required minlength="10" autocomplete="new-password" placeholder="Mínimo 10 caracteres"></label><label>Confirmar senha<input id="fuPassword2" type="password" required minlength="10" autocomplete="new-password"></label></div>'+
+            '<div class="fu-two"><label>Senha inicial<input id="fuPassword" type="password" required minlength="12" autocomplete="new-password" placeholder="12+ caracteres, maiúscula, minúscula e número"></label><label>Confirmar senha<input id="fuPassword2" type="password" required minlength="12" autocomplete="new-password"></label></div>'+
             '<div id="fuFormMsg" class="fu-form-msg"></div>'+
             '<button class="fu-primary" type="submit">Criar usuário</button>'+
           '</form>'+
@@ -82,7 +82,7 @@
       const password=$('#fuPassword').value,password2=$('#fuPassword2').value,msg=$('#fuFormMsg');
       msg.className='fu-form-msg';msg.textContent='';
       if(password!==password2){msg.classList.add('error');msg.textContent='As senhas não coincidem.';return}
-      if(password.length<10){msg.classList.add('error');msg.textContent='A senha deve ter pelo menos 10 caracteres.';return}
+      if(password.length<10){msg.classList.add('error');msg.textContent='A senha deve ter pelo menos 12 caracteres, com maiúscula, minúscula e número.';return}
       const btn=form.querySelector('button[type="submit"]');btn.disabled=true;btn.textContent='Criando...';
       try{
         await request('POST',{name,email,role,password});
@@ -137,8 +137,8 @@
         catch(err){toast(errorMessage(err.code),true);btn.disabled=false}
       };
       card.querySelector('[data-password]').onclick=async()=>{
-        const p=prompt('Digite a nova senha (mínimo 10 caracteres):');if(p===null)return;
-        if(p.length<10){toast('A senha deve ter pelo menos 10 caracteres.',true);return}
+        const p=prompt('Digite a nova senha (mínimo 12 caracteres, com maiúscula, minúscula e número):');if(p===null)return;
+        if(p.length<10){toast('A senha deve ter pelo menos 12 caracteres, com maiúscula, minúscula e número.',true);return}
         try{await request('PATCH',{id,password:p});toast('Senha redefinida com sucesso.')}
         catch(err){toast(errorMessage(err.code),true)}
       };
