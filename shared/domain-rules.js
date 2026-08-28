@@ -206,22 +206,20 @@ function applyInventory(state,body){
   state.stockMovements=Array.isArray(state.stockMovements)?state.stockMovements:[];
   state.inventoryCounts=Array.isArray(state.inventoryCounts)?state.inventoryCounts:[];
 
-  if(c.movement&&typeof c.movement==='object'){
-    const m=structuredClone(c.movement);
+  const applyMovement=m0=>{
+    const m=structuredClone(m0||{});
     const kind=String(m.kind||'finished').toLowerCase()==='input'?'input':'finished';
     const collection=kind==='input'?state.inputInventory:state.inventory;
     const key=String(m.key||m.code||'').trim();
     if(!key)throw Object.assign(new Error('INVENTORY_ITEM_REQUIRED'),{status:422});
-    const inv=collection[key]||Object.values(collection).find(x=>String(x?.code||'')===String(m.code||''))||null;
-    const target=inv||{code:String(m.code||key),name:String(m.name||m.code||key),unit:String(m.unit||''),physical:0,reserved:0,blocked:0};
-    if(!inv)collection[key]=target;
+    let target=collection[key]||Object.values(collection).find(x=>String(x?.code||'')===String(m.code||''))||null;
+    if(!target){
+      target={code:String(m.code||key),name:String(m.name||m.code||key),unit:String(m.unit||''),physical:0,reserved:0,blocked:0};
+      collection[key]=target;
+    }
     const before={physical:Number(target.physical||0),reserved:Number(target.reserved||0),blocked:Number(target.blocked||0)};
     const deltaPhysical=Number(m.deltaPhysical||0),deltaReserved=Number(m.deltaReserved||0),deltaBlocked=Number(m.deltaBlocked||0);
-    const after={
-      physical:before.physical+deltaPhysical,
-      reserved:before.reserved+deltaReserved,
-      blocked:before.blocked+deltaBlocked
-    };
+    const after={physical:before.physical+deltaPhysical,reserved:before.reserved+deltaReserved,blocked:before.blocked+deltaBlocked};
     if(after.physical<0||after.reserved<0||after.blocked<0)throw Object.assign(new Error('INVENTORY_NEGATIVE_BALANCE'),{status:422,before,after});
     if(after.reserved+after.blocked>after.physical)throw Object.assign(new Error('INVENTORY_COMMITMENT_EXCEEDS_PHYSICAL'),{status:422,before,after});
     target.physical=after.physical;target.reserved=after.reserved;target.blocked=after.blocked;
@@ -231,18 +229,21 @@ function applyInventory(state,body){
       target.bases=target.bases||{};
       target.bases[String(m.base)]=Math.max(0,Number(target.bases[String(m.base)]||0)+deltaPhysical);
     }
-    const movement={
+    state.stockMovements.unshift({
       id:String(m.id||('mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7))),
-      at:Number(m.at||Date.now()),kind,key,code:String(m.code||target.code||''),name:String(m.name||target.name||''),
-      brand:String(m.brand||target.brand||''),unit:String(m.unit||target.unit||''),type:String(m.type||'AJUSTE'),
-      qty:Math.abs(deltaPhysical||deltaReserved||deltaBlocked),base:String(m.base||''),lot:String(m.lot||''),
+      batchId:String(m.batchId||''),at:Number(m.at||Date.now()),kind,key,
+      code:String(m.code||target.code||''),name:String(m.name||target.name||''),brand:String(m.brand||target.brand||''),
+      unit:String(m.unit||target.unit||''),type:String(m.type||'AJUSTE'),qty:Math.abs(Number(m.qty??(deltaPhysical||deltaReserved||deltaBlocked))),
+      base:String(m.base||''),warehouse:String(m.warehouse||m.base||''),lot:String(m.lot||''),condition:String(m.condition||''),
+      palletized:Boolean(m.palletized),boxesPerPallet:Number(m.boxesPerPallet||0),pallets:Number(m.pallets||0),chapatex:Boolean(m.chapatex),
       reason:String(m.reason||''),note:String(m.note||''),user:String(m.user||'Sistema'),before,after
-    };
-    state.stockMovements.unshift(movement);
-    return;
-  }
+    });
+  };
 
-  // Compatibilidade temporária para fluxos legados; novos lançamentos devem usar movement.
+  const movements=Array.isArray(c.movements)?c.movements:(c.movement?[c.movement]:[]);
+  for(const m of movements)applyMovement(m);
+
+  // Compatibilidade temporária para fluxos legados; novos lançamentos devem usar movement/movements.
   if(c.inventory&&typeof c.inventory==='object')state.inventory=c.inventory;
   if(c.inputInventory&&typeof c.inputInventory==='object')state.inputInventory=c.inputInventory;
   if(Array.isArray(c.stockMovements))state.stockMovements=c.stockMovements;
