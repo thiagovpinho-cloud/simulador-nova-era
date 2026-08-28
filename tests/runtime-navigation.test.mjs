@@ -20,6 +20,7 @@ const activeRoutes=[
   ['clientes',"window.FocadoCustomers?.render"],
   ['representantes',"window.FocadoRepresentatives?.render"],
   ['pedidos',"window.FocadoOrders?.render"],
+  ['simulador',"window.FocadoSimulator?.render"],
   ['fichas',"window.FocadoTechnicalSheets?.render"],
   ['produtos',"window.FocadoProducts?.render"],
   ['pcp',"window.FocadoPCP?.render"],
@@ -95,3 +96,7 @@ assert.ok(loader.includes("if(existing&&existing()){\n        if(def.css)await c
 
 assert.ok(index.includes('assets/modules/indicators.css?v='),'Indicadores executivos devem ser pré-carregados com CSS');
 assert.ok(index.includes('assets/modules/indicators.js?v='),'Indicadores executivos devem ser pré-carregados com JavaScript');
+
+assert.ok(loader.includes("simulador:{css:'simulator.css',js:'simulator.js'}"),'Simulador deve estar registrado no loader');
+assert.ok(loader.includes("simulador:()=>typeof window.FocadoSimulator?.render==='function'"),'Simulador moderno deve ter contrato');
+assert.ok(shell.includes("['simulador','∑','Simulador']"),'Simulador deve aparecer na barra lateral');
