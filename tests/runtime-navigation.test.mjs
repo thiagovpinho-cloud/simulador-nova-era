@@ -102,8 +102,8 @@ assert.ok(loader.includes("simulador:{css:'simulator.css',js:'simulator.js'}"),'
 assert.ok(loader.includes("simulador:()=>typeof window.FocadoSimulator?.render==='function'"),'Simulador moderno deve ter contrato');
 assert.ok(shell.includes("['simulador','∑','Simulador']"),'Simulador deve aparecer na barra lateral');
 
-assert.ok(index.includes('assets/modules/simulator.css?v=20260828-simulator-v4'),'Simulador deve ser pré-carregado com CSS');
-assert.ok(index.includes('assets/modules/simulator.js?v=20260828-simulator-v5'),'Simulador deve ser pré-carregado com JavaScript');
+assert.ok(/assets\/modules\/simulator\.css\?v=20260828-(?:simulator-v\d+|input-edit-save-v\d+)/.test(index),'Simulador deve ser pré-carregado com CSS');
+assert.ok(/assets\/modules\/simulator\.js\?v=20260828-(?:simulator-v\d+|input-edit-save-v\d+)/.test(index),'Simulador deve ser pré-carregado com JavaScript');
 const publishedHead=index.split('</head>',1)[0];
 assert.ok(!publishedHead.includes('\\n'),'Head não pode conter \\n literal visível no primeiro paint');
 
