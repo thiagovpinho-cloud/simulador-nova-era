@@ -1,5 +1,6 @@
 import pg from "pg";
 import { DOMAIN_PERMISSION, FLOW, RULES_VERSION, applyDomain, applyTransitionSideEffects, getOrder, validateTransition } from "../../shared/domain-rules.js";
+import { buildBiAnalytics } from "../../shared/bi-analytics.js";
 import { ensurePlatformV2, syncPlatformV2, appendChange, loginThrottle, auditSnapshot, readDomainV2, consistencyV2, passwordPolicy, resetOperationalData20260828, operationalResetStatus } from "./platform-v2.js";
 const { Client } = pg;
 
@@ -354,6 +355,21 @@ async function route(request,env){
       return json({ok:true,activeSessions:Number(active),temporarilyBlockedAccounts:Number(blocked),auditEvents:Number(audit),passwordPolicy:{minLength:12,uppercase:true,lowercase:true,number:true},checkedBy:String(s.userId)});
     }
 
+    if(path==="/bi-analytics"&&request.method==="GET"){
+      await requireSession(request,db,"workspace.read");
+      const row=await readWorkspace(db,false);
+      const filters={
+        from:url.searchParams.get("from")||"",
+        to:url.searchParams.get("to")||"",
+        brand:url.searchParams.get("brand")||"",
+        client:url.searchParams.get("client")||"",
+        sku:url.searchParams.get("sku")||"",
+        status:url.searchParams.get("status")||"",
+        asOf:url.searchParams.get("asOf")||""
+      };
+      const analytics=buildBiAnalytics(row?.payload||{},filters);
+      return json({...analytics,workspaceKey:WORKSPACE,revision:row?.revision||0});
+    }
     if(path==="/state"&&request.method==="GET"){
       await requireSession(request,db,"workspace.read");
       const row=await readWorkspace(db,false);
