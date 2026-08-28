@@ -376,6 +376,19 @@ function applyFinance(state,body){
     };
   }
 
+  if(c.marginRules&&typeof c.marginRules==='object'){
+    const keys=['product_cost','icms','pis','cofins','ipi','st','freight','commission','contract'];
+    const previous=state.marginRules||{};
+    const next={};
+    for(const key of keys){
+      const value=String(c.marginRules[key]??previous[key]??'CUSTO').toUpperCase();
+      if(!['CUSTO','MARGEM'].includes(value))throw Object.assign(new Error('INVALID_MARGIN_RULE'),{status:422,key});
+      next[key]=value;
+    }
+    next.updatedAt=Date.now();
+    state.marginRules=next;
+  }
+
   if(c.monthlyTarget&&typeof c.monthlyTarget==='object'){
     const t=structuredClone(c.monthlyTarget);
     if(!/^\d{4}-\d{2}$/.test(String(t.period||'')))throw Object.assign(new Error('INVALID_TARGET_PERIOD'),{status:422});
@@ -392,7 +405,7 @@ function applyFinance(state,body){
     const f=structuredClone(c.financialFact);
     if(!f.order_id)throw Object.assign(new Error('FINANCIAL_FACT_ORDER_REQUIRED'),{status:422});
     if(!getOrder(state,f.order_id))throw Object.assign(new Error('ORDER_NOT_FOUND'),{status:404});
-    for(const k of ['taxes','discounts','returns','bonuses','commission','freight_allocated'])f[k]=Math.max(0,Number(f[k]||0));
+    for(const k of ['taxes','discounts','returns','bonuses','commission','freight_allocated','icms','pis','cofins','ipi','st','contract'])f[k]=Math.max(0,Number(f[k]||0));
     f.invoice_number=String(f.invoice_number||'').trim();
     f.invoice_date=String(f.invoice_date||'').slice(0,10);
     f.invoice_status=String(f.invoice_status||'').trim().toUpperCase();
