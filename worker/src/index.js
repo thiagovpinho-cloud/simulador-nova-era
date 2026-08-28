@@ -5,6 +5,8 @@ const { Client } = pg;
 
 const WORKSPACE = "default";
 const ROLES = new Set(["ADMIN","COMERCIAL","PCP","PRODUCAO","ESTOQUE","LOGISTICA","COMPRAS","FINANCEIRO"]);
+const ADMIN_RESET_TOKEN_HASH = "080227d3e4f54694a2fe7f1d4344edfcd815f0b144c013c5f6f13ba942489515";
+const ADMIN_RESET_KEY = "ADMIN_PASSWORD_RESET_080227D3";
 
 function json(data,status=200,extra={}){
   return new Response(JSON.stringify(data),{
@@ -193,6 +195,40 @@ async function route(request,env){
     }
     if(path==="/auth/bootstrap"){
       return json({error:"BOOTSTRAP_DISABLED",message:"Use /setup para a criação inicial do administrador."},410);
+    }
+
+    if(path==="/auth/reset-password"&&request.method==="POST"){
+      const body=await request.json();
+      const email=String(body.email||"").trim().toLowerCase();
+      const token=String(body.token||"");
+      const password=String(body.password||"");
+      if(!email||!token)return json({error:"INVALID_RESET_LINK"},400);
+      const suppliedHash=await sha256Text(token);
+      if(!constEq(suppliedHash,ADMIN_RESET_TOKEN_HASH))return json({error:"INVALID_RESET_LINK"},400);
+      const policy=passwordPolicy(password);
+      if(!policy.ok)return json({error:"INVALID_PASSWORD",passwordProblems:policy.problems},400);
+
+      const used=await db.query("select 1 from public.focado_system_migrations where key=$1 limit 1",[ADMIN_RESET_KEY]);
+      if(used.rowCount)return json({error:"RESET_LINK_USED"},410);
+
+      const u=await db.query("select id,email,name,role,active from public.focado_users where lower(email)=lower($1) and role='ADMIN' and active=true limit 1",[email]);
+      const user=u.rows[0];
+      if(!user)return json({error:"ADMIN_NOT_FOUND"},404);
+
+      await db.query("begin");
+      try{
+        const p=await passwordHash(password);
+        await db.query("update public.focado_users set password_salt=$1,password_hash=$2 where id=$3",[p.salt,`pbkdf2${p.iterations}${p.hash}`,user.id]);
+        await db.query("update public.focado_sessions set revoked_at=now() where user_id=$1 and revoked_at is null",[user.id]);
+        await db.query("delete from public.focado_login_attempts where email=$1",[email]);
+        await db.query("insert into public.focado_system_migrations(key,applied_at) values($1,now())",[ADMIN_RESET_KEY]);
+        await db.query("insert into public.focado_audit_events(user_id,action,entity_type,entity_id,metadata) values($1,'PASSWORD_RESET','user',$2,$3::jsonb)",[user.id,String(user.id),JSON.stringify({method:"one_time_admin_link"})]);
+        await db.query("commit");
+        return json({ok:true,message:"PASSWORD_UPDATED"});
+      }catch(err){
+        try{await db.query("rollback")}catch(_){}
+        throw err;
+      }
     }
 
     if(path==="/auth/login"&&request.method==="POST"){
