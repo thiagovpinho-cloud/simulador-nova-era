@@ -134,3 +134,11 @@ assert.ok(indicatorsCharts.includes('brandDonut'),'BI deve possuir gráfico visu
 assert.ok(indicatorsCharts.includes('skuBarChart'),'BI deve possuir gráfico visual de ranking de SKUs');
 assert.ok(indicatorsCharts.includes('progressChart'),'BI deve possuir gráficos de progresso para OTIF/meta');
 assert.ok(indicatorsChartsCss.includes('.fbi-donut-wrap'),'CSS dos gráficos executivos deve estar publicado');
+
+const simulatorModule=read('assets/modules/simulator.js');
+assert.ok(indexPerf.includes('window.FocadoLegacySimulator'),'Motor do simulador deve continuar centralizado no adaptador legado durante a migração');
+assert.ok(simulatorModule.includes('window.FocadoLegacySimulator'),'Módulo moderno deve consumir o motor original, não duplicar fórmulas');
+assert.ok(!simulatorModule.includes('function computeCore'),'Módulo moderno não pode duplicar o cálculo tributário');
+assert.ok(simulatorModule.includes('Base de Insumos'),'Simulador moderno deve expor Base de Insumos');
+assert.ok(simulatorModule.includes('Composição de Custo'),'Simulador moderno deve expor composição de custo');
+assert.ok(simulatorModule.includes('Preço base/CX'),'Simulador deve separar preço base de impostos');
