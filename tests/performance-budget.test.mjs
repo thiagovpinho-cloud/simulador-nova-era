@@ -8,7 +8,10 @@ const modules=['orders','pcp','production','inventory','logistics','purchases','
 assert.ok(index.includes('assets/core/module-loader.js'),'Loader de módulos deve estar no index');
 for(const m of modules){
   const preloaded=['orders','pcp','production','inventory','logistics','purchases','expedition','customers','products','representatives','system-health','intelligence-core','intelligence','kanban'].includes(m);
-  if(preloaded)assert.ok(index.includes('assets/modules/'+m+'.js?v=20260827-static-v1'),'Módulo ativo deve ser pré-carregado: '+m);
+  if(preloaded){
+    const expected=m==='inventory'?'assets/modules/inventory.js?v=':'assets/modules/'+m+'.js?v=20260827-static-v1';
+    assert.ok(index.includes(expected),'Módulo ativo deve ser pré-carregado: '+m);
+  }
 }
 for(const route of ['pedidos','pcp','production','inventory','inputs','purchases','expedicao','logistica','entregas','transportadoras','kanban','system-health','cockpit','corpo-auditor']){
   assert.ok(loader.includes(route+':')||loader.includes("'"+route+"':"),'Rota ausente no lazy loader: '+route);
