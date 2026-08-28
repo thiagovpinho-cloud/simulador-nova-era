@@ -124,3 +124,13 @@ assert.ok(indexPerf.includes("nova-era-modern-shell"),'Login deve marcar entrada
 assert.ok(!indexPerf.includes("hideLogin();\n    showHub();\n    return;"),'Login não pode exibir o hub legado antes do novo layout');
 assert.ok(shellPerf.includes("focado:auth-changed"),'Novo shell deve reagir diretamente ao login');
 assert.ok(shellPerf.includes("showShell(true)"),'Novo shell deve abrir dashboard diretamente após autenticação');
+
+const indicatorsCharts=read('assets/modules/indicators.js');
+const indicatorsChartsCss=read('assets/modules/indicators.css');
+assert.ok(indexPerf.includes("document.documentElement.classList.add('focado-modern-session')"),'Login deve ativar blindagem visual do shell moderno');
+assert.ok(indexPerf.includes("html.focado-modern-session body > :not(#focadoShell):not(script)"),'Sessão moderna deve ocultar legado antes do primeiro paint');
+assert.ok(indexPerf.includes("document.documentElement.classList.remove('focado-modern-session')"),'Logout/login devem poder restaurar a tela de autenticação');
+assert.ok(indicatorsCharts.includes('brandDonut'),'BI deve possuir gráfico visual de share por marca');
+assert.ok(indicatorsCharts.includes('skuBarChart'),'BI deve possuir gráfico visual de ranking de SKUs');
+assert.ok(indicatorsCharts.includes('progressChart'),'BI deve possuir gráficos de progresso para OTIF/meta');
+assert.ok(indicatorsChartsCss.includes('.fbi-donut-wrap'),'CSS dos gráficos executivos deve estar publicado');
