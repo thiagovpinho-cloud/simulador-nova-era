@@ -22,11 +22,18 @@
         ops.productionBases[n].active=document.querySelector('[data-base-active="'+n+'"]').checked;
         ops.productionBases[n].updatedAt=Date.now();
       }
-      window.FocadoDataStore?.writeLocal?.(ops);
-      const res=await window.FocadoDataStore?.save?.(ops);
-      if(res?.ok===false){alert('Não foi possível salvar as bases produtivas.');return}
-      alert('Bases produtivas salvas com sucesso.');
-      render();
+      try{
+        for(const n of names){
+          const base=ops.productionBases[n];
+          const res=await window.FocadoDataStore?.saveDomain?.('BASES',{base:{name:n,capacityPerDay:base.capacityPerDay,active:base.active,effectiveDate:new Date().toISOString().slice(0,10)}});
+          if(res?.ok===false)throw new Error(res.error||'SAVE_FAILED');
+        }
+        alert('Bases produtivas salvas com histórico de capacidade.');
+        render();
+      }catch(err){
+        console.error('[FocadoBases]',err);
+        alert('Não foi possível salvar as bases produtivas.');
+      }
     };
   }
   window.FocadoBases={render};
