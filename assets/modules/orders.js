@@ -405,18 +405,28 @@
     const b=await r.json();
     return {cnpj:b.cnpj,razaoSocial:b.razao_social,nomeFantasia:b.nome_fantasia,cep:b.cep,logradouro:b.logradouro,numero:b.numero,complemento:b.complemento,bairro:b.bairro,municipio:b.municipio,uf:b.uf,dddTelefone1:b.ddd_telefone_1,email:b.email};
   }
-  function customerByCnpj(cnpj,ops){
+  function customersByCnpj(cnpj,ops){
     const key=normalizeCnpj(cnpj);
-    return (ops.customers||[]).find(x=>normalizeCnpj(x.cnpj)===key)||null;
+    return (ops.customers||[])
+      .filter(x=>normalizeCnpj(x.cnpj)===key)
+      .sort((a,b)=>(Number(b.updatedAt||b.createdAt||0)-Number(a.updatedAt||a.createdAt||0)));
+  }
+  function customerByCnpj(cnpj,ops){
+    return customersByCnpj(cnpj,ops)[0]||null;
+  }
+  function currentCustomerForOrder(order,ops){
+    if(!order)return null;
+    const byCnpj=customersByCnpj(order.cnpj,ops);
+    if(byCnpj.length)return byCnpj[0];
+    return (ops.customers||[]).find(x=>String(x.id||'')===String(order.customerId||''))||null;
   }
   function syncPaymentTermsFromCustomer(order,ops){
     if(!order)return order;
-    const customer=(ops.customers||[]).find(x=>String(x.id||'')===String(order.customerId||''))||customerByCnpj(order.cnpj,ops);
+    const customer=currentCustomerForOrder(order,ops);
     if(!customer)return order;
+    order.customerId=customer.id||order.customerId||'';
     const next=String(customer.paymentTerms||'').trim();
-    if(next&&String(order.paymentTerms||'').trim()!==next){
-      order.paymentTerms=next;
-    }
+    if(String(order.paymentTerms||'').trim()!==next)order.paymentTerms=next;
     return order;
   }
   function bindCustomerSelection(ops,o){
