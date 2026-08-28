@@ -10,3 +10,10 @@
 @media(max-width:700px){.fr-doc-field{grid-column:auto}}
 
 .fr-table td small{display:block;margin-top:2px;color:var(--fx-muted);font-size:8px}
+
+/* ações visuais de representantes */
+.fr-table th:last-child,.fr-table td:last-child{width:160px;text-align:right}
+.fr-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:nowrap}
+.fr-row-actions button{border:1px solid var(--fx-green);background:var(--fx-green);color:#fff;border-radius:9px;min-width:70px;height:34px;padding:0 12px;font-size:8.5px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:1}
+.fr-row-actions button[data-toggle]{background:#fff;color:#08785b}
+.fr-row-actions button:hover{filter:brightness(.97)}
