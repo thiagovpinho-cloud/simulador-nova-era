@@ -378,20 +378,89 @@
     };
   }
   async function persist(finalize,silentNavigate=false){
-    const ops=load();ensureCatalog(ops);ops.orders=ops.orders||[];const data=collect();let o=editingId?ops.orders.find(x=>x.id===editingId):null;
-    const isCorrection=Boolean(o&&correctionMode&&o.status!=='COMERCIAL');
-    if(!o){o=createBlank(ops);o.id='op_'+Date.now();o.createdAt=Date.now();ops.orders.unshift(o);editingId=o.id;addEvent(o,'Pedido criado pelo Comercial')}
-    const previousItems=o.items||[];Object.assign(o,data);
-    o.items=normalizeItems(data.items).map((i,idx)=>Object.assign({},previousItems[idx]||{},i,{source:(previousItems[idx]||{}).source||'',reservedQty:Number((previousItems[idx]||{}).reservedQty)||0,productionConsumed:Boolean((previousItems[idx]||{}).productionConsumed)}));
-    o.status=o.status||'COMERCIAL';o.commercial=o.commercial||{completedAt:null,completedBy:null};o.pcp=o.pcp||{deliveryBase:'',productionDate:'',availableDate:'',separated:false,scheduledQty:0,autoScheduled:false};o.logistics=o.logistics||{freightValue:'',pickupDate:'',deliveryDate:'',carrier:''};
-    if(finalize){const errors=validateCommercial(o);if(errors.length){alert('Antes de finalizar o Comercial, preencha:\n\n• '+errors.join('\n• '));return}o.status='PCP';o.commercial.completedAt=Date.now();o.commercial.completedBy=window.FocadoAuth?.getUser?.()?.name||'Comercial';addEvent(o,'Comercial finalizado · pedido enviado ao PCP')}
-    else if(isCorrection){o.lastCorrection={at:Date.now(),by:window.FocadoAuth?.getUser?.()?.name||window.FocadoAuth?.roleLabel?.()||'Usuário',status:o.status};addEvent(o,'Pedido corrigido após envio · etapa mantida em '+stage(o.status)[0])}
-    else addEvent(o,'Rascunho comercial salvo');
-    const result=await save(ops);window.dispatchEvent(new CustomEvent('focado:ops-updated',{detail:{key:KEY}}));
-    if(result?.mode==='conflict'){alert('O pedido foi alterado em outro acesso. Atualize a tela antes de tentar novamente.');return false}
-    if(!silentNavigate){if(finalize)render({q:'',stage:'PCP'});else{if(isCorrection)correctionMode=false;renderForm(o,ops)}}
+    const ops=load();ensureCatalog(ops);ops.orders=ops.orders||[];
+    const data=collect();
+    const existing=editingId?ops.orders.find(x=>x.id===editingId):null;
+    const isNew=!existing;
+    const isCorrection=Boolean(existing&&correctionMode&&existing.status!=='COMERCIAL');
+    const o=existing?structuredClone(existing):createBlank(ops);
+
+    if(isNew){
+      o.id='op_'+Date.now();o.createdAt=Date.now();
+      editingId=o.id;
+    }
+
+    const previousItems=o.items||[];
+    Object.assign(o,data);
+    o.items=normalizeItems(data.items).map((i,idx)=>Object.assign({},previousItems[idx]||{},i,{
+      id:(previousItems[idx]||{}).id||i.id||i.code||i.productId||('item_'+(idx+1)),
+      source:(previousItems[idx]||{}).source||'',
+      reservedQty:Number((previousItems[idx]||{}).reservedQty)||0,
+      productionConsumed:Boolean((previousItems[idx]||{}).productionConsumed),
+      productionCompleted:Boolean((previousItems[idx]||{}).productionCompleted)
+    }));
+    o.status=existing?.status||'COMERCIAL';
+    o.commercial=o.commercial||{completedAt:null,completedBy:null};
+    o.pcp=o.pcp||{deliveryBase:'',productionDate:'',availableDate:'',separated:false,scheduledQty:0,autoScheduled:false};
+    o.logistics=o.logistics||{freightValue:'',pickupDate:'',deliveryDate:'',carrier:''};
+
+    if(finalize){
+      const errors=validateCommercial(o);
+      if(errors.length){alert('Antes de finalizar o Comercial, preencha:\n\n• '+errors.join('\n• '));return false}
+      o.commercial.completedAt=Date.now();
+      o.commercial.completedBy=window.FocadoAuth?.getUser?.()?.name||'Comercial';
+    }else if(isCorrection){
+      o.lastCorrection={at:Date.now(),by:window.FocadoAuth?.getUser?.()?.name||window.FocadoAuth?.roleLabel?.()||'Usuário',status:o.status};
+    }
+
+    const event={
+      at:Date.now(),
+      text:isNew?'Pedido criado pelo Comercial':finalize?'Comercial finalizado · pedido enviado ao PCP':isCorrection?'Pedido corrigido após envio · etapa mantida em '+stage(o.status)[0]:'Rascunho comercial salvo',
+      user:window.FocadoAuth?.getUser?.()?.name||sessionStorage.getItem('nova-era-role-label')||'Usuário'
+    };
+
+    let result;
+    if(window.FocadoDataStore?.isRemoteReady?.()){
+      if(isNew){
+        o.events=[event,...(o.events||[])];
+        result=await window.FocadoDataStore.saveDomain('COMERCIAL',{createOrder:o},o.id);
+      }else{
+        result=await window.FocadoDataStore.saveDomain('COMERCIAL',{
+          ...data,
+          items:o.items,
+          commercial:o.commercial,
+          ...(isCorrection?{lastCorrection:o.lastCorrection}:{}),
+          event
+        },o.id);
+      }
+    }else{
+      alert('Não foi possível salvar: o Focado precisa estar conectado ao servidor para registrar pedidos.');
+      return false;
+    }
+
+    if(!result?.ok){
+      if(result?.mode==='conflict')alert('O pedido mudou em outro acesso. Os dados foram protegidos; atualize a tela e tente novamente.');
+      else alert('Não foi possível confirmar a gravação no servidor. Nenhuma alteração foi considerada concluída.');
+      return false;
+    }
+    if(result?.payload)window.FocadoDataStore?.writeLocal?.(result.payload);
+
+    if(finalize){
+      const tr=await window.FocadoDataStore.transitionOrder(o.id);
+      if(!tr?.ok){
+        alert(tr?.code==='TRANSITION_BLOCKED'?('Pedido salvo, mas o envio ao PCP foi bloqueado: '+tr.error):'Pedido salvo, mas não foi possível enviá-lo ao PCP. Atualize e tente novamente.');
+        return false;
+      }
+    }
+
+    window.dispatchEvent(new CustomEvent('focado:ops-updated',{detail:{key:KEY}}));
+    if(!silentNavigate){
+      if(finalize)render({q:'',stage:'PCP'});
+      else{if(isCorrection)correctionMode=false;renderForm((load().orders||[]).find(x=>x.id===o.id)||o,load())}
+    }
     return true;
   }
+
   function history(o){
     const events=(o.events||[]).slice(0,12);
     return '<div class="fo-card"><h2>Histórico do pedido</h2>'+(events.length?'<div class="fo-history">'+events.map(e=>'<div class="fo-history-row"><span>'+dbr(new Date(e.at).toISOString().slice(0,10))+'</span><div><b>'+esc(e.text||'')+'</b><small>'+esc(e.user||'')+(e.at?' · '+new Date(e.at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'')+'</small></div></div>').join('')+'</div>':'<div class="fo-empty compact">Ainda não há movimentações neste pedido.</div>')+'</div>';
