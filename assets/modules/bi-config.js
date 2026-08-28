@@ -72,7 +72,7 @@
       (canFinance()?'<div class="fbc-grid">'+
         '<section class="fbc-card"><h2>Regras oficiais</h2><p>Define quando o faturamento é reconhecido e como o OTIF interpreta prazo e quantidade.</p>'+
           '<form id="fbcPolicyForm" class="fbc-form">'+
-            '<label>Reconhecimento do faturamento<select id="fbcRevenueRule"><option value="DELIVERED" '+((p.revenueRecognition||'DELIVERED')==='DELIVERED'?'selected':'')+'>Na entrega confirmada</option><option value="EXPEDITION_RELEASED" '+(p.revenueRecognition==='EXPEDITION_RELEASED'?'selected':'')+'>Na liberação da expedição</option></select></label>'+
+            '<label>Reconhecimento do faturamento<select id="fbcRevenueRule"><option value="DELIVERED" '+((p.revenueRecognition||'DELIVERED')==='DELIVERED'?'selected':'')+'>Na entrega confirmada</option><option value="EXPEDITION_RELEASED" '+(p.revenueRecognition==='EXPEDITION_RELEASED'?'selected':'')+'>Na liberação da expedição</option><option value="INVOICED" '+(p.revenueRecognition==='INVOICED'?'selected':'')+'>Na emissão da NF</option></select></label>'+
             '<label>Data prometida OTIF<select id="fbcPromisedRule"><option value="REQUESTED_THEN_LOGISTICS" '+((p.promisedDateRule||'REQUESTED_THEN_LOGISTICS')==='REQUESTED_THEN_LOGISTICS'?'selected':'')+'>Solicitada pelo cliente; logística como contingência</option><option value="REQUESTED_ONLY" '+(p.promisedDateRule==='REQUESTED_ONLY'?'selected':'')+'>Somente solicitada pelo cliente</option></select></label>'+
             '<label>Quantidade In-Full<select id="fbcInFullRule"><option value="DISPATCHED_VS_CONFIRMED">Expedida × quantidade confirmada</option></select></label>'+
             '<button class="fbc-primary">Salvar regras</button><div class="fbc-msg" id="fbcPolicyMsg"></div>'+
