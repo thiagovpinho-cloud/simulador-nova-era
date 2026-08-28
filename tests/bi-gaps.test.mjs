@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {applyDomain} from '../shared/domain-rules.js';
 import {
-  buildBiAnalytics,grossRevenue,netRevenue,contributionMargin,otif,targetVsActual,inventoryRisk
+  buildBiAnalytics,grossRevenue,netRevenue,contributionMargin,otif,targetVsActual,inventoryRisk,productionLoad
 } from '../shared/bi-analytics.js';
 
 const state={
@@ -13,7 +13,11 @@ const state={
     logistics:{deliveryConfirmed:true,actualDeliveryDate:'2026-08-09'}
   }],
   inventory:{'SKU-A':{code:'SKU-A',name:'Produto A',physical:50,reserved:10,blocked:0}},
-  productionBases:{SENIR:{capacityPerDay:100,active:true}}
+  productionBases:{SENIR:{capacityPerDay:100,active:true}},
+  productionRequests:[{
+    id:'pr1',number:'SP-00001',status:'FINALIZADA',base:'SENIR',requestDate:'2026-08-03',needByDate:'2026-08-12',
+    items:[{product:{code:'SKU-A',name:'Produto A'},qty:60}]
+  }]
 };
 
 applyDomain('FINANCEIRO',state,{changes:{biPolicy:{
@@ -67,6 +71,13 @@ assert.equal(target.achievement,.5);
 const risk=inventoryRisk(state);
 assert.equal(risk.complete,true);
 assert.equal(risk.value,1);
+
+const load=productionLoad(state,{from:'2026-08-01',to:'2026-08-31'});
+assert.equal(load.complete,true);
+assert.equal(load.rows.length,1);
+assert.equal(load.rows[0].scheduledQty,60);
+assert.equal(load.rows[0].capacityPerDay,120);
+assert.equal(load.rows[0].load,.5);
 
 const before=JSON.stringify(state);
 const all=buildBiAnalytics(state,{from:'2026-08-01',to:'2026-08-31',asOf:'2026-08-28'});
