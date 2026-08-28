@@ -36,7 +36,8 @@ const activeRoutes=[
   ['system-health',"window.FocadoSystemHealth?.render"],
   ['config',"window.FocadoSettings?.render"],
   ['usuarios',"window.FocadoUsers?.render"],
-  ['financeiro',"window.FocadoFinance?.render"]
+  ['financeiro',"window.FocadoFinance?.render"],
+  ['indicadores',"window.FocadoIndicators?.render"]
 ];
 
 for(const [route,renderer] of activeRoutes){
@@ -49,7 +50,7 @@ const staticModules=[
   'expedition','logistics','technical-sheets','bases','system-health','intelligence-core','intelligence','kanban'
 ];
 for(const m of staticModules){
-  const expected=(m==='bases'||m==='inventory'||m==='orders')?'assets/modules/'+m+'.js?v=':'assets/modules/'+m+'.js?v=20260827-static-v1';
+  const expected=(m==='bases'||m==='inventory'||m==='orders'||m==='production')?'assets/modules/'+m+'.js?v=':'assets/modules/'+m+'.js?v=20260827-static-v1';
   assert.ok(index.includes(expected),'Módulo ativo deve ser pré-carregado: '+m);
 }
 
