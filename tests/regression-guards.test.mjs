@@ -113,3 +113,14 @@ assert.ok(inventoryFinal.includes("saveDomain?.('ESTOQUE',{movements,inventoryCo
 assert.ok(inventoryFinal.includes("deltaPhysical:qty"),'Entrada de estoque deve ser movimento incremental');
 assert.ok(indicatorsFinal.includes('RASTREABILIDADE DO KPI'),'Indicadores devem explicar a origem do KPI');
 assert.ok(indicatorsFinal.includes('data-kpi-order'),'Drill-down deve abrir o registro causador');
+
+const authPerf=read('assets/core/auth-client.js');
+const shellPerf=read('assets/app-shell.js');
+const indexPerf=read('index.html');
+assert.ok(!authPerf.includes("await window.FocadoDataStore?.hydrateLocalCache?.()"),'Login não pode bloquear aguardando hidratação completa do workspace');
+assert.ok(authPerf.includes("focado:cache-hydrated"),'Hidratação pós-login deve sinalizar atualização em segundo plano');
+assert.ok(!indexPerf.includes("resetSimulatorKeepingHistory();\n    renderBrandHeader();\n    renderEstadoOptions();"),'Login moderno não pode renderizar simulador legado');
+assert.ok(indexPerf.includes("nova-era-modern-shell"),'Login deve marcar entrada direta no novo shell');
+assert.ok(!indexPerf.includes("hideLogin();\n    showHub();\n    return;"),'Login não pode exibir o hub legado antes do novo layout');
+assert.ok(shellPerf.includes("focado:auth-changed"),'Novo shell deve reagir diretamente ao login');
+assert.ok(shellPerf.includes("showShell(true)"),'Novo shell deve abrir dashboard diretamente após autenticação');
