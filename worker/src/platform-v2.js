@@ -75,7 +75,16 @@ const val=(v,fallback='')=>v==null?fallback:v;
 const dateOrNull=v=>v||null;
 
 export async function syncPlatformV2(db,state){
-  for(const c of state.customers||[]){
+  const customers=Array.isArray(state.customers)?state.customers:[];
+  const orders=Array.isArray(state.orders)?state.orders:[];
+  const stockMovements=Array.isArray(state.stockMovements)?state.stockMovements:[];
+  const productionRequests=Array.isArray(state.productionRequests)?state.productionRequests:[];
+  const purchaseRequests=Array.isArray(state.purchaseRequests)?state.purchaseRequests:[];
+  const suppliers=Array.isArray(state.suppliers)?state.suppliers:[];
+  const carriers=Array.isArray(state.carriers)?state.carriers:[];
+
+
+  for(const c of customers){
     const id=String(c.id||c.cnpj||c.name||''); if(!id)continue;
     await db.query(`insert into public.focado_v2_customers(id,name,cnpj,email,phone,city,uf,active,data,updated_at)
       values($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,now())
@@ -83,7 +92,7 @@ export async function syncPlatformV2(db,state){
       city=excluded.city,uf=excluded.uf,active=excluded.active,data=excluded.data,updated_at=now()`,
       [id,val(c.name||c.client),val(c.cnpj),val(c.email),val(c.phone),val(c.city),val(c.uf||c.state),c.active!==false,js(c)]);
   }
-  for(const o of state.orders||[]){
+  for(const o of orders){
     const id=String(o.id||o.number||''); if(!id)continue;
     await db.query(`insert into public.focado_v2_orders(id,number,status,customer_id,client,order_date,requested_delivery_date,representative,data,updated_at)
       values($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,now())
@@ -109,14 +118,14 @@ export async function syncPlatformV2(db,state){
         [kind,String(key),val(i?.code),val(i?.name),val(i?.unit),Number(i?.physical||0),Number(i?.reserved||0),Number(i?.blocked||0),js(i)]);
     }
   }
-  for(const m of state.stockMovements||[]){
+  for(const m of stockMovements){
     const id=String(m.id||''); if(!id)continue;
     await db.query(`insert into public.focado_v2_inventory_movements(id,at,kind,item_key,code,name,movement_type,qty,reason,actor,data)
       values($1,to_timestamp($2/1000.0),$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb)
       on conflict(id) do nothing`,
       [id,Number(m.at||Date.now()),val(m.kind),val(m.key),val(m.code),val(m.name),val(m.type),Number(m.qty||0),val(m.reason),val(m.user),js(m)]);
   }
-  for(const r of state.productionRequests||[]){
+  for(const r of productionRequests){
     const id=String(r.id||''); if(!id)continue; const s=r.snapshot||r;
     await db.query(`insert into public.focado_v2_production_requests(id,number,status,base,request_date,need_by_date,material_status,data,updated_at)
       values($1,$2,$3,$4,$5,$6,$7,$8::jsonb,now())
@@ -124,7 +133,7 @@ export async function syncPlatformV2(db,state){
       need_by_date=excluded.need_by_date,material_status=excluded.material_status,data=excluded.data,updated_at=now()`,
       [id,val(r.number),val(r.status),val(s.base),dateOrNull(s.requestDate),dateOrNull(s.needByDate),val(r.materialStatus),js(r)]);
   }
-  for(const r of state.purchaseRequests||[]){
+  for(const r of purchaseRequests){
     const id=String(r.id||'');if(!id)continue;
     await db.query(`insert into public.focado_v2_purchase_requests(id,number,status,code,material,supplier_id,qty,unit,expected_date,data,updated_at)
       values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,now())
@@ -132,7 +141,7 @@ export async function syncPlatformV2(db,state){
       supplier_id=excluded.supplier_id,qty=excluded.qty,unit=excluded.unit,expected_date=excluded.expected_date,data=excluded.data,updated_at=now()`,
       [id,val(r.number),val(r.status),val(r.code),val(r.material),val(r.supplierId),Number(r.qty||0),val(r.unit),dateOrNull(r.expectedDate),js(r)]);
   }
-  for(const [table,rows] of [['focado_v2_suppliers',state.suppliers||[]],['focado_v2_carriers',state.carriers||[]]]){
+  for(const [table,rows] of [['focado_v2_suppliers',suppliers],['focado_v2_carriers',carriers]]){
     for(const x of rows){
       const id=String(x.id||x.cnpj||x.name||'');if(!id)continue;
       await db.query(`insert into public.${table}(id,name,cnpj,email,phone,active,data,updated_at)
@@ -142,6 +151,33 @@ export async function syncPlatformV2(db,state){
         [id,val(x.name),val(x.cnpj),val(x.email),val(x.phone),x.active!==false,js(x)]);
     }
   }
+  // Reconcile removals so V2 is an exact projection of the authoritative workspace.
+  const customerIds=customers.map(x=>String(x.id||x.cnpj||x.name||'')).filter(Boolean);
+  const orderIds=orders.map(x=>String(x.id||x.number||'')).filter(Boolean);
+  const movementIds=stockMovements.map(x=>String(x.id||'')).filter(Boolean);
+  const productionIds=productionRequests.map(x=>String(x.id||'')).filter(Boolean);
+  const purchaseIds=purchaseRequests.map(x=>String(x.id||'')).filter(Boolean);
+  const supplierIds=suppliers.map(x=>String(x.id||x.cnpj||x.name||'')).filter(Boolean);
+  const carrierIds=carriers.map(x=>String(x.id||x.cnpj||x.name||'')).filter(Boolean);
+  const finishedIds=Object.keys(state.inventory||{}).map(String);
+  const inputIds=Object.keys(state.inputInventory||{}).map(String);
+
+  await db.query('delete from public.focado_v2_customers where not (id = any($1::text[]))',[customerIds]);
+  await db.query('delete from public.focado_v2_order_items where not (order_id = any($1::text[]))',[orderIds]);
+  for(const o of orders){
+    const orderId=String(o.id||o.number||''); if(!orderId)continue;
+    const itemIds=(o.items||[]).map(i=>String(i.id||i.code||i.productId||i.name||'')).filter(Boolean);
+    await db.query('delete from public.focado_v2_order_items where order_id=$1 and not (item_key = any($2::text[]))',[orderId,itemIds]);
+  }
+  await db.query('delete from public.focado_v2_orders where not (id = any($1::text[]))',[orderIds]);
+  await db.query("delete from public.focado_v2_inventory_items where kind='finished' and not (item_key = any($1::text[]))",[finishedIds]);
+  await db.query("delete from public.focado_v2_inventory_items where kind='input' and not (item_key = any($1::text[]))",[inputIds]);
+  await db.query('delete from public.focado_v2_inventory_movements where not (id = any($1::text[]))',[movementIds]);
+  await db.query('delete from public.focado_v2_production_requests where not (id = any($1::text[]))',[productionIds]);
+  await db.query('delete from public.focado_v2_purchase_requests where not (id = any($1::text[]))',[purchaseIds]);
+  await db.query('delete from public.focado_v2_suppliers where not (id = any($1::text[]))',[supplierIds]);
+  await db.query('delete from public.focado_v2_carriers where not (id = any($1::text[]))',[carrierIds]);
+
 }
 
 export async function appendChange(db,{userId,action,entityType,entityId,revision,reason,before,after,metadata}){
@@ -213,68 +249,4 @@ export function passwordPolicy(password){
   if(!/[A-Z]/.test(s))problems.push('UPPERCASE');
   if(!/[0-9]/.test(s))problems.push('NUMBER');
   return {ok:problems.length===0,problems};
-}
-
-export async function resetOperationalData20260828(db){
-  const key='OPERATIONAL_RESET_20260828';
-  const done=await db.query('select 1 from public.focado_system_migrations where key=$1 limit 1',[key]);
-  if(done.rowCount)return {ok:true,alreadyApplied:true,key};
-
-  await db.query('begin');
-  try{
-    const row=await db.query("select payload,revision::bigint as revision from public.focado_workspace_state where workspace_key='default' for update");
-    const state=structuredClone(row.rows[0]?.payload||{});
-    const before={
-      orders:(state.orders||[]).length,
-      customers:(state.customers||[]).length,
-      inventory:Object.keys(state.inventory||{}).length,
-      inputInventory:Object.keys(state.inputInventory||{}).length,
-      stockMovements:(state.stockMovements||[]).length,
-      productionRequests:(state.productionRequests||[]).length,
-      purchaseRequests:(state.purchaseRequests||[]).length,
-      suppliers:(state.suppliers||[]).length,
-      carriers:(state.carriers||[]).length
-    };
-
-    state.orders=[];
-    state.customers=[];
-    state.inventory={};
-    state.inputInventory={};
-    state.stockMovements=[];
-    state.inventoryCounts=[];
-    state.productionRequests=[];
-    state.purchaseRequests=[];
-    state.suppliers=[];
-    state.carriers=[];
-    state.purchasePlanning={};
-    state.finance={};
-
-    if(row.rowCount){
-      await db.query("update public.focado_workspace_state set payload=$1::jsonb,revision=revision+1,updated_at=now() where workspace_key='default'",[JSON.stringify(state)]);
-    }
-
-    for(const table of [
-      'focado_v2_order_items','focado_v2_orders','focado_v2_customers',
-      'focado_v2_inventory_movements','focado_v2_inventory_items',
-      'focado_v2_production_requests','focado_v2_purchase_requests',
-      'focado_v2_suppliers','focado_v2_carriers'
-    ]) await db.query('delete from public.'+table);
-
-    await db.query(
-      "insert into public.focado_v2_change_log(user_id,action,entity_type,entity_id,reason,before_data,after_data,metadata) values(null,'OPERATIONAL_RESET','workspace','default','Preparação para início de operação real',$1::jsonb,$2::jsonb,$3::jsonb)",
-      [JSON.stringify(before),JSON.stringify({orders:0,customers:0,inventory:0,inputInventory:0,stockMovements:0,productionRequests:0,purchaseRequests:0,suppliers:0,carriers:0}),JSON.stringify({resetVersion:key})]
-    );
-    await db.query('insert into public.focado_system_migrations(key,metadata) values($1,$2::jsonb)',[key,JSON.stringify({before})]);
-    await db.query('commit');
-    return {ok:true,alreadyApplied:false,key,before};
-  }catch(err){
-    try{await db.query('rollback')}catch(_){}
-    throw err;
-  }
-}
-
-export async function operationalResetStatus(db){
-  const key='OPERATIONAL_RESET_20260828';
-  const r=await db.query('select key,applied_at as "appliedAt",metadata from public.focado_system_migrations where key=$1 limit 1',[key]);
-  return r.rows[0]||null;
 }
