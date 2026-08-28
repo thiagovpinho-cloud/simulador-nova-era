@@ -18,6 +18,9 @@ export default async function handler(req,res){
     if(!permission)return res.status(400).json({error:'INVALID_DOMAIN'});
 
     const session=await requireSession(req,res,permission);if(!session)return;
+    if(domain==='COMERCIAL'&&body?.changes?.deleteOrderId&&!['ADMIN','DIRETOR','GESTOR'].includes(String(session.role||'').toUpperCase())){
+      return res.status(403).json({error:'FORBIDDEN_DELETE_ORDER'});
+    }
     const row=await readWorkspace(WORKSPACE);
     const state=structuredClone(row?.payload||{});
     const revision=row?.revision||0;
