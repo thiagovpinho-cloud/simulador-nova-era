@@ -93,6 +93,7 @@
         state:prev.state||o.uf||o.state||'',
         address:prev.address||o.deliveryAddress||'',
         representative:prev.representative||o.representative||'',
+        representativeId:prev.representativeId||o.representativeId||'',
         active:prev.active!==false,
         source:prev.source||'PEDIDO'
       });
@@ -122,6 +123,23 @@
     return aggregate(ops).find(c=>String(c.id)===String(id));
   }
 
+  function representativeSelect(ops,customer){
+    const all=(Array.isArray(ops.representatives)?ops.representatives:[]).slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'pt-BR'));
+    let selectedId=String(customer?.representativeId||'');
+    if(!selectedId&&customer?.representative){
+      const byName=all.find(r=>String(r.name||'').trim().toLowerCase()===String(customer.representative||'').trim().toLowerCase()||
+        String(r.fantasyName||'').trim().toLowerCase()===String(customer.representative||'').trim().toLowerCase());
+      if(byName)selectedId=String(byName.id||'');
+    }
+    const visible=all.filter(r=>r.active!==false||String(r.id||'')===selectedId);
+    return '<label class="fc-field"><span>Representante</span><select id="fcRepresentative"><option value="">Selecione um representante</option>'+
+      visible.map(r=>{
+        const label=[r.name,r.fantasyName&&r.fantasyName!==r.name?'('+r.fantasyName+')':'',r.active===false?'— inativo':''].filter(Boolean).join(' ');
+        return '<option value="'+esc(r.id||'')+'" '+(String(r.id||'')===selectedId?'selected':'')+'>'+esc(label)+'</option>';
+      }).join('')+
+      '</select><small class="fc-rep-hint">'+(visible.length?'Lista vinculada ao cadastro de Representantes.':'Nenhum representante ativo cadastrado.')+'</small></label>';
+  }
+
   function openForm(id){
     const ops=load(),existing=id?findCustomer(ops,id):null;
     const c=existing||{id:'cli_'+Date.now(),active:true,createdAt:Date.now()};
@@ -137,7 +155,7 @@
         field('Bairro','fcBairro',c.bairro)+
         field('Cidade','fcCity',c.city)+
         field('UF','fcState',c.state)+
-        field('Representante','fcRepresentative',c.representative)+
+        representativeSelect(ops,c)+
         select('Status','fcActive',c.active!==false? 'ATIVO':'INATIVO',['ATIVO','INATIVO'])+
         '<label class="fc-field wide"><span>Endereço / Local de entrega</span><textarea id="fcAddress">'+esc(c.address||'')+'</textarea></label>'+
         '<label class="fc-field wide"><span>Observações</span><textarea id="fcNotes">'+esc(c.notes||'')+'</textarea></label>'+
@@ -182,7 +200,12 @@
       bairro:document.getElementById('fcBairro').value.trim(),
       city:document.getElementById('fcCity').value.trim(),
       state:document.getElementById('fcState').value.trim().toUpperCase().slice(0,2),
-      representative:document.getElementById('fcRepresentative').value.trim(),
+      representativeId:document.getElementById('fcRepresentative').value,
+      representative:(()=>{
+        const id=document.getElementById('fcRepresentative').value;
+        const rep=(load().representatives||[]).find(r=>String(r.id||'')===String(id));
+        return rep?.name||'';
+      })(),
       active:document.getElementById('fcActive').value==='ATIVO',
       address:document.getElementById('fcAddress').value.trim(),
       notes:document.getElementById('fcNotes').value.trim(),
