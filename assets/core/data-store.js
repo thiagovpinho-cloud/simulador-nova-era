@@ -86,26 +86,35 @@
     }
   }
   async function save(state){
-    writeLocal(state);
-    if(!isRemoteReady()) return {mode:'local',ok:true};
+    if(!isRemoteReady()){
+      const err=new Error('API_REQUIRED');
+      emit({source:'write-blocked',error:err});
+      return {mode:'blocked',ok:false,error:'API_REQUIRED'};
+    }
     try{
       const headers={};
       if(revision!==null) headers['If-Match']='"'+revision+'"';
       const body=await remoteRequest('/api/state',{method:'PUT',headers,body:JSON.stringify({payload:state})});
+      writeLocal(body?.payload||state);
       return {mode:'remote',ok:true,revision:body.revision};
     }catch(err){
       if(err.status===409){
         emit({source:'remote-conflict',error:err});
         return {mode:'conflict',ok:false,error:String(err.message)};
       }
-      console.warn('[FocadoDataStore] falha no sync remoto; cache local preservado',err);
-      return {mode:'local-fallback',ok:false,error:String(err.message)};
+      console.warn('[FocadoDataStore] gravação recusada: servidor indisponível',err);
+      emit({source:'write-failed',error:err});
+      return {mode:'remote-failed',ok:false,error:String(err.message)};
     }
   }
 
   async function saveDomain(domain,changes,orderId){
     const current=readLocal();
-    if(!isRemoteReady()) return {mode:'local',ok:true,payload:current};
+    if(!isRemoteReady()){
+      const err=new Error('API_REQUIRED');
+      emit({source:'write-blocked',error:err,domain});
+      return {mode:'blocked',ok:false,error:'API_REQUIRED',payload:current};
+    }
     try{
       const body=await remoteRequest('/api/domain',{
         method:'PUT',
