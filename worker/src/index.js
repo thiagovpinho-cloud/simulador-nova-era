@@ -1,7 +1,7 @@
 import pg from "pg";
 import { DOMAIN_PERMISSION, FLOW, RULES_VERSION, applyDomain, applyTransitionSideEffects, getOrder, validateTransition } from "../../shared/domain-rules.js";
 import { buildBiAnalytics } from "../../shared/bi-analytics.js";
-import { ensurePlatformV2, syncPlatformV2, appendChange, loginThrottle, auditSnapshot, readDomainV2, consistencyV2, passwordPolicy, resetOperationalData20260828, operationalResetStatus } from "./platform-v2.js";
+import { ensurePlatformV2, syncPlatformV2, appendChange, loginThrottle, auditSnapshot, readDomainV2, consistencyV2, passwordPolicy } from "./platform-v2.js";
 const { Client } = pg;
 
 const WORKSPACE = "default";
@@ -55,7 +55,7 @@ function corsHeaders(request,env){
   const isFocadoPagesPreview=/^https:\/\/[a-z0-9-]+\.focado\.pages\.dev$/i.test(origin);
   const h={
     "access-control-allow-headers":"Authorization,Content-Type,If-Match,X-Bootstrap-Token",
-    "access-control-allow-methods":"GET,POST,PUT,OPTIONS",
+    "access-control-allow-methods":"GET,POST,PUT,PATCH,OPTIONS",
     "vary":"Origin"
   };
   if(origin && (allowed.has(origin)||isFocadoPagesPreview))h["access-control-allow-origin"]=origin;
@@ -156,13 +156,6 @@ async function route(request,env){
     return setupPage();
   }
 
-  if(path==="/maintenance/operational-reset-20260828"&&request.method==="GET"){
-    return withDb(env,async db=>{
-      const result=await resetOperationalData20260828(db);
-      const status=await operationalResetStatus(db);
-      return json({ok:true,result,status});
-    });
-  }
 
   return withDb(env,async db=>{
     if(path==="/setup"&&request.method==="POST"){
