@@ -264,3 +264,11 @@ assert.ok(ordersMargin.includes('logisticsBudget.addEventListener'),'Alteração
 const simulatorInline=read('index.html');
 assert.ok(simulatorInline.includes('item.basePrice!=null?Number(item.basePrice):null'),'Simulador deve aceitar preço base do pedido sem converter IPI/ST');
 assert.ok(simulatorInline.includes('Number(x.basePrice??x.finalPrice)>0'),'Simulador deve validar preço base ou legado');
+
+const simulatorInputs=read('assets/modules/simulator.js');
+assert.ok(simulatorInputs.includes('Editar valores'),'Base de Insumos deve ter botão Editar valores');
+assert.ok(simulatorInputs.includes('Salvar alterações'),'Base de Insumos deve ter botão Salvar alterações');
+assert.ok(simulatorInputs.includes('Cancelar'),'Base de Insumos deve permitir cancelar edição');
+assert.ok(simulatorInputs.includes("(inputEditMode?'':'disabled')"),'Preços de insumos devem iniciar bloqueados');
+assert.ok(simulatorInputs.includes("inputDraft[i.dataset.inputPrice]"),'Alterações devem ficar em rascunho antes de salvar');
+assert.ok(simulatorInputs.includes('setInputPrice(item.code,value)'),'Salvar alterações deve aplicar preços ao motor');
