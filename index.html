@@ -1867,6 +1867,117 @@ function computeAll(){
 
 
 /* ============================================================
+   ADAPTADOR DO MOTOR DE PRECIFICAÇÃO LEGADO
+   Mantém uma única fonte de cálculo enquanto o simulador é
+   migrado para módulos nativos do novo Focado.
+   ============================================================ */
+window.FocadoLegacySimulator = {
+  async ready(){
+    await loadState();
+    return this.snapshot();
+  },
+  snapshot(){
+    const brand=curBrand(),bstate=curState(),all=computeAll();
+    return {
+      schemaVersion:SCHEMA_VERSION,
+      activeBrand:STATE.activeBrand,
+      marginTarget:Number(STATE.marginTarget||0),
+      brands:Object.values(BRANDS).map(b=>({id:b.id,label:b.label})),
+      estados:ESTADOS.map(e=>({code:e.code,name:e.name})),
+      global:{
+        estado:bstate.global.estado,
+        comissao:Number(bstate.global.comissao||0),
+        tipoFrete:bstate.global.tipoFrete,
+        freteManual:Boolean(bstate.global.freteManual),
+        icms:Number(all.icmsGlobal||0)
+      },
+      totals:{
+        semImpostos:Number(all.totalSem||0),
+        comImpostos:Number(all.totalCom||0),
+        margemSem:Number(all.avgSem||0),
+        margemCom:Number(all.avgCom||0),
+        produtosPrecificados:Number(all.pricedCount||0)
+      },
+      freight:{
+        info:all.freightInfo,
+        availability:all.freightAvailability
+      },
+      insumos:brand.insumos.map(i=>({
+        code:i.code,desc:i.desc,unit:i.unit,group:i.group,
+        preco:Number(bstate.insumos?.[i.code]?.preco??i.preco??0)
+      })),
+      products:brand.products.map((def,i)=>{
+        const st=bstate.products[i],r=all.results[i];
+        return {
+          id:def.id,name:def.name,ncm:def.ncm,unitsPerCaixa:def.unitsPerCaixa,
+          pricing:structuredClone(st.pricing),
+          processo:structuredClone(st.processo),
+          materialConfig:structuredClone(st.materials),
+          materials:(r.rows||[]).map(x=>({...x})),
+          metrics:{
+            custoCaixa:Number(r.AB||0),
+            precoBaseCaixa:Number(r.G||0),
+            precoComImpostosCaixa:Number(r.O||0),
+            ipiValor:Number(r.K||0),
+            stValor:Number(r.M||0),
+            icmsValor:Number(r.H||0),
+            pisCofinsValor:Number(r.I||0),
+            freteValor:Number(r.Z||0),
+            margemSem:Number(r.AM||0),
+            margemCom:Number(r.AT||0),
+            totalBase:Number(r.AI||0),
+            totalComImpostos:Number(r.AP||0)
+          }
+        };
+      })
+    };
+  },
+  setBrand(id){
+    if(!BRANDS[id])throw new Error('SIMULATOR_BRAND_NOT_FOUND');
+    STATE.activeBrand=id;scheduleSave();return this.snapshot();
+  },
+  setGlobal(patch={}){
+    const g=curState().global;
+    if(patch.estado&&IMPOSTOS[patch.estado])g.estado=patch.estado;
+    if(patch.comissao!=null)g.comissao=Math.max(0,Number(patch.comissao)||0);
+    if(patch.tipoFrete&&['CIF','FOB','REDESPACHO'].includes(patch.tipoFrete))g.tipoFrete=patch.tipoFrete;
+    if(patch.freteManual!=null)g.freteManual=Boolean(patch.freteManual);
+    scheduleSave();return this.snapshot();
+  },
+  setMarginTarget(value){STATE.marginTarget=Math.max(0,Number(value)||0);scheduleSave();return this.snapshot()},
+  setInputPrice(code,price){
+    const b=curState();if(!b.insumos?.[code])throw new Error('SIMULATOR_INPUT_NOT_FOUND');
+    b.insumos[code].preco=Math.max(0,Number(price)||0);scheduleSave();return this.snapshot();
+  },
+  setPricing(productId,patch={}){
+    const brand=curBrand(),b=curState(),idx=brand.products.findIndex(p=>p.id===productId);
+    if(idx<0)throw new Error('SIMULATOR_PRODUCT_NOT_FOUND');
+    const p=b.products[idx].pricing;
+    for(const k of ['vendaCX','qtdCaixas','frete','contrato','ipi','icmsst']){
+      if(patch[k]!=null)p[k]=Math.max(0,Number(patch[k])||0);
+    }
+    scheduleSave();return this.snapshot();
+  },
+  setMaterial(productId,index,patch={}){
+    const brand=curBrand(),b=curState(),idx=brand.products.findIndex(p=>p.id===productId);
+    if(idx<0||!b.products[idx].materials[index])throw new Error('SIMULATOR_MATERIAL_NOT_FOUND');
+    const m=b.products[idx].materials[index];
+    if(patch.qty!=null)m.qty=Math.max(0,Number(patch.qty)||0);
+    if(patch.perda!=null)m.perda=Math.max(0,Number(patch.perda)||0);
+    scheduleSave();return this.snapshot();
+  },
+  setProcess(productId,patch={}){
+    const brand=curBrand(),b=curState(),idx=brand.products.findIndex(p=>p.id===productId);
+    if(idx<0)throw new Error('SIMULATOR_PRODUCT_NOT_FOUND');
+    const p=b.products[idx].processo;
+    if(patch.qty!=null)p.qty=Math.max(0,Number(patch.qty)||0);
+    if(patch.perda!=null)p.perda=Math.max(0,Number(patch.perda)||0);
+    if(patch.preco!=null&&'preco' in p)p.preco=Math.max(0,Number(patch.preco)||0);
+    scheduleSave();return this.snapshot();
+  }
+};
+
+/* ============================================================
    FORMATTERS
    ============================================================ */
 const parseBRNum = (v) => { const n = parseFloat(String(v ?? '').replace(',','.')); return isNaN(n) ? 0 : n; };
