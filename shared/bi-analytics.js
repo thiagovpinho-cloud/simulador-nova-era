@@ -345,7 +345,7 @@ export function targetVsActual(state,filters={}){
   const gross=grossRevenue(state,filters);
   const period=(f.from&&f.from.slice(0,7)===f.to?.slice(0,7))?f.from.slice(0,7):(f.from?f.from.slice(0,7):new Date().toISOString().slice(0,7));
   const scopeType=f.brand?'BRAND':'COMPANY',scopeId=f.brand||'ALL';
-  const target=targets.find(t=>String(t.period)===period&&String(t.scope_type||'COMPANY').toUpperCase()===scopeType&&String(t.scope_id||'ALL')===scopeId)||
+  const target=targets.find(t=>String(t.period)===period&&String(t.scope_type||'COMPANY').toUpperCase()===scopeType&&String(t.scope_id||'ALL').toLowerCase()===String(scopeId).toLowerCase())||
     targets.find(t=>String(t.period)===period&&String(t.scope_type||'COMPANY').toUpperCase()==='COMPANY'&&String(t.scope_id||'ALL')==='ALL')||null;
   const revenueTarget=num(target?.target_revenue);
   return {id:'target_vs_actual',period,scopeType,scopeId,target:target||null,actualRevenue:gross.value,achievement:revenueTarget>0?gross.value/revenueTarget:null,complete:Boolean(target)};
