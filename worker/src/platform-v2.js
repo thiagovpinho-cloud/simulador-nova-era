@@ -51,6 +51,9 @@ export async function ensurePlatformV2(db){
       action text not null, entity_type text not null, entity_id text,
       revision bigint, reason text, before_data jsonb, after_data jsonb, metadata jsonb not null default '{}'::jsonb
     )`,
+    `create table if not exists public.focado_system_migrations(
+      key text primary key, applied_at timestamptz not null default now(), metadata jsonb not null default '{}'::jsonb
+    )`,
     `create table if not exists public.focado_login_attempts(
       id bigserial primary key, attempted_at timestamptz not null default now(), email text not null,
       ip_hash text, success boolean not null default false
@@ -207,4 +210,68 @@ export function passwordPolicy(password){
   if(!/[A-Z]/.test(s))problems.push('UPPERCASE');
   if(!/[0-9]/.test(s))problems.push('NUMBER');
   return {ok:problems.length===0,problems};
+}
+
+export async function resetOperationalData20260828(db){
+  const key='OPERATIONAL_RESET_20260828';
+  const done=await db.query('select 1 from public.focado_system_migrations where key=$1 limit 1',[key]);
+  if(done.rowCount)return {ok:true,alreadyApplied:true,key};
+
+  await db.query('begin');
+  try{
+    const row=await db.query("select payload,revision::bigint as revision from public.focado_workspace_state where workspace_key='default' for update");
+    const state=structuredClone(row.rows[0]?.payload||{});
+    const before={
+      orders:(state.orders||[]).length,
+      customers:(state.customers||[]).length,
+      inventory:Object.keys(state.inventory||{}).length,
+      inputInventory:Object.keys(state.inputInventory||{}).length,
+      stockMovements:(state.stockMovements||[]).length,
+      productionRequests:(state.productionRequests||[]).length,
+      purchaseRequests:(state.purchaseRequests||[]).length,
+      suppliers:(state.suppliers||[]).length,
+      carriers:(state.carriers||[]).length
+    };
+
+    state.orders=[];
+    state.customers=[];
+    state.inventory={};
+    state.inputInventory={};
+    state.stockMovements=[];
+    state.inventoryCounts=[];
+    state.productionRequests=[];
+    state.purchaseRequests=[];
+    state.suppliers=[];
+    state.carriers=[];
+    state.purchasePlanning={};
+    state.finance={};
+
+    if(row.rowCount){
+      await db.query("update public.focado_workspace_state set payload=$1::jsonb,revision=revision+1,updated_at=now() where workspace_key='default'",[JSON.stringify(state)]);
+    }
+
+    for(const table of [
+      'focado_v2_order_items','focado_v2_orders','focado_v2_customers',
+      'focado_v2_inventory_movements','focado_v2_inventory_items',
+      'focado_v2_production_requests','focado_v2_purchase_requests',
+      'focado_v2_suppliers','focado_v2_carriers'
+    ]) await db.query('delete from public.'+table);
+
+    await db.query(
+      "insert into public.focado_v2_change_log(user_id,action,entity_type,entity_id,reason,before_data,after_data,metadata) values(null,'OPERATIONAL_RESET','workspace','default','Preparação para início de operação real',$1::jsonb,$2::jsonb,$3::jsonb)",
+      [JSON.stringify(before),JSON.stringify({orders:0,customers:0,inventory:0,inputInventory:0,stockMovements:0,productionRequests:0,purchaseRequests:0,suppliers:0,carriers:0}),JSON.stringify({resetVersion:key})]
+    );
+    await db.query('insert into public.focado_system_migrations(key,metadata) values($1,$2::jsonb)',[key,JSON.stringify({before})]);
+    await db.query('commit');
+    return {ok:true,alreadyApplied:false,key,before};
+  }catch(err){
+    try{await db.query('rollback')}catch(_){}
+    throw err;
+  }
+}
+
+export async function operationalResetStatus(db){
+  const key='OPERATIONAL_RESET_20260828';
+  const r=await db.query('select key,applied_at as "appliedAt",metadata from public.focado_system_migrations where key=$1 limit 1',[key]);
+  return r.rows[0]||null;
 }
