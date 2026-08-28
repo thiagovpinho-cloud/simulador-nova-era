@@ -202,3 +202,10 @@ assert.ok(customerLookup.includes("fantasyName:document.getElementById('fcFantas
 assert.ok(representativeFantasy.includes("field('Nome fantasia','frFantasyName')"),'Representantes deve possuir campo Nome Fantasia');
 assert.ok(representativeFantasy.includes("fantasyName:document.getElementById('frFantasyName').value.trim()"),'Representantes deve persistir Nome Fantasia');
 assert.ok(representativeFantasy.includes("document.getElementById('frFantasyName').value=d.nomeFantasia||''"),'Consulta de CNPJ do representante deve preencher Nome Fantasia');
+
+assert.ok(customerLookup.includes('function representativeSelect(ops,customer)'),'Cadastro de clientes deve montar lista de representantes');
+assert.ok(customerLookup.includes("r.active!==false||String(r.id||'')===selectedId"),'Lista deve priorizar representantes ativos e preservar vínculo inativo existente');
+assert.ok(customerLookup.includes("id=\"fcRepresentative\""),'Representante do cliente deve ser seletor, não campo livre');
+assert.ok(customerLookup.includes("representativeId:document.getElementById('fcRepresentative').value"),'Cliente deve persistir representativeId');
+assert.ok(customerLookup.includes("return rep?.name||''"),'Cliente deve persistir também o nome atual do representante');
+assert.ok(!customerLookup.includes("field('Representante','fcRepresentative'"),'Campo livre de representante não pode voltar ao cadastro de clientes');
