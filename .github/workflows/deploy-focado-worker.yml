@@ -50,13 +50,3 @@ jobs:
           export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CF_TOKEN_RAW" | tr -d '\r\n' | xargs)"
           export CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$CF_ACCOUNT_RAW" | tr -d '\r\n' | xargs)"
           npx wrangler deploy --keep-vars
-
-      - name: Execute one-time operational reset
-        shell: bash
-        working-directory: .
-        run: |
-          set -euo pipefail
-          RESPONSE="$(curl --fail --silent --show-error --retry 5 --retry-delay 2 \
-            https://focado-api.thiagovpinho.workers.dev/maintenance/operational-reset-20260828)"
-          echo "$RESPONSE"
-          echo "$RESPONSE" | grep -q '"ok":true'
