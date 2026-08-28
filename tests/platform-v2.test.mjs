@@ -23,6 +23,10 @@ console.log('platform-v2: ok');
 
 assert.ok(platform.includes('readDomainV2'),'Plataforma v2 deve oferecer leitura direta por domínio');
 assert.ok(platform.includes('consistencyV2'),'Plataforma v2 deve verificar consistência de migração');
+assert.ok(platform.includes('Reconcile removals'),'Sincronização v2 deve reconciliar exclusões');
+assert.ok(platform.includes('delete from public.focado_v2_orders where not'),'Pedidos removidos não podem permanecer como fantasmas na v2');
+assert.ok(platform.includes('delete from public.focado_v2_order_items where order_id=$1'),'Itens removidos devem ser reconciliados por pedido');
+assert.ok(platform.includes("kind='finished' and not"),'Estoque acabado removido deve ser reconciliado');
 assert.ok(platform.includes('passwordPolicy'),'Política de senha deve estar centralizada');
 assert.ok(worker.includes('/v2/domain/'),'Worker deve expor leitura v2 autenticada');
 assert.ok(worker.includes('/v2/consistency'),'Worker deve expor consistência v2 para administrador');
