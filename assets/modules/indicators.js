@@ -66,6 +66,38 @@
     }).join('')+'</div><div class="fbi-panel-foot">Base do cálculo: '+money(total||0)+'</div>';
   }
 
+  function brandDonut(rows){
+    const data=(rows||[]).filter(r=>Number(r.share)>0);
+    if(!data.length)return '<div class="fbi-chart-empty">O gráfico aparecerá quando houver vendas reconhecidas.</div>';
+    const palette=['#0b7a5d','#4c79c6','#d7a72d','#8b5fc7','#cf4f55','#599b45'];
+    let acc=0;
+    const stops=data.map((r,i)=>{
+      const start=acc;acc+=Math.max(0,Number(r.share||0))*100;
+      return palette[i%palette.length]+' '+start.toFixed(2)+'% '+acc.toFixed(2)+'%';
+    }).join(',');
+    return '<div class="fbi-donut-wrap"><div class="fbi-donut" style="background:conic-gradient('+stops+')"><div><b>'+money(data.reduce((s,r)=>s+Number(r.revenue||0),0))+'</b><span>faturamento</span></div></div>'+
+      '<div class="fbi-legend">'+data.map((r,i)=>'<button data-brand-filter="'+esc(r.brand)+'"><i style="background:'+palette[i%palette.length]+'"></i><span>'+esc(r.brand)+'</span><b>'+pct(r.share)+'</b></button>').join('')+'</div></div>';
+  }
+
+  function skuBarChart(rows,metric){
+    const data=(rows||[]).slice(0,5);
+    if(!data.length)return '<div class="fbi-chart-empty">O gráfico aparecerá quando houver SKUs vendidos.</div>';
+    const field=metric==='volume'?'boxes':'revenue';
+    const max=Math.max(...data.map(r=>Number(r[field]||0)),1);
+    return '<div class="fbi-vchart">'+data.map(r=>{
+      const width=Math.max(2,Number(r[field]||0)/max*100);
+      const value=metric==='volume'?num(r.boxes)+' cx':money(r.revenue);
+      return '<button data-sku-detail="'+esc(r.sku)+'"><span>'+esc(r.sku)+'</span><div><i style="width:'+width.toFixed(1)+'%"></i></div><b>'+value+'</b></button>';
+    }).join('')+'</div>';
+  }
+
+  function progressChart(value,label,leftLabel,rightLabel){
+    if(value==null)return '<div class="fbi-chart-empty">Dados insuficientes para formar o gráfico.</div>';
+    const p=Math.max(0,Math.min(100,Number(value)*100));
+    return '<div class="fbi-progress-chart"><div class="fbi-progress-head"><span>'+esc(label)+'</span><b>'+p.toLocaleString('pt-BR',{maximumFractionDigits:1})+'%</b></div>'+
+      '<div class="fbi-progress-track"><i style="width:'+p+'%"></i></div><div class="fbi-progress-foot"><span>'+esc(leftLabel||'0%')+'</span><span>'+esc(rightLabel||'100%')+'</span></div></div>';
+  }
+
   function rankingTable(rows,metric){
     if(!rows?.length)return '<div class="fbi-empty">Sem SKUs para os filtros selecionados.</div>';
     return '<div class="fbi-table-wrap"><table class="fbi-table"><thead><tr><th>#</th><th>SKU</th><th>Produto</th><th>Caixas</th><th>Faturamento</th><th>Pedidos</th></tr></thead><tbody>'+
@@ -112,17 +144,17 @@
           kpiCard('Pedidos atrasados',num(k.delayed_orders?.value),'Entregues ou abertos fora da data','danger','fbiDelayed','delayed_orders')+
         '</div>'+
         '<div class="fbi-grid">'+
-          '<section class="fbi-panel" id="fbiBrands"><div class="fbi-panel-head"><div><h2>Share de vendas por marca</h2><p>Clique em uma marca para filtrar todo o dashboard.</p></div></div>'+brandBars(k.brand_share?.rows,k.brand_share?.totalRevenue)+'</section>'+
+          '<section class="fbi-panel" id="fbiBrands"><div class="fbi-panel-head"><div><h2>Share de vendas por marca</h2><p>Clique em uma marca para filtrar todo o dashboard.</p></div></div>'+brandDonut(k.brand_share?.rows)+brandBars(k.brand_share?.rows,k.brand_share?.totalRevenue)+'</section>'+
           '<section class="fbi-panel" id="fbiLead"><div class="fbi-panel-head"><div><h2>Lead time operacional</h2><p>Tempo entre os marcos registrados do processo.</p></div><div class="fbi-lead-mini"><span>Total médio</span><b>'+(lead.averagesDays?.total==null?'—':fmtDays(lead.averagesDays.total))+'</b></div></div>'+leadTable(lead.rows)+'</section>'+
         '</div>'+
         '<div class="fbi-grid">'+
-          '<section class="fbi-panel" id="fbiRanking"><div class="fbi-panel-head"><div><h2>Ranking de SKUs · faturamento</h2><p>Top 10 com caminho até os pedidos de origem.</p></div></div>'+rankingTable(k.sku_ranking?.byRevenue,'revenue')+'</section>'+
-          '<section class="fbi-panel"><div class="fbi-panel-head"><div><h2>Ranking de SKUs · volume</h2><p>Top 10 em caixas vendidas.</p></div></div>'+rankingTable(k.sku_ranking?.byVolume,'volume')+'</section>'+
+          '<section class="fbi-panel" id="fbiRanking"><div class="fbi-panel-head"><div><h2>Ranking de SKUs · faturamento</h2><p>Top 10 com caminho até os pedidos de origem.</p></div></div>'+skuBarChart(k.sku_ranking?.byRevenue,'revenue')+rankingTable(k.sku_ranking?.byRevenue,'revenue')+'</section>'+
+          '<section class="fbi-panel"><div class="fbi-panel-head"><div><h2>Ranking de SKUs · volume</h2><p>Top 10 em caixas vendidas.</p></div></div>'+skuBarChart(k.sku_ranking?.byVolume,'volume')+rankingTable(k.sku_ranking?.byVolume,'volume')+'</section>'+
         '</div>'+
         '<div class="fbi-grid">'+
           '<section class="fbi-panel" id="fbiOtif"><div class="fbi-panel-head"><div><h2>OTIF — prazo e quantidade</h2><p>Avalia somente entregas com data e evidência de quantidade expedida.</p></div><div class="fbi-lead-mini"><span>Resultado</span><b>'+(k.otif?.value==null?'—':pct(k.otif.value))+'</b></div></div>'+
-            '<div class="fbi-quality"><div><span>Avaliados</span><b>'+num(k.otif?.evaluated)+'</b></div><div><span>Dentro OTIF</span><b>'+num(k.otif?.passed)+'</b></div><div><span>Sem evidência suficiente</span><b>'+num(k.otif?.excluded)+'</b></div></div></section>'+
-          '<section class="fbi-panel" id="fbiGovernance"><div class="fbi-panel-head"><div><h2>Completude dos dados</h2><p>O sistema não publica um KPI como definitivo sem os dados de origem.</p></div><button class="fbi-btn" id="fbiOpenGovernance">Parâmetros BI</button></div>'+
+            progressChart(k.otif?.value,'OTIF atual','0%','100%')+'<div class="fbi-quality"><div><span>Avaliados</span><b>'+num(k.otif?.evaluated)+'</b></div><div><span>Dentro OTIF</span><b>'+num(k.otif?.passed)+'</b></div><div><span>Sem evidência suficiente</span><b>'+num(k.otif?.excluded)+'</b></div></div></section>'+
+          '<section class="fbi-panel" id="fbiGovernance"><div class="fbi-panel-head"><div><h2>Meta e completude dos dados</h2><p>Realizado versus meta oficial e qualidade da base usada nos KPIs.</p></div><button class="fbi-btn" id="fbiOpenGovernance">Parâmetros BI</button></div>'+progressChart(k.target_vs_actual?.achievement,'Atingimento da meta','0%','100%')+
             '<div class="fbi-quality"><div><span>Faturamento líquido</span><b>'+(k.net_revenue?.complete?'Completo':'Pendente')+'</b></div><div><span>Margem</span><b>'+(k.contribution_margin?.complete?'Completa':'Pendente')+'</b></div><div><span>Política de estoque</span><b>'+(k.inventory_risk?.complete?'Completa':'Pendente')+'</b></div></div></section>'+
         '</div>'+
         '<section class="fbi-panel" id="fbiDelayed"><div class="fbi-panel-head"><div><h2>Pedidos atrasados</h2><p>Pedidos com data prometida vencida, abertos ou já entregues.</p></div><button class="fbi-btn" id="fbiGoLogistics">Abrir Logística</button></div>'+delayedTable(k.delayed_orders?.rows)+'</section>'+
