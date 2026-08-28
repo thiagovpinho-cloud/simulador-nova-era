@@ -668,6 +668,21 @@
   </div>
 </div>
 
+<div class="login-screen hidden" id="resetPasswordScreen">
+  <div class="login-card">
+    <div class="login-logo-wrap"><img id="resetLoginLogo" alt="Focado"></div>
+    <h1>Cadastrar nova senha</h1>
+    <p class="login-sub">Defina uma nova senha para o seu acesso de Administrador.</p>
+    <form id="resetPasswordForm" autocomplete="off">
+      <input type="password" id="resetPassword1" placeholder="Nova senha" autocomplete="new-password">
+      <input type="password" id="resetPassword2" placeholder="Confirmar nova senha" autocomplete="new-password">
+      <button id="resetPasswordBtn" type="submit">Salvar nova senha</button>
+    </form>
+    <p class="login-error" id="resetPasswordError"></p>
+    <p class="login-hint">Use pelo menos 12 caracteres, com letra maiúscula, minúscula e número.</p>
+  </div>
+</div>
+
 <!-- ===================== TELA DE MENU (HUB) ===================== -->
 <div class="hub-screen hidden" id="hubScreen">
   <div class="hub-top">
@@ -3464,6 +3479,61 @@ async function init(){
   document.getElementById('fichaLogoNovaEra2').src = LOGO_DATA_URI;
   document.getElementById('fichaLogoNovaEra3').src = LOGO_DATA_URI;
   document.getElementById('fichaLogoNovaEra4').src = LOGO_DATA_URI;
+  const resetParams = new URLSearchParams(window.location.search);
+  const resetToken = resetParams.get('reset');
+  const resetEmail = resetParams.get('email');
+  if(resetToken && resetEmail){
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('resetPasswordScreen').classList.remove('hidden');
+    document.getElementById('resetLoginLogo').src = LOGO_FOCADO_URI;
+  }
+
+  document.getElementById('resetPasswordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const p1=document.getElementById('resetPassword1').value;
+    const p2=document.getElementById('resetPassword2').value;
+    const err=document.getElementById('resetPasswordError');
+    const btn=document.getElementById('resetPasswordBtn');
+    err.textContent='';
+    if(p1!==p2){err.textContent='As senhas não coincidem.';return}
+    if(p1.length<12||!/[a-z]/.test(p1)||!/[A-Z]/.test(p1)||!/[0-9]/.test(p1)){
+      err.textContent='A senha deve ter 12+ caracteres, com maiúscula, minúscula e número.';
+      return;
+    }
+    btn.disabled=true;btn.textContent='Salvando...';
+    try{
+      const base=String(window.FocadoDataStore?.getConfig?.().apiBaseUrl||'').replace(/\/$/,'');
+      const res=await fetch(base+'/api/auth/reset-password',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({email:resetEmail,token:resetToken,password:p1}),
+        cache:'no-store'
+      });
+      const body=await res.json().catch(()=>({}));
+      if(!res.ok){
+        err.textContent=body.error==='RESET_LINK_USED'
+          ? 'Este link já foi utilizado.'
+          : body.error==='INVALID_RESET_LINK'
+            ? 'Link de redefinição inválido.'
+            : body.error==='INVALID_PASSWORD'
+              ? 'A nova senha não atende aos requisitos de segurança.'
+              : 'Não foi possível redefinir a senha.';
+        return;
+      }
+      history.replaceState({},'',window.location.pathname);
+      document.getElementById('resetPasswordScreen').classList.add('hidden');
+      document.getElementById('loginScreen').classList.remove('hidden');
+      document.getElementById('loginUser').value=resetEmail;
+      document.getElementById('loginPassword').value='';
+      document.getElementById('loginError').textContent='Senha atualizada. Faça login com a nova senha.';
+      document.getElementById('loginPassword').focus();
+    }catch(_){
+      err.textContent='Falha de conexão ao redefinir a senha.';
+    }finally{
+      btn.disabled=false;btn.textContent='Salvar nova senha';
+    }
+  });
+
   document.getElementById('loginForm').addEventListener('submit', (e) => {
     e.preventDefault();
     attemptLogin();
