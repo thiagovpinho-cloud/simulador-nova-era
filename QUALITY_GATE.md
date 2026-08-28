@@ -21,3 +21,13 @@ O assistente só deve informar que uma mudança está pronta para teste quando:
 - não houver falha conhecida aberta relacionada à alteração.
 
 Este gate existe para reduzir retrabalho e impedir publicação de mudanças não validadas.
+
+
+## Regra adicional — validação no ambiente publicado
+
+Para qualquer módulo/tela alterado:
+- CI verde não é suficiente.
+- Após o deploy, deve existir smoke test contra `https://focado.pages.dev`.
+- O teste deve confirmar que os arquivos publicados respondem, que o contrato do módulo existe e que a página publicada referencia a revisão correta.
+- Para problemas de boot/primeiro paint, o HTML publicado deve ser inspecionado para garantir ausência de texto residual como `\\n`.
+- O usuário só recebe "pode testar" depois do smoke test publicado passar.
