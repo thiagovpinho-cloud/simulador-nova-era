@@ -41,6 +41,7 @@
     produtos:['ADMIN','COMERCIAL','PCP','PRODUCAO','ESTOQUE'],
     relatorios:['ADMIN','FINANCEIRO'],
     indicadores:['ADMIN','FINANCEIRO'],
+    'bi-config':['ADMIN','FINANCEIRO','ESTOQUE'],
     config:['ADMIN'],
     usuarios:['ADMIN'],
     'system-health':['ADMIN']
