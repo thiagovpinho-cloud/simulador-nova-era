@@ -21,6 +21,11 @@ export async function getSession(req){
 
 export async function hasPermission(role,permission){
   if(role==='ADMIN')return true;
+  const builtIn={
+    DIRETOR:new Set(['workspace.read','orders.write','commercial.write']),
+    GESTOR:new Set(['workspace.read','orders.write','commercial.write'])
+  };
+  if(builtIn[role]?.has(permission))return true;
   const sql=db();
   const rows=await sql`
     select 1 from public.focado_role_permissions
