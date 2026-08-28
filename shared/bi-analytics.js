@@ -309,6 +309,36 @@ export function otif(state,filters={}){
   return {id:'otif',value:rows.length?pass/rows.length:null,evaluated:rows.length,passed:pass,excluded,complete:excluded===0,rows};
 }
 
+function capacityForDate(state,base,date){
+  const history=(Array.isArray(state?.productionCapacityHistory)?state.productionCapacityHistory:[])
+    .filter(x=>String(x.base||'')===String(base||'')&&String(x.effectiveDate||'')<=String(date||'9999-12-31'))
+    .sort((a,b)=>String(b.effectiveDate||'').localeCompare(String(a.effectiveDate||'')));
+  if(history.length)return num(history[0].capacityPerDay);
+  return num(state?.productionBases?.[base]?.capacityPerDay);
+}
+
+export function productionLoad(state,filters={}){
+  const f=normalizeFilters(filters);
+  const requests=(Array.isArray(state?.productionRequests)?state.productionRequests:[])
+    .filter(r=>String(r.status||'').toUpperCase()==='FINALIZADA');
+  const map=new Map();
+  for(const r of requests){
+    const date=String(r.needByDate||r.requestDate||'').slice(0,10);
+    if(f.from&&date&&date<f.from)continue;
+    if(f.to&&date&&date>f.to)continue;
+    const base=String(r.base||'SEM BASE');
+    const qty=(r.items||[]).reduce((sum,i)=>sum+num(i.qty),0);
+    const key=base+'|'+date;
+    const cur=map.get(key)||{base,date,scheduledQty:0,requests:0,requestIds:[]};
+    cur.scheduledQty+=qty;cur.requests++;cur.requestIds.push(r.id);map.set(key,cur);
+  }
+  const rows=[...map.values()].map(r=>{
+    const capacity=capacityForDate(state,r.base,r.date);
+    return {...r,capacityPerDay:capacity,load:capacity>0?r.scheduledQty/capacity:null,overCapacity:capacity>0?r.scheduledQty>capacity:null};
+  }).sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.base).localeCompare(String(b.base)));
+  return {id:'production_load',complete:rows.every(r=>r.capacityPerDay>0),rows};
+}
+
 export function targetVsActual(state,filters={}){
   const f=normalizeFilters(filters);
   const targets=Array.isArray(state?.monthlyTargets)?state.monthlyTargets:[];
@@ -347,6 +377,7 @@ export function buildBiAnalytics(state,filters={}){
   const otifKpi=otif(state,f);
   const targets=targetVsActual(state,f);
   const inventory=inventoryRisk(state);
+  const production=productionLoad(state,f);
   return {
     ok:true,
     version:BI_ANALYTICS_VERSION,
@@ -371,6 +402,7 @@ export function buildBiAnalytics(state,filters={}){
       otif:otifKpi,
       target_vs_actual:targets,
       inventory_risk:inventory,
+      production_load:production,
       brand_share:share,
       sku_ranking:ranking,
       lead_time:lead,
