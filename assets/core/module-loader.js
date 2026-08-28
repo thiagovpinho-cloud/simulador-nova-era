@@ -1,8 +1,9 @@
 (function(){
   'use strict';
-  const VERSION='20260828-final-v3';
+  const VERSION='20260828-simulator-v1';
   const loaded=new Map();
   const defs={
+    simulador:{css:'simulator.css',js:'simulator.js'},
     produtos:{css:'products.css',js:'products.js'},
     fichas:{css:'technical-sheets.css',js:'technical-sheets.js'},
     bases:{css:'bases.css',js:'bases.js'},
@@ -30,6 +31,7 @@
     financeiro:{css:'finance.css',js:'finance.js'}
   };
   const contracts={
+    simulador:()=>typeof window.FocadoSimulator?.render==='function',
     produtos:()=>typeof window.FocadoProducts?.render==='function',
     fichas:()=>typeof window.FocadoTechnicalSheets?.render==='function',
     bases:()=>typeof window.FocadoBases?.render==='function',
