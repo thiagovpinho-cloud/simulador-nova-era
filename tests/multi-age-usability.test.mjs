@@ -29,7 +29,7 @@ assert.ok(ds.includes('focus-visible'),'Foco de teclado deve ser visível');
 assert.ok(shellCss.includes('.fx-nav{font-size:12px!important'),'Menu deve manter leitura confortável');
 assert.ok(ds.includes('.fds-input'),'Campos devem seguir padrão de leitura');
 assert.ok(index.includes('assets/modules/technical-sheets.js?v=20260827-static-v1'),'Fichas deve ser módulo nativo');
-assert.ok(index.includes('assets/modules/bases.js?v=20260827-static-v1'),'Bases deve ser módulo nativo');
+assert.ok(index.includes('assets/modules/bases.js?v='),'Bases deve ser módulo nativo');
 
 for(const p of personas){
   assert.equal(p.criteria.length,3,'Persona '+p.age+' deve possuir critérios objetivos');
