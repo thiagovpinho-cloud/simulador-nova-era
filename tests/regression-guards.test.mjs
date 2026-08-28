@@ -183,5 +183,5 @@ assert.ok(orderProfit.includes('updateProfitability'),'Pedidos deve recalcular r
 assert.ok(orderProfit.includes('quoteOrder'),'Pedidos deve consultar o motor do simulador');
 assert.ok(orderProfit.includes('marginRules:ops.marginRules||{}'),'Margem do pedido deve respeitar Regras de Margem');
 assert.ok(orderProfit.includes("document.querySelector('[name=\"uf\"]')"),'Margem deve considerar UF do cliente');
-assert.ok(indexPerf.includes('quoteOrder(options={})'),'Motor do simulador deve expor cotação não mutante para pedido');
+assert.ok(indexPerf.includes('quoteOrder(o={})'),'Motor do simulador deve expor cotação não mutante para pedido');
 assert.ok(indexPerf.includes('finalPrice')&&indexPerf.includes('basePrice'),'Cotação deve decompor preço final em preço-base');
