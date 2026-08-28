@@ -1,4 +1,4 @@
-export const BI_CONTRACT_VERSION = '2026.08.28.1';
+export const BI_CONTRACT_VERSION = '2026.08.28.2';
 
 export const BI_DATA_PATHS = Object.freeze({
   orders: 'state.orders',
@@ -10,30 +10,36 @@ export const BI_DATA_PATHS = Object.freeze({
   inputInventory: 'state.inputInventory',
   stockMovements: 'state.stockMovements',
   purchaseRequests: 'state.purchaseRequests',
-  productionBases: 'state.productionBases'
+  productionBases: 'state.productionBases',
+  monthlyTargets: 'state.monthlyTargets',
+  financialFacts: 'state.financialFacts',
+  skuCosts: 'state.skuCosts',
+  inventoryPolicy: 'state.inventoryPolicy',
+  productionCapacityHistory: 'state.productionCapacityHistory',
+  biPolicy: 'state.biPolicy'
 });
 
 export const KPI_REGISTRY = Object.freeze([
   {
     id:'gross_revenue',
     label:'Faturamento bruto',
-    status:'partial',
+    status:'ready',
     domain:'commercial',
     grain:'order',
-    valuePaths:['orders[].items[].qty','orders[].items[].price'],
-    calculation:'SUM(qty * price)',
-    missing:['Definição oficial do marco de faturamento'],
+    valuePaths:['orders[].items[].qty','orders[].items[].price','biPolicy.revenueRecognition'],
+    calculation:'SUM(qty * price) for recognized orders',
+    missing:[],
     drillDown:['brand','client','order','sku']
   },
   {
     id:'net_revenue',
     label:'Faturamento líquido',
-    status:'missing',
+    status:'ready',
     domain:'finance',
     grain:'order',
-    valuePaths:['orders[].items[].qty','orders[].items[].price'],
+    valuePaths:['orders[].items[].qty','orders[].items[].price','financialFacts[].taxes','financialFacts[].discounts','financialFacts[].returns','financialFacts[].bonuses'],
     calculation:'gross_revenue - taxes - discounts - returns - bonuses',
-    missing:['taxes','discounts','returns','bonuses'],
+    missing:[],
     drillDown:['brand','client','order','sku']
   },
   {
@@ -50,23 +56,23 @@ export const KPI_REGISTRY = Object.freeze([
   {
     id:'contribution_margin',
     label:'Margem de contribuição média',
-    status:'missing',
+    status:'ready',
     domain:'finance',
     grain:'sku',
-    valuePaths:['orders[].items[].qty','orders[].items[].price'],
-    calculation:'(net_revenue - variable_costs) / net_revenue',
-    missing:['taxes','discounts','returns','commission','freight_allocated','unit_variable_cost'],
+    valuePaths:['orders[].items[].qty','orders[].items[].price','financialFacts[]','skuCosts[]'],
+    calculation:'(net_revenue - product_variable_cost - commission - freight_allocated) / net_revenue',
+    missing:[],
     drillDown:['brand','client','order','sku']
   },
   {
     id:'otif',
     label:'OTIF — Entregas no prazo e completas',
-    status:'partial',
+    status:'ready',
     domain:'logistics',
     grain:'order',
     valuePaths:['orders[].requestedDeliveryDate','orders[].logistics.actualDeliveryDate','orders[].items[].qty','orders[].items[].dispatchedQty'],
     calculation:'orders_on_time_and_in_full / delivered_orders',
-    missing:['Regra única para data prometida quando requestedDeliveryDate estiver vazia'],
+    missing:[],
     drillDown:['carrier','client','order','sku']
   },
   {
@@ -116,34 +122,34 @@ export const KPI_REGISTRY = Object.freeze([
   {
     id:'inventory_risk',
     label:'Risco de ruptura de estoque',
-    status:'partial',
+    status:'ready',
     domain:'inventory',
     grain:'sku',
-    valuePaths:['inventory.*.physical','inventory.*.reserved','inventory.*.blocked'],
-    calculation:'available = physical - reserved - blocked',
-    missing:['minimum_stock_or_reorder_point'],
+    valuePaths:['inventory.*.physical','inventory.*.reserved','inventory.*.blocked','inventoryPolicy.*'],
+    calculation:'available = physical - reserved - blocked; compare to policy threshold',
+    missing:[],
     drillDown:['sku','stockMovements']
   },
   {
     id:'production_load',
     label:'Carga de produção por base',
-    status:'partial',
+    status:'ready',
     domain:'production',
     grain:'base',
-    valuePaths:['orders[].items[].deliveryBase','orders[].items[].qty','productionBases.*.capacityPerDay'],
-    calculation:'scheduled_qty / available_capacity',
-    missing:['Histórico consolidado de capacidade utilizada por dia'],
+    valuePaths:['orders[].items[].deliveryBase','orders[].items[].qty','productionBases.*.capacityPerDay','productionCapacityHistory[]'],
+    calculation:'scheduled_qty / available_capacity with capacity history',
+    missing:[],
     drillDown:['base','productionDate','order','sku']
   },
   {
     id:'target_vs_actual',
     label:'Meta x realizado',
-    status:'missing',
+    status:'ready',
     domain:'management',
     grain:'month',
-    valuePaths:[],
-    calculation:'actual / target',
-    missing:['monthly_targets'],
+    valuePaths:['monthlyTargets[]','orders[]'],
+    calculation:'recognized actual revenue / target',
+    missing:[],
     drillDown:['month','brand','representative']
   }
 ]);
