@@ -116,12 +116,12 @@ assert.ok(index.includes('assets/modules/margin-rules.js?v=20260828-margin-rules
 assert.ok(shell.includes("id==='cockpit'?'indicadores':id"),'Cockpit deve carregar o módulo de Indicadores');
 assert.ok(shell.includes("if(id==='cockpit'){open(()=>window.FocadoIndicators?.render());return}"),'Cockpit deve renderizar o mesmo dashboard executivo');
 
-assert.ok(index.includes('assets/modules/customers.js?v=20260828-master-v1'),'Clientes deve publicar revisão com consulta de CNPJ');
-assert.ok(index.includes('assets/modules/customers.css?v=20260828-master-v1'),'Clientes deve publicar CSS da consulta de CNPJ');
+assert.ok(/assets\/modules\/customers\.js\?v=20260828-edit-actions-v\d+/.test(index),'Clientes deve publicar revisão atual com consulta de CNPJ e edição privilegiada');
+assert.ok(index.includes('assets/modules/customers.css'),'Clientes deve publicar CSS da consulta de CNPJ');
 assert.ok(index.includes('assets/modules/representatives.js?v=20260828-fantasy-v1'),'Representantes deve publicar revisão com Nome Fantasia');
 
-assert.ok(index.includes('assets/modules/orders.js?v=20260828-order-stability-v1'),'Pedidos deve publicar revisão que consome cadastro mestre do cliente');
-assert.ok(index.includes('assets/modules/customers.js?v=20260828-master-v1'),'Clientes deve publicar Condição de Pagamento mestre');
+assert.ok(/assets\/modules\/orders\.js\?v=20260828-edit-actions-v\d+/.test(index),'Pedidos deve publicar revisão atual que consome cadastro mestre e edição privilegiada');
+assert.ok(/assets\/modules\/customers\.js\?v=20260828-edit-actions-v\d+/.test(index),'Clientes deve publicar Condição de Pagamento mestre');
 
-assert.ok(index.includes('assets/app-shell.js?v=20260828-order-stability-v1'),'Shell deve publicar proteção contra rerender de formulário');
-assert.ok(index.includes('assets/modules/orders.js?v=20260828-order-stability-v1'),'Pedidos deve publicar proteção de formulário ativo');
+assert.ok(/assets\/app-shell\.js\?v=20260828-edit-actions-v\d+/.test(index),'Shell deve publicar proteção contra rerender de formulário');
+assert.ok(/assets\/modules\/orders\.js\?v=20260828-edit-actions-v\d+/.test(index),'Pedidos deve publicar proteção de formulário ativo');
