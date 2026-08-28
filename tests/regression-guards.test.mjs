@@ -83,7 +83,7 @@ assert.ok(healthModule.includes('getSecurityHealth'),'Saúde deve validar contro
 
 const intelligenceCore=read('assets/modules/intelligence-core.js');
 const intelligenceUI=read('assets/modules/intelligence.js');
-assert.ok(shell.includes('Cockpit Operacional'),'Barra lateral deve expor Cockpit Operacional');
+assert.ok(shell.includes('Cockpit Executivo'),'Barra lateral deve expor Cockpit Executivo');
 assert.ok(shell.includes('Corpo Auditor'),'Barra lateral deve expor Corpo Auditor');
 assert.ok(pcp.includes('MRP / Capacidade'),'PCP deve expor MRP leve');
 assert.ok(purchasesModule.includes('Performance fornecedores'),'Compras deve expor performance de fornecedores');
@@ -185,3 +185,6 @@ assert.ok(orderProfit.includes('marginRules:ops.marginRules||{}'),'Margem do ped
 assert.ok(orderProfit.includes("document.querySelector('[name=\"uf\"]')"),'Margem deve considerar UF do cliente');
 assert.ok(indexPerf.includes('quoteOrder(o={})'),'Motor do simulador deve expor cotação não mutante para pedido');
 assert.ok(indexPerf.includes('finalPrice')&&indexPerf.includes('basePrice'),'Cotação deve decompor preço final em preço-base');
+
+assert.ok(shell.includes("if(id==='cockpit'){open(()=>window.FocadoIndicators?.render());return}"),'Cockpit executivo deve usar FocadoIndicators');
+assert.ok(auth.includes("cockpit:['ADMIN','FINANCEIRO']"),'Cockpit executivo deve respeitar permissão financeira');
