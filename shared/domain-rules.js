@@ -1,4 +1,4 @@
-export const RULES_VERSION='2026.08.28.5';
+export const RULES_VERSION='2026.08.28.6';
 
 export const DOMAIN_PERMISSION=Object.freeze({
   COMERCIAL:'orders.write',
@@ -67,6 +67,15 @@ function applyCommercial(state,body){
       events:Array.isArray(src.events)?src.events.slice(0,20):[]
     };
     state.orders.unshift(order);
+    return;
+  }
+
+  if(changes.deleteOrderId){
+    const id=String(changes.deleteOrderId);
+    const target=state.orders.find(o=>String(o.id)===id);
+    if(!target)throw Object.assign(new Error('ORDER_NOT_FOUND'),{status:404});
+    if(target.status!=='COMERCIAL')throw Object.assign(new Error('ORDER_DELETE_BLOCKED_AFTER_COMMERCIAL'),{status:422});
+    state.orders=state.orders.filter(o=>String(o.id)!==id);
     return;
   }
 
