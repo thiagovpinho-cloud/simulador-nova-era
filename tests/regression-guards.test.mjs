@@ -178,13 +178,13 @@ assert.ok(biRules.includes("if(rules[key]==='CUSTO')classifiedCosts+=value"),'BI
 assert.ok(biRules.includes('const gross=base+components.ipi+components.st'),'Faturamento bruto deve usar valor base final + IPI + ST');
 
 const orderProfit=read('assets/modules/orders.js');
-assert.ok(orderProfit.includes('Preço final c/ impostos'),'Pedidos deve deixar explícito que o valor é final com impostos');
+assert.ok(orderProfit.includes('Preço da mercadoria s/ IPI/ST'),'Pedidos deve deixar explícito que o valor é preço base sem IPI/ST');
 assert.ok(orderProfit.includes('updateProfitability'),'Pedidos deve recalcular rentabilidade em tempo real');
 assert.ok(orderProfit.includes('quoteOrder'),'Pedidos deve consultar o motor do simulador');
 assert.ok(orderProfit.includes('marginRules:ops.marginRules||{}'),'Margem do pedido deve respeitar Regras de Margem');
 assert.ok(orderProfit.includes("document.querySelector('[name=\"uf\"]')"),'Margem deve considerar UF do cliente');
 assert.ok(indexPerf.includes('quoteOrder(o={})'),'Motor do simulador deve expor cotação não mutante para pedido');
-assert.ok(indexPerf.includes('finalPrice')&&indexPerf.includes('basePrice'),'Cotação deve decompor preço final em preço-base');
+assert.ok(indexPerf.includes('basePrice')&&indexPerf.includes('finalPrice'),'Cotação deve aceitar preço-base atual e manter compatibilidade com preço final legado');
 
 assert.ok(shell.includes("if(id==='cockpit'){open(()=>window.FocadoIndicators?.render());return}"),'Cockpit executivo deve usar FocadoIndicators');
 assert.ok(read('assets/core/auth-client.js').includes("cockpit:['ADMIN','DIRETOR','GESTOR','FINANCEIRO']"),'Cockpit executivo deve respeitar permissão executiva/financeira');
