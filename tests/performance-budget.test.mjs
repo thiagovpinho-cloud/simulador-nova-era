@@ -9,7 +9,7 @@ assert.ok(index.includes('assets/core/module-loader.js'),'Loader de módulos dev
 for(const m of modules){
   const preloaded=['orders','pcp','production','inventory','logistics','purchases','expedition','customers','products','representatives','system-health','intelligence-core','intelligence','kanban'].includes(m);
   if(preloaded){
-    const expected=['inventory','orders','production'].includes(m)?'assets/modules/'+m+'.js?v=':'assets/modules/'+m+'.js?v=20260827-static-v1';
+    const expected=['inventory','orders','production','customers','representatives'].includes(m)?'assets/modules/'+m+'.js?v=':'assets/modules/'+m+'.js?v=20260827-static-v1';
     assert.ok(index.includes(expected),'Módulo ativo deve ser pré-carregado: '+m);
   }
 }
