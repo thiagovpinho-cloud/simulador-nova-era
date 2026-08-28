@@ -209,7 +209,11 @@ async function route(request,env){
         const p=await passwordHash(password,user.password_salt,Number(it));
         ok=constEq(p.hash,expected);
       }
-      if(!ok){await recordLogin(false);return json({error:"INVALID_CREDENTIALS"},401)}
+      if(!ok){
+        await recordLogin(false);
+        if(recordLogin.blocked)return json({error:"LOGIN_TEMPORARILY_BLOCKED"},429);
+        return json({error:"INVALID_CREDENTIALS"},401);
+      }
       await recordLogin(true);
       const token=newToken(),tokenHash=await sha256Text(token);
       const expiresAt=new Date(Date.now()+12*60*60*1000).toISOString();
