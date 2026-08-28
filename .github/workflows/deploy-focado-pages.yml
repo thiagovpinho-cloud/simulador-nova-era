@@ -74,15 +74,21 @@ jobs:
         run: |
           set -euo pipefail
           BASE="https://focado.pages.dev"
-          for i in {1..12}; do
-            if curl -fsS --retry 2 --retry-delay 2 "$BASE/" -o /tmp/focado-index.html; then
+          READY=0
+          for i in {1..18}; do
+            if curl -fsS --retry 2 --retry-delay 2 "$BASE/" -o /tmp/focado-index.html \
+              && grep -q "assets/modules/simulator.js?v=20260828-simulator-v3" /tmp/focado-index.html \
+              && grep -q "assets/modules/simulator.css?v=20260828-simulator-v3" /tmp/focado-index.html; then
+              READY=1
+              echo "Production alias is serving simulator-v3."
               break
             fi
+            echo "Waiting for focado.pages.dev to switch to validated revision... attempt $i/18"
             sleep 5
           done
-          test -s /tmp/focado-index.html
-          curl -fsS --retry 4 --retry-delay 3 "$BASE/assets/modules/simulator.js?v=20260828-simulator-v3" -o /tmp/simulator.js
-          curl -fsS --retry 4 --retry-delay 3 "$BASE/assets/modules/simulator.css?v=20260828-simulator-v3" -o /tmp/simulator.css
+          test "$READY" = "1"
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/simulator.js?v=20260828-simulator-v3" -o /tmp/simulator.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/simulator.css?v=20260828-simulator-v3" -o /tmp/simulator.css
           grep -q "window.FocadoSimulator={render}" /tmp/simulator.js
           grep -q "Cadastrar insumo" /tmp/simulator.js
           grep -q "Manual por caixa" /tmp/simulator.js
@@ -90,8 +96,6 @@ jobs:
           grep -q "data-comp-qty" /tmp/simulator.js
           grep -q "data-comp-loss" /tmp/simulator.js
           grep -q ".fsim-page" /tmp/simulator.css
-          grep -q "assets/modules/simulator.js?v=20260828-simulator-v3" /tmp/focado-index.html
-          grep -q "assets/modules/simulator.css?v=20260828-simulator-v3" /tmp/focado-index.html
           python - <<'PY'
           from pathlib import Path
           html=Path('/tmp/focado-index.html').read_text(errors='replace')
