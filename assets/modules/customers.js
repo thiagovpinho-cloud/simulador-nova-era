@@ -10,6 +10,7 @@
   const apiBase=()=>String(window.FocadoDataStore?.getConfig?.().apiBaseUrl||'').replace(/\/$/,'');
   const token=()=>window.FocadoDataStore?.getSessionToken?.()||'';
   let state={q:''};
+  const canEditExisting=()=>['ADMIN','DIRETOR','GESTOR'].includes(window.FocadoAuth?.getRole?.()||'');
 
 
   async function lookupCnpj(value){
@@ -111,12 +112,14 @@
       '<div class="fc-table-wrap">'+table(rows)+'</div></div>';
     document.getElementById('fcNew').onclick=()=>openForm();
     document.getElementById('fcSearch').oninput=e=>render({q:e.target.value});
-    document.querySelectorAll('[data-fc-open]').forEach(b=>b.onclick=()=>openForm(b.dataset.fcOpen));
+    document.querySelectorAll('[data-fc-open]').forEach(b=>b.onclick=()=>openForm(b.dataset.fcOpen,false));
+    document.querySelectorAll('[data-fc-edit]').forEach(b=>b.onclick=()=>openForm(b.dataset.fcEdit,true));
   }
 
   function table(rows){
     if(!rows.length)return '<div class="fc-empty">Nenhum cliente encontrado.</div>';
-    return '<table class="fc-table"><thead><tr><th>Cliente</th><th>CNPJ</th><th>E-mail</th><th>Telefone</th><th>Cidade / UF</th><th>Endereço</th><th>Representante</th><th>Status</th><th></th></tr></thead><tbody>'+rows.map(c=>'<tr><td><b>'+esc(c.name||'—')+'</b>'+(c.fantasyName?'<small>'+esc(c.fantasyName)+'</small>':'')+'</td><td>'+esc(fmtCnpj(c.cnpj)||'—')+'</td><td>'+esc(c.email||'—')+'</td><td>'+esc(c.phone||'—')+'</td><td>'+esc([c.city,c.state].filter(Boolean).join(' / ')||'—')+'</td><td>'+esc(c.address||'—')+'</td><td>'+esc(c.representative||'—')+'</td><td><span class="fc-chip '+(c.active!==false?'ok':'off')+'">'+(c.active!==false?'Ativo':'Inativo')+'</span></td><td><button class="fc-btn primary small" data-fc-open="'+esc(c.id)+'">Abrir</button></td></tr>').join('')+'</tbody></table>';
+    const allowEdit=canEditExisting();
+    return '<table class="fc-table"><thead><tr><th>Cliente</th><th>CNPJ</th><th>E-mail</th><th>Telefone</th><th>Cidade / UF</th><th>Endereço</th><th>Representante</th><th>Status</th><th></th></tr></thead><tbody>'+rows.map(c=>'<tr><td><b>'+esc(c.name||'—')+'</b>'+(c.fantasyName?'<small>'+esc(c.fantasyName)+'</small>':'')+'</td><td>'+esc(fmtCnpj(c.cnpj)||'—')+'</td><td>'+esc(c.email||'—')+'</td><td>'+esc(c.phone||'—')+'</td><td>'+esc([c.city,c.state].filter(Boolean).join(' / ')||'—')+'</td><td>'+esc(c.address||'—')+'</td><td>'+esc(c.representative||'—')+'</td><td><span class="fc-chip '+(c.active!==false?'ok':'off')+'">'+(c.active!==false?'Ativo':'Inativo')+'</span></td><td><div class="fc-actions"><button class="fc-btn primary small" data-fc-open="'+esc(c.id)+'">Abrir</button>'+(allowEdit?'<button class="fc-btn secondary small" data-fc-edit="'+esc(c.id)+'">Editar</button>':'')+'</div></td></tr>').join('')+'</tbody></table>';
   }
 
   function findCustomer(ops,id){
@@ -140,11 +143,13 @@
       '</select><small class="fc-rep-hint">'+(visible.length?'Lista vinculada ao cadastro de Representantes.':'Nenhum representante ativo cadastrado.')+'</small></label>';
   }
 
-  function openForm(id){
+  function openForm(id,editMode=false){
+    if(id&&editMode&&!canEditExisting()){alert('Seu perfil não possui permissão para editar clientes.');return}
     const ops=load(),existing=id?findCustomer(ops,id):null;
     const c=existing||{id:'cli_'+Date.now(),active:true,createdAt:Date.now()};
+    const readonlyExisting=Boolean(existing&&!editMode);
     content().innerHTML='<div class="fc-page">'+
-      '<div class="fc-head"><div><button class="fc-btn primary" id="fcBack">← Clientes</button><h1>'+(existing?'Editar cliente':'Cadastrar cliente')+'</h1><p>Dados comerciais e de contato do cliente</p></div><button class="fc-btn primary" id="fcSave">Salvar cliente</button></div>'+
+      '<div class="fc-head"><div><button class="fc-btn primary" id="fcBack">← Clientes</button><h1>'+(existing?(editMode?'Editar cliente':'Cliente'):'Cadastrar cliente')+'</h1><p>'+(readonlyExisting?'Consulta do cadastro existente':'Dados comerciais e de contato do cliente')+'</p></div>'+(!readonlyExisting?'<button class="fc-btn primary" id="fcSave">Salvar cliente</button>':'')+'</div>'+
       '<div class="fc-card"><div class="fc-grid">'+
         field('Cliente / Razão social','fcName',c.name,'text','wide')+
         field('Nome fantasia','fcFantasyName',c.fantasyName)+
@@ -178,7 +183,15 @@
     }
     lookupBtn.onclick=runLookup;
     cnpj.onblur=()=>{if(normCnpj(cnpj.value).length===14&&!cnpjStatus.textContent)runLookup()};
-    document.getElementById('fcSave').onclick=()=>saveCustomer(c);
+    if(readonlyExisting){
+      content().querySelectorAll('input,select,textarea').forEach(el=>el.disabled=true);
+      lookupBtn.disabled=true;
+    }
+    const saveBtn=document.getElementById('fcSave');
+    if(saveBtn)saveBtn.onclick=()=>{
+      if(existing&&!canEditExisting()){alert('Seu perfil não possui permissão para editar clientes.');return}
+      saveCustomer(c);
+    };
   }
 
   function field(label,id,val,type='text',cls=''){
