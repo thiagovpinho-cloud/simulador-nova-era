@@ -74,3 +74,8 @@ assert.ok(shell.includes("route:'pedidos'"),'Dashboard deve usar rota Pedidos re
 assert.ok(!shell.includes("route:'orders'"),'Rota inexistente orders não pode voltar');
 
 console.log('runtime-navigation: ok');
+
+assert.ok(shell.includes("refreshInBackground('customers'"),'Clientes deve atualizar em segundo plano');
+assert.ok(shell.includes("refreshInBackground('orders'"),'Pedidos deve atualizar em segundo plano');
+assert.ok(!shell.includes("if(id==='clientes')await window.FocadoDataStore?.refreshDomainV2?.('customers')"),'Clientes não pode bloquear navegação esperando API');
+assert.ok(!shell.includes("if(id==='pedidos')await window.FocadoDataStore?.refreshDomainV2?.('orders')"),'Pedidos não pode bloquear navegação esperando API');
