@@ -16,7 +16,7 @@ assert.ok(shellPos>loaderPos,'Module loader deve carregar antes do app shell');
 
 const activeRoutes=[
   ['kanban',"window.FocadoKanban?.render"],
-  ['cockpit',"window.FocadoIntelligenceUI?.renderCockpit"],
+  ['cockpit',"window.FocadoIndicators?.render"],
   ['clientes',"window.FocadoCustomers?.render"],
   ['representantes',"window.FocadoRepresentatives?.render"],
   ['pedidos',"window.FocadoOrders?.render"],
