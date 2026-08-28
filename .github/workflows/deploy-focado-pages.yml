@@ -81,17 +81,24 @@ jobs:
             sleep 5
           done
           test -s /tmp/focado-index.html
-          curl -fsS --retry 4 --retry-delay 3 "$BASE/assets/modules/simulator.js?v=20260828-simulator-v2" -o /tmp/simulator.js
-          curl -fsS --retry 4 --retry-delay 3 "$BASE/assets/modules/simulator.css?v=20260828-simulator-v2" -o /tmp/simulator.css
+          curl -fsS --retry 4 --retry-delay 3 "$BASE/assets/modules/simulator.js?v=20260828-simulator-v3" -o /tmp/simulator.js
+          curl -fsS --retry 4 --retry-delay 3 "$BASE/assets/modules/simulator.css?v=20260828-simulator-v3" -o /tmp/simulator.css
           grep -q "window.FocadoSimulator={render}" /tmp/simulator.js
+          grep -q "Cadastrar insumo" /tmp/simulator.js
+          grep -q "Manual por caixa" /tmp/simulator.js
+          grep -q "data-comp-unit" /tmp/simulator.js
+          grep -q "data-comp-qty" /tmp/simulator.js
+          grep -q "data-comp-loss" /tmp/simulator.js
           grep -q ".fsim-page" /tmp/simulator.css
-          grep -q "assets/modules/simulator.js?v=20260828-simulator-v2" /tmp/focado-index.html
-          grep -q "assets/modules/simulator.css?v=20260828-simulator-v2" /tmp/focado-index.html
+          grep -q "assets/modules/simulator.js?v=20260828-simulator-v3" /tmp/focado-index.html
+          grep -q "assets/modules/simulator.css?v=20260828-simulator-v3" /tmp/focado-index.html
           python - <<'PY'
           from pathlib import Path
           html=Path('/tmp/focado-index.html').read_text(errors='replace')
           head=html.split('</head>',1)[0]
           assert r'\n' not in head, 'literal \\n detected in published <head>'
           assert 'window.FocadoLegacySimulator' in html, 'pricing adapter missing from published HTML'
+          assert 'focado-booting' in html, 'boot splash class missing from published HTML'
+          assert 'focado-brand.svg?v=20260828-boot' in html, 'boot splash logo missing from published HTML'
           print('published-smoke: ok')
           PY
