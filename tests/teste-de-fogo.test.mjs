@@ -89,7 +89,7 @@ const directorChecklist={
   cockpitVisible:shell.includes("['cockpit','◉','Cockpit Executivo']"),
   cockpitUsesExecutiveEngine:shell.includes("if(id==='cockpit'){open(()=>window.FocadoIndicators?.render());return}"),
   cockpitLoadsIndicators:shell.includes("id==='cockpit'?'indicadores':id"),
-  accessControlled:auth.includes("cockpit:['ADMIN','FINANCEIRO']"),
+  accessControlled:auth.includes("cockpit:['ADMIN','DIRETOR','GESTOR','FINANCEIRO']"),
   gross:Number.isFinite(bi.summary.recognizedGrossRevenue)&&bi.summary.recognizedGrossRevenue>0,
   net:Number.isFinite(bi.summary.netRevenue),
   margin:bi.summary.contributionMargin!=null,
