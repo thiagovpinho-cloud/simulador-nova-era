@@ -59,6 +59,7 @@ jobs:
           fi
 
       - name: Deploy Pages
+        id: deploy_pages
         shell: bash
         env:
           CF_TOKEN_RAW: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -67,26 +68,34 @@ jobs:
           export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CF_TOKEN_RAW" | tr -d '\r\n' | xargs)"
           export CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$CF_ACCOUNT_RAW" | tr -d '\r\n' | xargs)"
           cd worker
-          npx wrangler pages deploy ../_site --project-name focado --branch main --commit-dirty=true
+          npx wrangler pages deploy ../_site --project-name focado --branch main --commit-dirty=true | tee /tmp/pages-deploy.log
+          DEPLOY_URL="$(grep -oE 'https://[a-z0-9]+\.focado\.pages\.dev' /tmp/pages-deploy.log | tail -1)"
+          test -n "$DEPLOY_URL"
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
 
       - name: Smoke test published Focado
         shell: bash
         run: |
           set -euo pipefail
-          BASE="https://focado.pages.dev"
+          BASE="${{ steps.deploy_pages.outputs.url }}"
+          test -n "$BASE"
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/" -o /tmp/focado-index.html
+          grep -q "assets/modules/simulator.js?v=20260828-simulator-v5" /tmp/focado-index.html
+          grep -q "assets/modules/simulator.css?v=20260828-simulator-v3" /tmp/focado-index.html
+          grep -q "assets/modules/margin-rules.js?v=20260828-margin-rules-v1" /tmp/focado-index.html
+          grep -q "assets/modules/orders.js?v=20260828-profit-v1" /tmp/focado-index.html
+          grep -q "assets/modules/orders.css?v=20260828-profit-v1" /tmp/focado-index.html
+
+          PROD="https://focado.pages.dev"
           READY=0
-          for i in {1..18}; do
-            if curl -fsS --retry 2 --retry-delay 2 "$BASE/" -o /tmp/focado-index.html \
-              && grep -q "assets/modules/simulator.js?v=20260828-simulator-v5" /tmp/focado-index.html \
-              && grep -q "assets/modules/simulator.css?v=20260828-simulator-v3" /tmp/focado-index.html \
-              && grep -q "assets/modules/margin-rules.js?v=20260828-margin-rules-v1" /tmp/focado-index.html \
-              && grep -q "assets/modules/orders.js?v=20260828-profit-v1" /tmp/focado-index.html \
-              && grep -q "assets/modules/orders.css?v=20260828-profit-v1" /tmp/focado-index.html; then
+          for i in {1..36}; do
+            if curl -fsS --retry 2 --retry-delay 2 "$PROD/?release=${GITHUB_SHA}" -o /tmp/focado-prod-index.html \
+              && grep -q "assets/modules/orders.js?v=20260828-profit-v1" /tmp/focado-prod-index.html; then
               READY=1
-              echo "Production alias is serving simulator-v5."
+              echo "Production alias is serving validated order-profit revision."
               break
             fi
-            echo "Waiting for focado.pages.dev to switch to validated revision... attempt $i/18"
+            echo "Waiting for production alias... attempt $i/36"
             sleep 5
           done
           test "$READY" = "1"
