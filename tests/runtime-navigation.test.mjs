@@ -87,3 +87,8 @@ assert.ok(shell.includes("refreshInBackground('inventory'"),'Estoque deve atuali
 assert.ok(shell.includes("refreshInBackground('production'"),'Produção deve atualizar da V2 em segundo plano');
 assert.ok(shell.includes("refreshInBackground('purchases'"),'Compras deve atualizar da V2 em segundo plano');
 assert.ok(shell.includes("refreshInBackground('carriers'"),'Transportadoras devem atualizar da V2 em segundo plano');
+
+assert.ok(loader.includes("existing.dataset.loaded==='1'||existing.sheet"),'Loader deve reconhecer CSS lazy carregado');
+assert.ok(loader.includes("existing.remove()"),'Loader deve remover CSS lazy quebrado antes de tentar novamente');
+assert.ok(loader.includes("el.onerror=err=>{el.remove();reject"),'Falha de CSS deve limpar o link inválido');
+assert.ok(loader.includes("if(existing&&existing()){\n        if(def.css)await css(def.css);"),'Módulo JS já carregado ainda deve garantir o CSS correspondente');
