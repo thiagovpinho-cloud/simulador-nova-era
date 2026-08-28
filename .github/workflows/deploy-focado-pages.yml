@@ -68,3 +68,30 @@ jobs:
           export CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$CF_ACCOUNT_RAW" | tr -d '\r\n' | xargs)"
           cd worker
           npx wrangler pages deploy ../_site --project-name focado --branch main --commit-dirty=true
+
+      - name: Smoke test published Focado
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://focado.pages.dev"
+          for i in {1..12}; do
+            if curl -fsS --retry 2 --retry-delay 2 "$BASE/" -o /tmp/focado-index.html; then
+              break
+            fi
+            sleep 5
+          done
+          test -s /tmp/focado-index.html
+          curl -fsS --retry 4 --retry-delay 3 "$BASE/assets/modules/simulator.js?v=20260828-simulator-v2" -o /tmp/simulator.js
+          curl -fsS --retry 4 --retry-delay 3 "$BASE/assets/modules/simulator.css?v=20260828-simulator-v2" -o /tmp/simulator.css
+          grep -q "window.FocadoSimulator={render}" /tmp/simulator.js
+          grep -q ".fsim-page" /tmp/simulator.css
+          grep -q "assets/modules/simulator.js?v=20260828-simulator-v2" /tmp/focado-index.html
+          grep -q "assets/modules/simulator.css?v=20260828-simulator-v2" /tmp/focado-index.html
+          python - <<'PY'
+          from pathlib import Path
+          html=Path('/tmp/focado-index.html').read_text(errors='replace')
+          head=html.split('</head>',1)[0]
+          assert r'\n' not in head, 'literal \\n detected in published <head>'
+          assert 'window.FocadoLegacySimulator' in html, 'pricing adapter missing from published HTML'
+          print('published-smoke: ok')
+          PY
