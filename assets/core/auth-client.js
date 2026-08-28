@@ -18,7 +18,7 @@
   const ROUTE_ACCESS={
     dashboard:['ADMIN','COMERCIAL','PCP','PRODUCAO','ESTOQUE','LOGISTICA','COMPRAS','FINANCEIRO'],
     kanban:['ADMIN','COMERCIAL','PCP','PRODUCAO','ESTOQUE','LOGISTICA','COMPRAS','FINANCEIRO'],
-    cockpit:['ADMIN','COMERCIAL','PCP','PRODUCAO','ESTOQUE','LOGISTICA','COMPRAS','FINANCEIRO'],
+    cockpit:['ADMIN','FINANCEIRO'],
     'corpo-auditor':['ADMIN'],
     clientes:['ADMIN','COMERCIAL'],
     representantes:['ADMIN','COMERCIAL'],
