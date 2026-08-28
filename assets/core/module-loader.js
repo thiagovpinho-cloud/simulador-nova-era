@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260828-bi-v1';
+  const VERSION='20260828-fields-v2';
   const loaded=new Map();
   const defs={
     produtos:{css:'products.css',js:'products.js'},
