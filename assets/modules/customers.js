@@ -7,7 +7,67 @@
   const normCnpj=v=>String(v||'').replace(/\D/g,'');
   const fmtCnpj=v=>{const d=normCnpj(v).slice(0,14);return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2}).*/,'$1.$2.$3/$4-$5')};
   const today=()=>new Date().toISOString().slice(0,10);
+  const apiBase=()=>String(window.FocadoDataStore?.getConfig?.().apiBaseUrl||'').replace(/\/$/,'');
+  const token=()=>window.FocadoDataStore?.getSessionToken?.()||'';
   let state={q:''};
+
+
+  async function lookupCnpj(value){
+    const d=normCnpj(value);
+    if(d.length!==14)throw Object.assign(new Error('INVALID_CNPJ'),{status:400});
+    const base=apiBase();
+    if(base&&token()){
+      try{
+        const res=await fetch(base+'/api/cnpj/'+encodeURIComponent(d),{
+          headers:{Authorization:'Bearer '+token(),accept:'application/json'},cache:'no-store'
+        });
+        const body=await res.json().catch(()=>({}));
+        if(res.ok)return body;
+        if(res.status===404)throw Object.assign(new Error('CNPJ_NOT_FOUND'),{status:404});
+      }catch(err){
+        if(err?.status===404)throw err;
+        console.warn('[FocadoCustomers] API CNPJ principal indisponível; tentando fallback',err);
+      }
+    }
+    const res=await fetch('https://brasilapi.com.br/api/cnpj/v1/'+encodeURIComponent(d),{headers:{accept:'application/json'},cache:'no-store'});
+    if(!res.ok)throw Object.assign(new Error(res.status===404?'CNPJ_NOT_FOUND':'CNPJ_LOOKUP_FAILED'),{status:res.status});
+    const b=await res.json();
+    return {
+      cnpj:b.cnpj||d,
+      razaoSocial:b.razao_social||'',
+      nomeFantasia:b.nome_fantasia||'',
+      descricaoSituacao:b.descricao_situacao_cadastral||'',
+      cep:b.cep||'',
+      logradouro:b.logradouro||'',
+      numero:b.numero||'',
+      complemento:b.complemento||'',
+      bairro:b.bairro||'',
+      municipio:b.municipio||'',
+      uf:b.uf||'',
+      dddTelefone1:b.ddd_telefone_1||'',
+      email:b.email||''
+    };
+  }
+
+  function addressFromCnpj(d){
+    return [d.logradouro,d.numero,d.complemento].filter(Boolean).join(', ');
+  }
+
+  function applyCnpjData(d){
+    const set=(id,value,overwrite=true)=>{
+      const el=document.getElementById(id);if(!el||value==null||String(value).trim()==='')return;
+      if(overwrite||!String(el.value||'').trim())el.value=String(value).trim();
+    };
+    set('fcName',d.razaoSocial||d.nomeFantasia||'',true);
+    set('fcFantasyName',d.nomeFantasia||'',true);
+    set('fcCep',d.cep||'',true);
+    set('fcBairro',d.bairro||'',true);
+    set('fcCity',d.municipio||'',true);
+    set('fcState',(d.uf||'').toUpperCase(),true);
+    set('fcAddress',addressFromCnpj(d),true);
+    set('fcPhone',d.dddTelefone1||'',false);
+    set('fcEmail',d.email||'',false);
+  }
 
   function aggregate(ops){
     const map=new Map();
@@ -43,7 +103,7 @@
   function render(s){
     state=s||state;
     const ops=load(),all=aggregate(ops),q=String(state.q||'').toLowerCase();
-    const rows=all.filter(c=>!q||[c.name,c.cnpj,c.email,c.phone,c.city,c.state,c.representative].some(v=>String(v||'').toLowerCase().includes(q)));
+    const rows=all.filter(c=>!q||[c.name,c.fantasyName,c.cnpj,c.email,c.phone,c.city,c.state,c.representative].some(v=>String(v||'').toLowerCase().includes(q)));
     content().innerHTML='<div class="fc-page">'+
       '<div class="fc-head"><div><h1>Clientes</h1><p>Cadastro mestre e clientes já utilizados nos pedidos comerciais</p></div><button class="fc-btn primary" id="fcNew">+ Cadastrar cliente</button></div>'+
       '<div class="fc-toolbar"><div class="fc-search-wrap"><span>⌕</span><input id="fcSearch" placeholder="Pesquisar cliente por nome, CNPJ, cidade, e-mail ou telefone" value="'+esc(state.q||'')+'"></div><span class="fc-muted">'+rows.length+' cliente(s)</span></div>'+
@@ -55,7 +115,7 @@
 
   function table(rows){
     if(!rows.length)return '<div class="fc-empty">Nenhum cliente encontrado.</div>';
-    return '<table class="fc-table"><thead><tr><th>Cliente</th><th>CNPJ</th><th>E-mail</th><th>Telefone</th><th>Cidade / UF</th><th>Endereço</th><th>Representante</th><th>Status</th><th></th></tr></thead><tbody>'+rows.map(c=>'<tr><td><b>'+esc(c.name||'—')+'</b></td><td>'+esc(fmtCnpj(c.cnpj)||'—')+'</td><td>'+esc(c.email||'—')+'</td><td>'+esc(c.phone||'—')+'</td><td>'+esc([c.city,c.state].filter(Boolean).join(' / ')||'—')+'</td><td>'+esc(c.address||'—')+'</td><td>'+esc(c.representative||'—')+'</td><td><span class="fc-chip '+(c.active!==false?'ok':'off')+'">'+(c.active!==false?'Ativo':'Inativo')+'</span></td><td><button class="fc-btn primary small" data-fc-open="'+esc(c.id)+'">Abrir</button></td></tr>').join('')+'</tbody></table>';
+    return '<table class="fc-table"><thead><tr><th>Cliente</th><th>CNPJ</th><th>E-mail</th><th>Telefone</th><th>Cidade / UF</th><th>Endereço</th><th>Representante</th><th>Status</th><th></th></tr></thead><tbody>'+rows.map(c=>'<tr><td><b>'+esc(c.name||'—')+'</b>'+(c.fantasyName?'<small>'+esc(c.fantasyName)+'</small>':'')+'</td><td>'+esc(fmtCnpj(c.cnpj)||'—')+'</td><td>'+esc(c.email||'—')+'</td><td>'+esc(c.phone||'—')+'</td><td>'+esc([c.city,c.state].filter(Boolean).join(' / ')||'—')+'</td><td>'+esc(c.address||'—')+'</td><td>'+esc(c.representative||'—')+'</td><td><span class="fc-chip '+(c.active!==false?'ok':'off')+'">'+(c.active!==false?'Ativo':'Inativo')+'</span></td><td><button class="fc-btn primary small" data-fc-open="'+esc(c.id)+'">Abrir</button></td></tr>').join('')+'</tbody></table>';
   }
 
   function findCustomer(ops,id){
@@ -69,7 +129,8 @@
       '<div class="fc-head"><div><button class="fc-btn primary" id="fcBack">← Clientes</button><h1>'+(existing?'Editar cliente':'Cadastrar cliente')+'</h1><p>Dados comerciais e de contato do cliente</p></div><button class="fc-btn primary" id="fcSave">Salvar cliente</button></div>'+
       '<div class="fc-card"><div class="fc-grid">'+
         field('Cliente / Razão social','fcName',c.name,'text','wide')+
-        field('CNPJ','fcCnpj',fmtCnpj(c.cnpj))+
+        field('Nome fantasia','fcFantasyName',c.fantasyName)+
+        '<label class="fc-field"><span>CNPJ</span><div class="fc-cnpj-wrap"><input id="fcCnpj" inputmode="numeric" value="'+esc(fmtCnpj(c.cnpj)||'')+'" placeholder="00.000.000/0000-00"><button type="button" id="fcLookupCnpj">Consultar</button></div><small id="fcCnpjStatus" class="fc-cnpj-status"></small></label>'+
         field('E-mail','fcEmail',c.email,'email')+
         field('Telefone','fcPhone',c.phone)+
         field('CEP','fcCep',c.cep)+
@@ -82,8 +143,22 @@
         '<label class="fc-field wide"><span>Observações</span><textarea id="fcNotes">'+esc(c.notes||'')+'</textarea></label>'+
       '</div></div></div>';
     document.getElementById('fcBack').onclick=()=>render(state);
-    const cnpj=document.getElementById('fcCnpj');
-    cnpj.oninput=()=>{cnpj.value=fmtCnpj(cnpj.value)};
+    const cnpj=document.getElementById('fcCnpj'),cnpjStatus=document.getElementById('fcCnpjStatus'),lookupBtn=document.getElementById('fcLookupCnpj');
+    cnpj.oninput=()=>{cnpj.value=fmtCnpj(cnpj.value);cnpjStatus.textContent='';cnpjStatus.className='fc-cnpj-status'};
+    async function runLookup(){
+      const raw=normCnpj(cnpj.value);cnpj.value=fmtCnpj(raw);
+      if(raw.length!==14){cnpjStatus.textContent='Informe os 14 dígitos do CNPJ.';cnpjStatus.className='fc-cnpj-status bad';return false}
+      lookupBtn.disabled=true;lookupBtn.textContent='Consultando...';cnpjStatus.textContent='Consultando CNPJ...';cnpjStatus.className='fc-cnpj-status';
+      try{
+        const data=await lookupCnpj(raw);applyCnpjData(data);
+        cnpjStatus.textContent='CNPJ localizado. Dados cadastrais preenchidos automaticamente.';cnpjStatus.className='fc-cnpj-status ok';return true;
+      }catch(err){
+        console.warn('[FocadoCustomers] consulta CNPJ falhou',err);
+        cnpjStatus.textContent=err?.status===404?'CNPJ não encontrado.':'Não foi possível consultar o CNPJ agora. Você pode tentar novamente.';cnpjStatus.className='fc-cnpj-status bad';return false;
+      }finally{lookupBtn.disabled=false;lookupBtn.textContent='Consultar'}
+    }
+    lookupBtn.onclick=runLookup;
+    cnpj.onblur=()=>{if(normCnpj(cnpj.value).length===14&&!cnpjStatus.textContent)runLookup()};
     document.getElementById('fcSave').onclick=()=>saveCustomer(c);
   }
 
@@ -99,6 +174,7 @@
       ...base,
       id:base.id||'cli_'+Date.now(),
       name:document.getElementById('fcName').value.trim(),
+      fantasyName:document.getElementById('fcFantasyName').value.trim(),
       cnpj:normCnpj(document.getElementById('fcCnpj').value),
       email:document.getElementById('fcEmail').value.trim(),
       phone:document.getElementById('fcPhone').value.trim(),
