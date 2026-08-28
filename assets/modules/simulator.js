@@ -6,6 +6,7 @@
   const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   const pct=v=>Number(v||0).toLocaleString('pt-BR',{style:'percent',minimumFractionDigits:1,maximumFractionDigits:1});
   let tab='simulacao',snap=null,selectedProduct='';
+  let inputEditMode=false,inputDraft={};
 
   async function get(){
     const api=window.FocadoLegacySimulator;
@@ -64,9 +65,15 @@
 
   function inputs(){
     const groups=[...new Set(snap.insumos.map(i=>i.group))];
-    return '<div class="fsim-input-toolbar"><div><h2>Base de Insumos</h2><p>Cadastre novos componentes e mantenha os preços usados pelo motor.</p></div><button id="fsimAddInput">+ Cadastrar insumo</button></div>'+
+    const actions=inputEditMode
+      ?'<div class="fsim-input-actions"><button class="secondary" id="fsimCancelInputEdit">Cancelar</button><button id="fsimSaveInputPrices">Salvar alterações</button></div>'
+      :'<div class="fsim-input-actions"><button class="secondary" id="fsimEditInputPrices">Editar valores</button><button id="fsimAddInput">+ Cadastrar insumo</button></div>';
+    return '<div class="fsim-input-toolbar"><div><h2>Base de Insumos</h2><p>Os preços ficam protegidos em modo consulta. Clique em “Editar valores” para alterar e depois em “Salvar alterações”.</p></div>'+actions+'</div>'+
       '<div class="fsim-stack">'+groups.map(g=>'<section class="fsim-card"><div class="fsim-card-head"><div><h2>'+esc(g)+'</h2><p>Preço vigente usado pelo motor de custo.</p></div></div><div class="fsim-table-wrap"><table class="fsim-table"><thead><tr><th>Código</th><th>Insumo</th><th>Unidade</th><th>Preço</th></tr></thead><tbody>'+
-      snap.insumos.filter(i=>i.group===g).map(i=>'<tr><td><b>'+esc(i.code)+'</b></td><td>'+esc(i.desc)+(i.custom?' <span class="fsim-custom-tag">cadastrado</span>':'')+'</td><td>'+esc(i.unit)+'</td><td><div class="fsim-money-input wide"><span>R$</span><input data-input-price="'+esc(i.code)+'" type="number" min="0" step="0.0001" value="'+Number(i.preco||0).toFixed(4)+'"></div></td></tr>').join('')+
+      snap.insumos.filter(i=>i.group===g).map(i=>{
+        const draft=inputDraft[i.code]!=null?inputDraft[i.code]:i.preco;
+        return '<tr><td><b>'+esc(i.code)+'</b></td><td>'+esc(i.desc)+(i.custom?' <span class="fsim-custom-tag">cadastrado</span>':'')+'</td><td>'+esc(i.unit)+'</td><td><div class="fsim-money-input wide '+(inputEditMode?'editing':'locked')+'"><span>R$</span><input data-input-price="'+esc(i.code)+'" type="number" min="0" step="0.0001" value="'+Number(draft||0).toFixed(4)+'" '+(inputEditMode?'':'disabled')+'></div></td></tr>';
+      }).join('')+
       '</tbody></table></div></section>').join('')+'</div>';
   }
 
@@ -155,7 +162,32 @@
     $('#fsimMarginTarget').onchange=e=>rerender(window.FocadoLegacySimulator.setMarginTarget(Number(e.target.value||0)/100));
     document.querySelectorAll('[data-price]').forEach(i=>i.onchange=()=>rerender(window.FocadoLegacySimulator.setPricing(i.dataset.price,{vendaCX:Number(i.value||0)})));
     document.querySelectorAll('[data-freight-price]').forEach(i=>i.onchange=()=>rerender(window.FocadoLegacySimulator.setPricing(i.dataset.freightPrice,{frete:Number(i.value||0)})));
-    document.querySelectorAll('[data-input-price]').forEach(i=>i.onchange=()=>rerender(window.FocadoLegacySimulator.setInputPrice(i.dataset.inputPrice,Number(i.value||0))));
+    document.querySelectorAll('[data-input-price]').forEach(i=>{
+      i.oninput=()=>{if(inputEditMode)inputDraft[i.dataset.inputPrice]=Math.max(0,Number(i.value||0))};
+    });
+    if($('#fsimEditInputPrices'))$('#fsimEditInputPrices').onclick=()=>{
+      inputEditMode=true;
+      inputDraft=Object.fromEntries((snap.insumos||[]).map(i=>[i.code,Number(i.preco||0)]));
+      rerender(snap);
+    };
+    if($('#fsimCancelInputEdit'))$('#fsimCancelInputEdit').onclick=()=>{
+      inputEditMode=false;inputDraft={};rerender(snap);
+    };
+    if($('#fsimSaveInputPrices'))$('#fsimSaveInputPrices').onclick=()=>{
+      const btn=$('#fsimSaveInputPrices');
+      btn.disabled=true;btn.textContent='Salvando...';
+      let next=snap,changed=0;
+      for(const item of (snap.insumos||[])){
+        const value=Number(inputDraft[item.code]??item.preco??0);
+        if(Math.abs(value-Number(item.preco||0))>0.0000001){
+          next=window.FocadoLegacySimulator.setInputPrice(item.code,value);
+          changed++;
+        }
+      }
+      inputEditMode=false;inputDraft={};
+      rerender(next);
+      if(changed)alert(changed+' valor(es) de insumo salvo(s) com sucesso.');
+    };
     if($('#fsimAddInput'))$('#fsimAddInput').onclick=openInputModal;
     if($('#fsimProductSel'))$('#fsimProductSel').onchange=e=>{selectedProduct=e.target.value;rerender(snap)};
     document.querySelectorAll('[data-comp-unit]').forEach(i=>i.onchange=()=>updateCompositionField(i,'unit'));
