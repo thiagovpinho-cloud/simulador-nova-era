@@ -55,11 +55,10 @@ jobs:
         run: |
           export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CF_TOKEN_RAW" | tr -d '\r\n' | xargs)"
           export CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$CF_ACCOUNT_RAW" | tr -d '\r\n' | xargs)"
-          if cd worker && npx wrangler pages project list 2>/dev/null | grep -Eq '(^|[[:space:]│])focado([[:space:]│]|$)'; then
+          if (cd worker && npx wrangler pages project list 2>/dev/null) | grep -Eq '(^|[[:space:]│])focado([[:space:]│]|$)'; then
             echo "Pages project focado already exists."
           else
-            cd worker
-            npx wrangler pages project create focado --production-branch main
+            (cd worker && npx wrangler pages project create focado --production-branch main)
           fi
 
       - name: Deploy Pages
