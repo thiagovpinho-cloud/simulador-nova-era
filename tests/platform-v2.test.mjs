@@ -33,3 +33,6 @@ assert.ok(platform.includes("as $audit$ begin raise exception 'FOCADO_AUDIT_IMMU
 assert.ok(platform.includes("do $audit$ begin if not exists"),'Bloco DO PostgreSQL deve usar delimitador válido');
 assert.ok(!platform.includes("language plpgsql as $ begin"),'Delimitador SQL inválido não pode voltar');
 assert.ok(!platform.includes("do $ begin"),'Bloco DO com delimitador SQL inválido não pode voltar');
+
+assert.ok(worker.includes('repairLegacyResetHash'),'Login deve reparar hash malformado gerado pelo reset anterior');
+assert.ok(worker.includes('pbkdf2$${p.iterations}$${p.hash}'),'Reset deve gravar hash PBKDF2 com separadores corretos');
