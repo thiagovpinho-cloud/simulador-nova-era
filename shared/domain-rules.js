@@ -33,19 +33,65 @@ export function getOrder(state,id){
 }
 
 function applyCommercial(state,body){
+  state.orders=Array.isArray(state.orders)?state.orders:[];
+  const changes=body.changes||{};
+
+  if(changes.createOrder&&typeof changes.createOrder==='object'){
+    const src=structuredClone(changes.createOrder);
+    const id=String(src.id||src.number||'').trim();
+    if(!id)throw Object.assign(new Error('ORDER_ID_REQUIRED'),{status:422});
+    if(state.orders.some(o=>String(o.id||o.number)===id))throw Object.assign(new Error('ORDER_ALREADY_EXISTS'),{status:409});
+    const order={
+      id,
+      number:String(src.number||id),
+      status:'COMERCIAL',
+      createdAt:Number(src.createdAt||Date.now()),
+      brand:String(src.brand||'Nova Era'),
+      client:String(src.client||''),cnpj:String(src.cnpj||''),representative:String(src.representative||''),
+      salesChannel:String(src.salesChannel||'REPRESENTANTE'),salesJustification:String(src.salesJustification||''),
+      city:String(src.city||''),uf:String(src.uf||src.state||''),cep:String(src.cep||''),bairro:String(src.bairro||''),
+      email:String(src.email||''),phone:String(src.phone||''),orderDate:String(src.orderDate||''),
+      requestedDeliveryDate:String(src.requestedDeliveryDate||''),suggestedPickup:String(src.suggestedPickup||src.suggestedPickupDate||''),
+      freightType:String(src.freightType||'CIF'),paymentTerms:String(src.paymentTerms||''),
+      logisticsBudget:Number(src.logisticsBudget||0),deliveryAddress:String(src.deliveryAddress||''),notes:String(src.notes||''),
+      commercial:{completedAt:null,completedBy:null},
+      pcp:{deliveryBase:'',productionDate:'',availableDate:'',separated:false,scheduledQty:0,autoScheduled:false},
+      logistics:{freightValue:'',pickupDate:'',deliveryDate:'',carrier:''},
+      items:(src.items||[]).map(i=>({
+        id:String(i.id||i.code||i.productId||i.name||('item_'+Math.random().toString(36).slice(2,8))),
+        productId:String(i.productId||''),code:String(i.code||''),name:String(i.name||''),
+        qty:Number(i.qty||0),price:Number(i.price||0),source:String(i.source||''),reservedQty:0,
+        productionConsumed:false,productionCompleted:false
+      })),
+      events:Array.isArray(src.events)?src.events.slice(0,20):[]
+    };
+    state.orders.unshift(order);
+    return;
+  }
+
   const o=getOrder(state,body.orderId);
   if(!o)throw Object.assign(new Error('ORDER_NOT_FOUND'),{status:404});
-  Object.assign(o,pick(body.changes,[
-    'client','cnpj','city','state','orderDate','suggestedPickupDate','freightType','observation','brand',
+  Object.assign(o,pick(changes,[
+    'client','cnpj','city','state','uf','orderDate','suggestedPickupDate','suggestedPickup','freightType','observation','notes','brand',
     'representative','salesChannel','salesJustification','requestedDeliveryDate','paymentTerms',
     'logisticsBudget','deliveryAddress','email','phone','cep','bairro'
   ]));
-  if(Array.isArray(body.changes?.items)){
-    const map=new Map((o.items||[]).map(i=>[String(i.id||i.code||i.productId),i]));
-    for(const incoming of body.changes.items){
-      const item=map.get(String(incoming.id||incoming.code||incoming.productId||''));
-      if(item)Object.assign(item,pick(incoming,['qty','price','ipi','st','finalPrice','name','code','productId']));
-    }
+  if(Array.isArray(changes.items)){
+    const previous=new Map((o.items||[]).map(i=>[String(i.id||i.code||i.productId||i.name),i]));
+    o.items=changes.items.map((incoming,index)=>{
+      const key=String(incoming.id||incoming.code||incoming.productId||incoming.name||index);
+      const old=previous.get(key)||{};
+      return {...old,...pick(incoming,['id','qty','price','ipi','st','finalPrice','name','code','productId','source'])};
+    });
+  }
+  if(changes.commercial&&typeof changes.commercial==='object'){
+    o.commercial={...(o.commercial||{}),...pick(changes.commercial,['completedAt','completedBy'])};
+  }
+  if(changes.lastCorrection&&typeof changes.lastCorrection==='object')o.lastCorrection=structuredClone(changes.lastCorrection);
+  if(changes.event&&typeof changes.event==='object'){
+    o.events=Array.isArray(o.events)?o.events:[];
+    o.events.unshift(structuredClone(changes.event));
+    o.events=o.events.slice(0,100);
   }
 }
 
