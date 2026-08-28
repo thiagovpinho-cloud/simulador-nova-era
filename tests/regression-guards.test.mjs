@@ -176,3 +176,12 @@ for(const field of ['icms','pis','cofins','ipi','st','contract']){
 assert.ok(biRules.includes('orderEconomics'),'BI deve centralizar economia do pedido');
 assert.ok(biRules.includes("if(rules[key]==='CUSTO')classifiedCosts+=value"),'BI deve abater somente fatores classificados como custo');
 assert.ok(biRules.includes('const gross=base+components.ipi+components.st'),'Faturamento bruto deve usar valor base final + IPI + ST');
+
+const orderProfit=read('assets/modules/orders.js');
+assert.ok(orderProfit.includes('Preço final c/ impostos'),'Pedidos deve deixar explícito que o valor é final com impostos');
+assert.ok(orderProfit.includes('updateProfitability'),'Pedidos deve recalcular rentabilidade em tempo real');
+assert.ok(orderProfit.includes('quoteOrder'),'Pedidos deve consultar o motor do simulador');
+assert.ok(orderProfit.includes('marginRules:ops.marginRules||{}'),'Margem do pedido deve respeitar Regras de Margem');
+assert.ok(orderProfit.includes("document.querySelector('[name=\"uf\"]')"),'Margem deve considerar UF do cliente');
+assert.ok(indexPerf.includes('quoteOrder(options={})'),'Motor do simulador deve expor cotação não mutante para pedido');
+assert.ok(indexPerf.includes('finalPrice')&&indexPerf.includes('basePrice'),'Cotação deve decompor preço final em preço-base');
