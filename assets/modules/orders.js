@@ -211,10 +211,10 @@
           moneyField('Orçamento de logística','logisticsBudget',o.logisticsBudget)+
           field('Endereço / local de entrega','deliveryAddress',o.deliveryAddress,'text',false,'wide')+
         '</div></div>'+
-        '<div class="fo-card"><div class="fo-card-head"><div><h2>Itens do pedido</h2><p>Digite o código ou o nome; o produto será identificado automaticamente na base.</p></div>'+(editable?'<div class="fo-actions"><button class="fo-btn secondary" type="button" id="foProducts">Cadastrar produto</button><button class="fo-btn secondary" type="button" id="foAddItem">+ Linha</button></div>':'')+'</div>'+
+        '<div class="fo-card"><div class="fo-card-head"><div><h2>Itens do pedido</h2><p>Informe o <b>preço final da caixa, já com IPI e ST</b>. O Focado consulta o simulador pela marca, produto e UF do cliente e calcula a margem em tempo real.</p></div>'+(editable?'<div class="fo-actions"><button class="fo-btn secondary" type="button" id="foProducts">Cadastrar produto</button><button class="fo-btn secondary" type="button" id="foAddItem">+ Linha</button></div>':'')+'</div>'+
           '<datalist id="foProductCodes">'+cat.map(p=>'<option value="'+esc(p.code)+'">'+esc(p.name)+' · '+esc(p.brand)+'</option>').join('')+'</datalist>'+
           '<datalist id="foProductNames">'+cat.map(p=>'<option value="'+esc(p.name)+'">'+esc(p.code)+' · '+esc(p.brand)+'</option>').join('')+'</datalist>'+
-          '<div class="fo-items-wrap"><table class="fo-items" id="foItems"><thead><tr><th>Código</th><th>Produto</th><th>Quantidade</th><th>Valor unitário</th><th>Total</th><th></th></tr></thead><tbody>'+items.map((i,n)=>itemRow(i,n,editable)).join('')+'</tbody></table></div><div class="fo-total"><span>Total do pedido</span><strong id="foGrandTotal">'+money(value(o))+'</strong></div></div>'+
+          '<div class="fo-items-wrap"><table class="fo-items" id="foItems"><thead><tr><th>Código</th><th>Produto</th><th>Quantidade</th><th>Preço final c/ impostos</th><th>Margem estimada</th><th>Total</th><th></th></tr></thead><tbody>'+items.map((i,n)=>itemRow(i,n,editable)).join('')+'</tbody></table></div><div class="fo-order-profit"><div id="foProfitSummary"><span>Margem estimada do pedido</span><strong>—</strong><small>Preencha produto, quantidade, preço e UF</small></div><div class="fo-total"><span>Total do pedido</span><strong id="foGrandTotal">'+money(value(o))+'</strong></div></div></div>'+
         '<div class="fo-card"><h2>Observações comerciais</h2><textarea name="notes" '+readonly+' placeholder="Observações do pedido, particularidades do cliente, entrega ou negociação">'+esc(o.notes||'')+'</textarea></div>'+
       '</form>'+history(o)+'</div>';
     document.getElementById('foBack').onclick=()=>render(currentFilters);
@@ -245,6 +245,8 @@
         if(special&&repSelect)repSelect.value='';
       };
       if(repSelect&&['VENDAS_INTERNAS','BONIFICACAO'].includes(salesChannel?.value||''))repSelect.disabled=true;
+      const profitabilitySelectors=['brand','uf','freightType'];
+      profitabilitySelectors.forEach(name=>{const el=document.querySelector('[name="'+name+'"]');if(el)el.addEventListener('change',()=>scheduleProfitability(ops))});
       const budget=document.querySelector('[name="logisticsBudget"]');
       if(budget){
         budget.onfocus=()=>budget.select();
@@ -279,11 +281,53 @@
     return '<label class="fo-field"><span>CNPJ</span><div class="fo-inline-input"><input name="cnpj" id="foCnpj" value="'+esc(formatCnpj(val))+'" inputmode="numeric" '+(editable?'':'disabled')+'><button type="button" id="foCnpjLookup" '+(editable?'':'disabled')+'>Buscar</button></div></label>';
   }
   function itemRow(i,n,editable){
-    return '<tr data-item-row data-product-id="'+esc(i.productId||'')+'"><td><input data-k="code" list="foProductCodes" value="'+esc(i.code||'')+'" '+(editable?'':'disabled')+'></td><td><input data-k="name" list="foProductNames" value="'+esc(i.name||'')+'" '+(editable?'':'disabled')+'></td><td><input data-k="qty" type="number" min="0" step="1" value="'+esc(i.qty||'')+'" '+(editable?'':'disabled')+'></td><td><div class="fo-money-input"><span>R$</span><input data-k="price" type="text" inputmode="decimal" value="'+esc(moneyInput(i.price))+'" '+(editable?'':'disabled')+'></div></td><td class="fo-line-total">'+money((Number(i.qty)||0)*(Number(i.price)||0))+'</td><td>'+(editable?'<button type="button" class="fo-remove">×</button>':'')+'</td></tr>';
+    return '<tr data-item-row data-product-id="'+esc(i.productId||'')+'"><td><input data-k="code" list="foProductCodes" value="'+esc(i.code||'')+'" '+(editable?'':'disabled')+'></td><td><input data-k="name" list="foProductNames" value="'+esc(i.name||'')+'" '+(editable?'':'disabled')+'></td><td><input data-k="qty" type="number" min="0" step="1" value="'+esc(i.qty||'')+'" '+(editable?'':'disabled')+'></td><td><div class="fo-money-input"><span>R$</span><input data-k="price" type="text" inputmode="decimal" value="'+esc(moneyInput(i.price))+'" '+(editable?'':'disabled')+'></div><small class="fo-price-hint">Preço final com impostos</small></td><td class="fo-margin-cell"><span class="fo-margin pending">Aguardando dados</span><small></small></td><td class="fo-line-total">'+money((Number(i.qty)||0)*(Number(i.price)||0))+'</td><td>'+(editable?'<button type="button" class="fo-remove">×</button>':'')+'</td></tr>';
   }
   function addItemRow(ops){
     const tbody=document.querySelector('#foItems tbody');tbody.insertAdjacentHTML('beforeend',itemRow({},tbody.children.length,true));bindItemEvents(ops);
   }
+  let profitabilityTimer=0;
+  function brandIdFromLabel(label,snap){
+    return snap?.brands?.find(b=>String(b.label||'').toLowerCase()===String(label||'').toLowerCase())?.id||'';
+  }
+  async function updateProfitability(ops){
+    const rows=[...document.querySelectorAll('[data-item-row]')],uf=String(document.querySelector('[name="uf"]')?.value||'').toUpperCase();
+    const brandLabel=document.querySelector('[name="brand"]')?.value||'',freightType=String(document.querySelector('[name="freightType"]')?.value||'CIF').toUpperCase();
+    if(!window.FocadoLegacySimulator){rows.forEach(r=>setMarginCell(r,null,'Simulador indisponível'));return}
+    if(!uf){rows.forEach(r=>setMarginCell(r,null,'Informe a UF'));return}
+    try{
+      const snap=await window.FocadoLegacySimulator.ready(),brandId=brandIdFromLabel(brandLabel,snap);
+      const items=rows.map(r=>({
+        row:r,productId:r.dataset.productId||'',qty:Number(r.querySelector('[data-k="qty"]').value)||0,
+        finalPrice:parseMoneyInput(r.querySelector('[data-k="price"]').value)
+      }));
+      const valid=items.filter(x=>x.productId&&x.qty>0&&x.finalPrice>0);
+      rows.forEach(r=>setMarginCell(r,null,'Aguardando dados'));
+      if(!valid.length)return;
+      const quote=window.FocadoLegacySimulator.quoteOrder({
+        brandId,uf,freightType,marginRules:ops.marginRules||{},
+        items:valid.map(x=>({productId:x.productId,qty:x.qty,finalPrice:x.finalPrice}))
+      });
+      if(!quote?.ok){valid.forEach(x=>setMarginCell(x.row,null,'Sem vínculo no simulador'));return}
+      valid.forEach(x=>{
+        const q=quote.rows.find(r=>String(r.productId)===String(x.productId));
+        if(!q){setMarginCell(x.row,null,'Sem cálculo');return}
+        setMarginCell(x.row,q.marginPct,q.freight?.available===false?'Frete sem faixa parametrizada':('Custo '+money(q.costPerBox)+' · Base '+money(q.basePrice)));
+      });
+      const box=document.getElementById('foProfitSummary');
+      if(box)box.innerHTML='<span>Margem estimada do pedido</span><strong class="'+(quote.marginPct>=0?'ok':'bad')+'">'+(quote.marginPct*100).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%</strong><small>'+esc(uf)+' · '+esc(freightType)+' · conforme Regras de Margem</small>';
+    }catch(err){
+      console.warn('[OrdersProfitability]',err);valid?.forEach?.(x=>setMarginCell(x.row,null,'Não foi possível calcular'));
+    }
+  }
+  function setMarginCell(row,value,detail){
+    const cell=row.querySelector('.fo-margin-cell');if(!cell)return;const chip=cell.querySelector('.fo-margin'),small=cell.querySelector('small');
+    if(value==null){chip.className='fo-margin pending';chip.textContent='—';small.textContent=detail||'';return}
+    chip.className='fo-margin '+(value<0?'bad':value<0.1?'warn':'ok');
+    chip.textContent=(value*100).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';
+    small.textContent=detail||'';
+  }
+  function scheduleProfitability(ops){clearTimeout(profitabilityTimer);profitabilityTimer=setTimeout(()=>updateProfitability(ops),120)}
   function bindItemEvents(ops){
     const brand=()=>document.querySelector('[name="brand"]')?.value||'';
     document.querySelectorAll('[data-item-row]').forEach(row=>{
@@ -291,18 +335,20 @@
       function resolve(source){
         const p=findProduct(source.value,brand(),ops);if(!p)return;
         code.value=p.code;name.value=p.name;row.dataset.productId=p.simulatorId||'';
+        scheduleProfitability(ops);
       }
       code.onchange=()=>resolve(code);code.onblur=()=>resolve(code);
       name.onchange=()=>resolve(name);name.onblur=()=>resolve(name);
       const price=row.querySelector('[data-k="price"]');
       if(price){
         price.onfocus=()=>{price.select()};
-        price.onblur=()=>{price.value=moneyInput(parseMoneyInput(price.value));updateTotals()};
-        price.oninput=updateTotals;
+        price.onblur=()=>{price.value=moneyInput(parseMoneyInput(price.value));updateTotals();scheduleProfitability(ops)};
+        price.oninput=()=>{updateTotals();scheduleProfitability(ops)};
       }
-      row.querySelectorAll('input:not([data-k="price"])').forEach(i=>i.addEventListener('input',updateTotals));
+      row.querySelectorAll('input:not([data-k="price"])').forEach(i=>i.addEventListener('input',()=>{updateTotals();scheduleProfitability(ops)}));
     });
-    document.querySelectorAll('.fo-remove').forEach(b=>b.onclick=()=>{if(document.querySelectorAll('[data-item-row]').length>1)b.closest('tr').remove();updateTotals()});
+    document.querySelectorAll('.fo-remove').forEach(b=>b.onclick=()=>{if(document.querySelectorAll('[data-item-row]').length>1)b.closest('tr').remove();updateTotals();scheduleProfitability(ops)});
+    scheduleProfitability(ops);
   }
   function updateTotals(){
     let total=0;document.querySelectorAll('[data-item-row]').forEach(r=>{const q=Number(r.querySelector('[data-k="qty"]').value)||0,p=parseMoneyInput(r.querySelector('[data-k="price"]').value);r.querySelector('.fo-line-total').textContent=money(q*p);total+=q*p});
@@ -351,7 +397,7 @@
         setForm('deliveryAddress',address);
         const reused=applyPrevious(prev);
         status.textContent=(reused?'Cliente recorrente: dados comerciais e de entrega do último pedido reaproveitados. ':'')+'Dados cadastrais consultados pela BrasilAPI.';
-        status.className='fo-cnpj-status ok';
+        status.className='fo-cnpj-status ok';scheduleProfitability(ops);
       }catch(err){
         const reused=applyPrevious(prev);
         if(reused){status.textContent='Cliente recorrente: dados do último pedido reaproveitados. A consulta cadastral externa não respondeu.';status.className='fo-cnpj-status warn'}
