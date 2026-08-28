@@ -45,3 +45,7 @@
 .fo-table td .fo-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .fo-table [data-fo-edit]{background:#0b6a51;color:#fff;border-color:#0b6a51}
 .fo-table [data-fo-edit]:hover{filter:brightness(.96)}
+
+.fo-table .fo-delete-order{background:#fff;color:#a33;border-color:#d9a7a7}
+.fo-table .fo-delete-order:hover{background:#fff3f3;border-color:#c77}
+.fo-table td .fo-actions{justify-content:flex-end;flex-wrap:nowrap}
