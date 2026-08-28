@@ -222,6 +222,34 @@ export async function readDomainV2(db,domain){
     const r=await db.query('select data from public.focado_v2_orders order by updated_at desc,id');
     return r.rows.map(x=>x.data||{});
   }
+  if(d==='inventory'){
+    const r=await db.query("select kind,item_key,data from public.focado_v2_inventory_items order by kind,item_key");
+    const out={inventory:{},inputInventory:{}};
+    for(const row of r.rows){
+      if(row.kind==='finished')out.inventory[row.item_key]=row.data||{};
+      else if(row.kind==='input')out.inputInventory[row.item_key]=row.data||{};
+    }
+    return out;
+  }
+  if(d==='movements'){
+    const r=await db.query('select data from public.focado_v2_inventory_movements order by at desc nulls last,id desc limit 1000');
+    return r.rows.map(x=>x.data||{});
+  }
+  if(d==='production'){
+    const r=await db.query('select data from public.focado_v2_production_requests order by updated_at desc,id');
+    return r.rows.map(x=>x.data||{});
+  }
+  if(d==='purchases'){
+    const [requests,suppliers]=await Promise.all([
+      db.query('select data from public.focado_v2_purchase_requests order by updated_at desc,id'),
+      db.query('select data from public.focado_v2_suppliers order by coalesce(name,\'\'),id')
+    ]);
+    return {purchaseRequests:requests.rows.map(x=>x.data||{}),suppliers:suppliers.rows.map(x=>x.data||{})};
+  }
+  if(d==='carriers'){
+    const r=await db.query('select data from public.focado_v2_carriers order by coalesce(name,\'\'),id');
+    return r.rows.map(x=>x.data||{});
+  }
   throw Object.assign(new Error('INVALID_V2_DOMAIN'),{status:400,code:'INVALID_V2_DOMAIN'});
 }
 
