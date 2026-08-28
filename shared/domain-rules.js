@@ -303,6 +303,11 @@ function applyFinance(state,body){
     if(!f.order_id)throw Object.assign(new Error('FINANCIAL_FACT_ORDER_REQUIRED'),{status:422});
     if(!getOrder(state,f.order_id))throw Object.assign(new Error('ORDER_NOT_FOUND'),{status:404});
     for(const k of ['taxes','discounts','returns','bonuses','commission','freight_allocated'])f[k]=Math.max(0,Number(f[k]||0));
+    f.invoice_number=String(f.invoice_number||'').trim();
+    f.invoice_date=String(f.invoice_date||'').slice(0,10);
+    f.invoice_status=String(f.invoice_status||'').trim().toUpperCase();
+    f.invoice_key=String(f.invoice_key||'').replace(/\D/g,'').slice(0,44);
+    if(f.invoice_date && !/^\d{4}-\d{2}-\d{2}$/.test(f.invoice_date))throw Object.assign(new Error('INVALID_INVOICE_DATE'),{status:422});
     f.updatedAt=Date.now();
     state.financialFacts=upsertBy(state.financialFacts,f,x=>String(x.order_id||''));
   }
