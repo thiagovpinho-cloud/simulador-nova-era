@@ -369,7 +369,7 @@ async function route(request,env){
 
     if(path==="/users"&&request.method==="GET"){
       await requireSession(request,db,"users.manage");
-      const r=await db.query('select id,email,name,role,active,created_at as "createdAt",last_login_at as "lastLoginAt" from public.focado_users order by name,email');
+      const r=await db.query('select id,email,name,role,active,created_at as "createdAt",last_login_at as "lastLoginAt" from public.focado_users order by active desc,name,email');
       return json({users:r.rows});
     }
     if(path==="/users"&&request.method==="POST"){
@@ -379,10 +379,39 @@ async function route(request,env){
       if(!email||!name||!ROLES.has(role)||!policy.ok)return json({error:"INVALID_USER",passwordProblems:policy.problems},400);
       const p=await passwordHash(password);
       try{
-        const r=await db.query("insert into public.focado_users(email,name,role,password_salt,password_hash) values($1,$2,$3,$4,$5) returning id,email,name,role,active",[email,name,role,p.salt,`pbkdf2$${p.iterations}$${p.hash}`]);
+        const r=await db.query("insert into public.focado_users(email,name,role,password_salt,password_hash,active) values($1,$2,$3,$4,$5,true) returning id,email,name,role,active,created_at as \"createdAt\",last_login_at as \"lastLoginAt\"",[email,name,role,p.salt,`pbkdf2${p.iterations}${p.hash}`]);
         await db.query("insert into public.focado_audit_events(user_id,action,entity_type,entity_id,metadata) values($1,'USER_CREATED','user',$2,$3::jsonb)",[s.userId,String(r.rows[0].id),JSON.stringify({role,email})]);
         return json({user:r.rows[0]},201);
       }catch(e){if(String(e.message||"").includes("unique"))return json({error:"USER_EXISTS"},409);throw e}
+    }
+    if(path==="/users"&&request.method==="PATCH"){
+      const s=await requireSession(request,db,"users.manage"),body=await request.json();
+      const id=String(body.id||"").trim();
+      if(!id)return json({error:"INVALID_USER"},400);
+      const existing=await db.query("select id,email,name,role,active from public.focado_users where id=$1 limit 1",[id]);
+      const current=existing.rows[0];
+      if(!current)return json({error:"USER_NOT_FOUND"},404);
+      const nextRole=body.role===undefined?current.role:String(body.role||"").toUpperCase();
+      const nextActive=body.active===undefined?current.active:Boolean(body.active);
+      if(!ROLES.has(nextRole))return json({error:"INVALID_ROLE"},400);
+      if(String(s.userId)===id&&!nextActive)return json({error:"CANNOT_DISABLE_SELF"},400);
+      if(current.role==="ADMIN"&&(nextRole!=="ADMIN"||!nextActive)){
+        const admins=await db.query("select count(*)::int as n from public.focado_users where role='ADMIN' and active=true and id<>$1",[id]);
+        if(Number(admins.rows[0]?.n||0)<1)return json({error:"LAST_ADMIN"},400);
+      }
+      let passwordChanged=false;
+      if(body.password!==undefined&&String(body.password||"").length){
+        const password=String(body.password||""),policy=passwordPolicy(password);
+        if(!policy.ok)return json({error:"INVALID_PASSWORD",passwordProblems:policy.problems},400);
+        const p=await passwordHash(password);
+        await db.query("update public.focado_users set role=$1,active=$2,password_salt=$3,password_hash=$4 where id=$5",[nextRole,nextActive,p.salt,`pbkdf2${p.iterations}${p.hash}`,id]);
+        passwordChanged=true;
+      }else{
+        await db.query("update public.focado_users set role=$1,active=$2 where id=$3",[nextRole,nextActive,id]);
+      }
+      const r=await db.query('select id,email,name,role,active,created_at as "createdAt",last_login_at as "lastLoginAt" from public.focado_users where id=$1',[id]);
+      await db.query("insert into public.focado_audit_events(user_id,action,entity_type,entity_id,metadata) values($1,'USER_UPDATED','user',$2,$3::jsonb)",[s.userId,id,JSON.stringify({from:{role:current.role,active:current.active},to:{role:nextRole,active:nextActive},passwordChanged})]);
+      return json({user:r.rows[0]});
     }
 
     return json({error:"NOT_FOUND"},404);
