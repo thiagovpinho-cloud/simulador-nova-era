@@ -240,10 +240,19 @@ async function route(request,env){
       const r=await db.query("select id,email,name,role,password_salt,password_hash,active from public.focado_users where email=$1 limit 1",[email]);
       const user=r.rows[0];
       let ok=false;
-      if(user?.active && String(user.password_hash||"").startsWith("pbkdf2$")){
-        const [,it,expected]=String(user.password_hash).split("$");
+      let repairLegacyResetHash=false;
+      const storedHash=String(user?.password_hash||"");
+      if(user?.active && storedHash.startsWith("pbkdf2$")){
+        const [,it,expected]=storedHash.split("$");
         const p=await passwordHash(password,user.password_salt,Number(it));
         ok=constEq(p.hash,expected);
+      }else if(user?.active){
+        const legacy=storedHash.match(/^pbkdf2(100000)([0-9a-f]{64})$/i);
+        if(legacy){
+          const p=await passwordHash(password,user.password_salt,Number(legacy[1]));
+          ok=constEq(p.hash,legacy[2]);
+          repairLegacyResetHash=ok;
+        }
       }
       if(!ok){
         await recordLogin(false);
@@ -251,6 +260,10 @@ async function route(request,env){
         return json({error:"INVALID_CREDENTIALS"},401);
       }
       await recordLogin(true);
+      if(repairLegacyResetHash){
+        const fixed=storedHash.match(/^pbkdf2(100000)([0-9a-f]{64})$/i);
+        if(fixed)await db.query("update public.focado_users set password_hash=$1 where id=$2",[`pbkdf2${fixed[1]}${fixed[2]}`,user.id]);
+      }
       const token=newToken(),tokenHash=await sha256Text(token);
       const expiresAt=new Date(Date.now()+12*60*60*1000).toISOString();
       await db.query("insert into public.focado_sessions(user_id,token_hash,expires_at,user_agent) values($1,$2,$3,$4)",[user.id,tokenHash,expiresAt,(request.headers.get("user-agent")||"").slice(0,500)]);
