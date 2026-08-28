@@ -10,6 +10,6 @@
     "@neondatabase/serverless": "1.1.0"
   },
   "scripts": {
-    "test": "node tests/domain-rules.test.mjs && node tests/critical-flows.test.mjs && node tests/regression-guards.test.mjs && node tests/design-system.test.mjs && node tests/platform-v2.test.mjs && node tests/performance-budget.test.mjs && node tests/operational-intelligence.test.mjs && node tests/runtime-navigation.test.mjs && node tests/multi-age-usability.test.mjs && node tests/company-pilot-100.test.mjs && node tests/bi-contract.test.mjs && node tests/bi-analytics.test.mjs"
+    "test": "node tests/domain-rules.test.mjs && node tests/critical-flows.test.mjs && node tests/regression-guards.test.mjs && node tests/design-system.test.mjs && node tests/platform-v2.test.mjs && node tests/performance-budget.test.mjs && node tests/operational-intelligence.test.mjs && node tests/runtime-navigation.test.mjs && node tests/multi-age-usability.test.mjs && node tests/company-pilot-100.test.mjs && node tests/bi-contract.test.mjs && node tests/bi-analytics.test.mjs && node tests/bi-dashboard.test.mjs"
   }
 }
