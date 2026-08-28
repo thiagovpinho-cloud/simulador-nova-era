@@ -105,6 +105,8 @@ jobs:
           curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/margin-rules.css?v=20260828-margin-rules-v1" -o /tmp/margin-rules.css
           curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/orders.js?v=20260828-profit-v1" -o /tmp/orders.js
           curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/orders.css?v=20260828-profit-v1" -o /tmp/orders.css
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/customers.js?v=20260828-cnpj-v1" -o /tmp/customers.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/representatives.js?v=20260828-fantasy-v1" -o /tmp/representatives.js
           grep -q "window.FocadoSimulator={render}" /tmp/simulator.js
           grep -q "(document.getElementById('focadoShell')||document.body).appendChild(modal)" /tmp/simulator.js
           grep -q "Cadastrar insumo" /tmp/simulator.js
@@ -121,6 +123,9 @@ jobs:
           grep -q "updateProfitability" /tmp/orders.js
           grep -q "quoteOrder" /tmp/orders.js
           grep -q ".fo-margin-cell" /tmp/orders.css
+          grep -q "lookupCnpj(value)" /tmp/customers.js
+          grep -q "CNPJ localizado. Dados cadastrais preenchidos automaticamente." /tmp/customers.js
+          grep -q "Nome fantasia" /tmp/representatives.js
           python - <<'PY'
           from pathlib import Path
           html=Path('/tmp/focado-index.html').read_text(errors='replace')
