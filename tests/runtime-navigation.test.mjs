@@ -35,7 +35,8 @@ const activeRoutes=[
   ['corpo-auditor',"window.FocadoIntelligenceUI?.renderAuditor"],
   ['system-health',"window.FocadoSystemHealth?.render"],
   ['config',"window.FocadoSettings?.render"],
-  ['usuarios',"window.FocadoUsers?.render"]
+  ['usuarios',"window.FocadoUsers?.render"],
+  ['financeiro',"window.FocadoFinance?.render"]
 ];
 
 for(const [route,renderer] of activeRoutes){
