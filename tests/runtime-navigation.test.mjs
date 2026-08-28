@@ -92,3 +92,6 @@ assert.ok(loader.includes("existing.dataset.loaded==='1'||existing.sheet"),'Load
 assert.ok(loader.includes("existing.remove()"),'Loader deve remover CSS lazy quebrado antes de tentar novamente');
 assert.ok(loader.includes("el.onerror=err=>{el.remove();reject"),'Falha de CSS deve limpar o link inválido');
 assert.ok(loader.includes("if(existing&&existing()){\n        if(def.css)await css(def.css);"),'Módulo JS já carregado ainda deve garantir o CSS correspondente');
+
+assert.ok(index.includes('assets/modules/indicators.css?v='),'Indicadores executivos devem ser pré-carregados com CSS');
+assert.ok(index.includes('assets/modules/indicators.js?v='),'Indicadores executivos devem ser pré-carregados com JavaScript');
