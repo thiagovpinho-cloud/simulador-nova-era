@@ -1,4 +1,4 @@
-export const BI_ANALYTICS_VERSION='2026.08.28.2';
+export const BI_ANALYTICS_VERSION='2026.08.28.3';
 
 const DAY_MS=86400000;
 
@@ -55,6 +55,67 @@ function effectiveSkuCost(state,sku,date){
     .filter(x=>String(x.sku||'')===String(sku||'') && String(x.effective_from||'')<=String(date||'9999-12-31'))
     .sort((x,y)=>String(y.effective_from||'').localeCompare(String(x.effective_from||'')));
   return rows[0]||null;
+}
+
+const DEFAULT_MARGIN_RULES=Object.freeze({
+  product_cost:'CUSTO',icms:'CUSTO',pis:'CUSTO',cofins:'CUSTO',ipi:'CUSTO',st:'CUSTO',
+  freight:'CUSTO',commission:'CUSTO',contract:'CUSTO'
+});
+
+function marginRules(state){
+  const raw=state?.marginRules||{};
+  const out={};
+  for(const [key,fallback] of Object.entries(DEFAULT_MARGIN_RULES)){
+    const v=String(raw[key]||fallback).toUpperCase();
+    out[key]=v==='MARGEM'?'MARGEM':'CUSTO';
+  }
+  return out;
+}
+
+function hasField(obj,key){
+  return Boolean(obj&&Object.prototype.hasOwnProperty.call(obj,key));
+}
+
+function orderProductCost(state,order){
+  let total=0,complete=true;const missing=[];
+  for(const item of order?.items||[]){
+    const sku=item.code||item.productId||item.name||'';
+    const cost=effectiveSkuCost(state,sku,orderDate(order));
+    if(!cost){complete=false;missing.push(sku);continue}
+    total+=num(cost.unit_variable_cost)*num(item.qty);
+  }
+  return {value:total,complete,missing};
+}
+
+function orderEconomics(state,order){
+  const f=financialFactFor(state,order.id)||null;
+  const base=orderValue(order);
+  const product=orderProductCost(state,order);
+  const components={
+    product_cost:product.value,
+    icms:num(f?.icms),
+    pis:num(f?.pis),
+    cofins:num(f?.cofins),
+    ipi:num(f?.ipi),
+    st:num(f?.st),
+    freight:num(f?.freight_allocated),
+    commission:num(f?.commission),
+    contract:num(f?.contract)
+  };
+  const rules=marginRules(state);
+  const mandatoryDeductions=['discounts','returns','bonuses'].reduce((s,k)=>s+num(f?.[k]),0);
+  const gross=base+components.ipi+components.st;
+  let classifiedCosts=0;
+  for(const [key,value] of Object.entries(components))if(rules[key]==='CUSTO')classifiedCosts+=value;
+  const net=gross-mandatoryDeductions-classifiedCosts;
+  const marginValue=net;
+  const requiredFields=['icms','pis','cofins','ipi','st','freight_allocated','commission','contract'];
+  const missingFinancial=requiredFields.filter(k=>!hasField(f,k));
+  const complete=Boolean(f)&&product.complete&&missingFinancial.length===0;
+  return {
+    base,gross,net,marginValue,components,rules,classifiedCosts,mandatoryDeductions,
+    financialFactFound:Boolean(f),missingFinancial,missingCosts:product.missing,complete
+  };
 }
 
 function promisedDate(order,state){
@@ -255,46 +316,40 @@ export function delayedOrders(state,filters={}){
 
 export function grossRevenue(state,filters={}){
   const {orders}=filteredOrders(state,filters);
-  const rows=orders.filter(o=>recognized(o,state)).map(order=>({...orderRef(order),revenue:orderValue(order)}));
-  return {id:'gross_revenue',value:rows.reduce((s,r)=>s+r.revenue,0),unit:'BRL',rows};
+  const rows=orders.filter(o=>recognized(o,state)).map(order=>{
+    const e=orderEconomics(state,order);
+    return {...orderRef(order),revenue:e.gross,baseRevenue:e.base,ipi:e.components.ipi,st:e.components.st,complete:e.financialFactFound&&hasField(financialFactFor(state,order.id),'ipi')&&hasField(financialFactFor(state,order.id),'st')};
+  });
+  return {id:'gross_revenue',value:rows.reduce((s,r)=>s+r.revenue,0),unit:'BRL',complete:rows.every(r=>r.complete),rows};
 }
 
 export function netRevenue(state,filters={}){
   const {orders}=filteredOrders(state,filters);
   const rows=orders.filter(o=>recognized(o,state)).map(order=>{
-    const gross=orderValue(order);
-    const f=financialFactFor(state,order.id)||{};
-    const deductions=['taxes','discounts','returns','bonuses'].reduce((s,k)=>s+num(f[k]),0);
-    return {...orderRef(order),gross,deductions,net:gross-deductions,financialFactFound:Boolean(financialFactFor(state,order.id))};
+    const e=orderEconomics(state,order);
+    return {
+      ...orderRef(order),gross:e.gross,net:e.net,deductions:e.mandatoryDeductions+e.classifiedCosts,
+      classifiedCosts:e.classifiedCosts,mandatoryDeductions:e.mandatoryDeductions,components:e.components,rules:e.rules,
+      financialFactFound:e.financialFactFound,missingFinancial:e.missingFinancial,missingCosts:e.missingCosts,complete:e.complete
+    };
   });
-  const complete=rows.every(r=>r.financialFactFound);
-  return {id:'net_revenue',value:rows.reduce((s,r)=>s+r.net,0),unit:'BRL',complete,rows};
+  const complete=rows.every(r=>r.complete);
+  return {id:'net_revenue',value:rows.reduce((s,r)=>s+r.net,0),unit:'BRL',complete,rules:marginRules(state),rows};
 }
 
 export function contributionMargin(state,filters={}){
   const {orders}=filteredOrders(state,filters);
-  const rows=[];
-  let complete=true;
-  for(const order of orders.filter(o=>recognized(o,state))){
-    const f=financialFactFor(state,order.id);
-    if(!f)complete=false;
-    const gross=orderValue(order);
-    const deductions=['taxes','discounts','returns','bonuses'].reduce((s,k)=>s+num(f?.[k]),0);
-    const net=gross-deductions;
-    let productCost=0;
-    const missingCosts=[];
-    for(const item of order.items||[]){
-      const sku=item.code||item.productId||item.name||'';
-      const c=effectiveSkuCost(state,sku,orderDate(order));
-      if(!c){complete=false;missingCosts.push(sku);continue}
-      productCost+=num(c.unit_variable_cost)*num(item.qty);
-    }
-    const variableCosts=productCost+num(f?.commission)+num(f?.freight_allocated);
-    const contribution=net-variableCosts;
-    rows.push({...orderRef(order),net,variableCosts,contribution,margin:net>0?contribution/net:null,financialFactFound:Boolean(f),missingCosts});
-  }
-  const netTotal=rows.reduce((s,r)=>s+r.net,0), contributionTotal=rows.reduce((s,r)=>s+r.contribution,0);
-  return {id:'contribution_margin',value:netTotal>0?contributionTotal/netTotal:null,complete,netRevenue:netTotal,contribution:contributionTotal,rows};
+  const rows=orders.filter(o=>recognized(o,state)).map(order=>{
+    const e=orderEconomics(state,order);
+    return {
+      ...orderRef(order),gross:e.gross,net:e.net,variableCosts:e.classifiedCosts,
+      contribution:e.marginValue,margin:e.gross>0?e.marginValue/e.gross:null,
+      financialFactFound:e.financialFactFound,missingCosts:e.missingCosts,missingFinancial:e.missingFinancial,
+      components:e.components,rules:e.rules,complete:e.complete
+    };
+  });
+  const complete=rows.every(r=>r.complete),grossTotal=rows.reduce((s,r)=>s+r.gross,0),marginTotal=rows.reduce((s,r)=>s+r.contribution,0);
+  return {id:'contribution_margin',value:grossTotal>0?marginTotal/grossTotal:null,complete,grossRevenue:grossTotal,netRevenue:marginTotal,contribution:marginTotal,rules:marginRules(state),rows};
 }
 
 export function otif(state,filters={}){
