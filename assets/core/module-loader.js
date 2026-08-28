@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260827-lazy-v2';
+  const VERSION='20260828-bi-v1';
   const loaded=new Map();
   const defs={
     produtos:{css:'products.css',js:'products.js'},
