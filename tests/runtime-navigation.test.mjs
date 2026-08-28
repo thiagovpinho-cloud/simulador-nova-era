@@ -49,7 +49,7 @@ const staticModules=[
   'expedition','logistics','technical-sheets','bases','system-health','intelligence-core','intelligence','kanban'
 ];
 for(const m of staticModules){
-  const expected=(m==='bases'||m==='inventory')?'assets/modules/'+m+'.js?v=':'assets/modules/'+m+'.js?v=20260827-static-v1';
+  const expected=(m==='bases'||m==='inventory'||m==='orders')?'assets/modules/'+m+'.js?v=':'assets/modules/'+m+'.js?v=20260827-static-v1';
   assert.ok(index.includes(expected),'Módulo ativo deve ser pré-carregado: '+m);
 }
 
@@ -81,3 +81,8 @@ assert.ok(shell.includes("refreshInBackground('customers'"),'Clientes deve atual
 assert.ok(shell.includes("refreshInBackground('orders'"),'Pedidos deve atualizar em segundo plano');
 assert.ok(!shell.includes("if(id==='clientes')await window.FocadoDataStore?.refreshDomainV2?.('customers')"),'Clientes não pode bloquear navegação esperando API');
 assert.ok(!shell.includes("if(id==='pedidos')await window.FocadoDataStore?.refreshDomainV2?.('orders')"),'Pedidos não pode bloquear navegação esperando API');
+
+assert.ok(shell.includes("refreshInBackground('inventory'"),'Estoque deve atualizar da V2 sem bloquear navegação');
+assert.ok(shell.includes("refreshInBackground('production'"),'Produção deve atualizar da V2 em segundo plano');
+assert.ok(shell.includes("refreshInBackground('purchases'"),'Compras deve atualizar da V2 em segundo plano');
+assert.ok(shell.includes("refreshInBackground('carriers'"),'Transportadoras devem atualizar da V2 em segundo plano');
