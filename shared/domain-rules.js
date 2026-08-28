@@ -1,4 +1,4 @@
-export const RULES_VERSION='2026.08.27.3';
+export const RULES_VERSION='2026.08.28.4';
 
 export const DOMAIN_PERMISSION=Object.freeze({
   COMERCIAL:'orders.write',
@@ -201,10 +201,53 @@ function applyLogistics(state,body){
 
 function applyInventory(state,body){
   const c=body.changes||{};
+  state.inventory=state.inventory||{};
+  state.inputInventory=state.inputInventory||{};
+  state.stockMovements=Array.isArray(state.stockMovements)?state.stockMovements:[];
+  state.inventoryCounts=Array.isArray(state.inventoryCounts)?state.inventoryCounts:[];
+
+  if(c.movement&&typeof c.movement==='object'){
+    const m=structuredClone(c.movement);
+    const kind=String(m.kind||'finished').toLowerCase()==='input'?'input':'finished';
+    const collection=kind==='input'?state.inputInventory:state.inventory;
+    const key=String(m.key||m.code||'').trim();
+    if(!key)throw Object.assign(new Error('INVENTORY_ITEM_REQUIRED'),{status:422});
+    const inv=collection[key]||Object.values(collection).find(x=>String(x?.code||'')===String(m.code||''))||null;
+    const target=inv||{code:String(m.code||key),name:String(m.name||m.code||key),unit:String(m.unit||''),physical:0,reserved:0,blocked:0};
+    if(!inv)collection[key]=target;
+    const before={physical:Number(target.physical||0),reserved:Number(target.reserved||0),blocked:Number(target.blocked||0)};
+    const deltaPhysical=Number(m.deltaPhysical||0),deltaReserved=Number(m.deltaReserved||0),deltaBlocked=Number(m.deltaBlocked||0);
+    const after={
+      physical:before.physical+deltaPhysical,
+      reserved:before.reserved+deltaReserved,
+      blocked:before.blocked+deltaBlocked
+    };
+    if(after.physical<0||after.reserved<0||after.blocked<0)throw Object.assign(new Error('INVENTORY_NEGATIVE_BALANCE'),{status:422,before,after});
+    if(after.reserved+after.blocked>after.physical)throw Object.assign(new Error('INVENTORY_COMMITMENT_EXCEEDS_PHYSICAL'),{status:422,before,after});
+    target.physical=after.physical;target.reserved=after.reserved;target.blocked=after.blocked;
+    if(m.unit)target.unit=String(m.unit);
+    if(m.brand)target.brand=String(m.brand);
+    if(m.base){
+      target.bases=target.bases||{};
+      target.bases[String(m.base)]=Math.max(0,Number(target.bases[String(m.base)]||0)+deltaPhysical);
+    }
+    const movement={
+      id:String(m.id||('mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7))),
+      at:Number(m.at||Date.now()),kind,key,code:String(m.code||target.code||''),name:String(m.name||target.name||''),
+      brand:String(m.brand||target.brand||''),unit:String(m.unit||target.unit||''),type:String(m.type||'AJUSTE'),
+      qty:Math.abs(deltaPhysical||deltaReserved||deltaBlocked),base:String(m.base||''),lot:String(m.lot||''),
+      reason:String(m.reason||''),note:String(m.note||''),user:String(m.user||'Sistema'),before,after
+    };
+    state.stockMovements.unshift(movement);
+    return;
+  }
+
+  // Compatibilidade temporária para fluxos legados; novos lançamentos devem usar movement.
   if(c.inventory&&typeof c.inventory==='object')state.inventory=c.inventory;
   if(c.inputInventory&&typeof c.inputInventory==='object')state.inputInventory=c.inputInventory;
   if(Array.isArray(c.stockMovements))state.stockMovements=c.stockMovements;
   if(Array.isArray(c.inventoryCounts))state.inventoryCounts=c.inventoryCounts;
+  if(c.inventoryCount&&typeof c.inventoryCount==='object')state.inventoryCounts.unshift(structuredClone(c.inventoryCount));
   if(c.inventoryPolicy&&typeof c.inventoryPolicy==='object'){
     const p=structuredClone(c.inventoryPolicy);
     p.sku=String(p.sku||'').trim();
@@ -420,11 +463,78 @@ function applyBases(state,body){
 function applyProductionRequest(state,body){
   const c=body.changes||{};
   state.productionRequests=Array.isArray(state.productionRequests)?state.productionRequests:[];
+  state.inputInventory=state.inputInventory||{};
+  state.inventory=state.inventory||{};
+  state.stockMovements=Array.isArray(state.stockMovements)?state.stockMovements:[];
+
   if(c.request&&typeof c.request==='object'){
     const incoming=structuredClone(c.request);
     const idx=state.productionRequests.findIndex(r=>String(r.id)===String(incoming.id));
     if(idx>=0)state.productionRequests[idx]=incoming;
     else state.productionRequests.unshift(incoming);
+  }
+
+  if(c.complete&&typeof c.complete==='object'){
+    const done=c.complete;
+    const req=state.productionRequests.find(r=>String(r.id)===String(done.requestId));
+    if(!req)throw Object.assign(new Error('PRODUCTION_REQUEST_NOT_FOUND'),{status:404});
+    if(req.execution?.status==='CONCLUIDA')throw Object.assign(new Error('PRODUCTION_ALREADY_COMPLETED'),{status:422});
+    const snap=req.snapshot||req;
+    const actualItems=Array.isArray(done.items)&&done.items.length?done.items:(snap.items||[]).map(i=>({
+      code:i.product?.code||i.code||'',name:i.product?.name||i.name||'',brand:i.product?.brand||i.brand||'',
+      qty:Number(i.qty||0),unit:i.product?.unit||i.unit||'CX'
+    }));
+    const factorBySku=new Map(actualItems.map(i=>[String(i.code||i.name),Number(i.qty||0)]));
+    const plannedBySku=new Map((snap.items||[]).map(i=>[String(i.product?.code||i.code||i.name),Number(i.qty||0)]));
+    const materials=(snap.materials||[]).map(m=>{
+      let ratio=1;
+      if((snap.items||[]).length===1){
+        const sku=String(snap.items[0].product?.code||snap.items[0].code||snap.items[0].name);
+        const planned=plannedBySku.get(sku)||0,actual=factorBySku.get(sku)??planned;
+        ratio=planned>0?actual/planned:1;
+      }
+      return {...m,actualRequired:Number(m.required||0)*ratio};
+    });
+    for(const m of materials){
+      const key=String(m.code||m.name||'');
+      const inv=state.inputInventory[key]||Object.values(state.inputInventory).find(x=>String(x?.code||'')===String(m.code||''))||null;
+      if(!inv)throw Object.assign(new Error('PRODUCTION_INPUT_NOT_FOUND'),{status:422,item:m.code||m.name});
+      const before=Number(inv.physical||0),consumed=Math.max(0,Number(m.actualRequired||0));
+      if(before<consumed)throw Object.assign(new Error('PRODUCTION_INPUT_INSUFFICIENT'),{status:422,item:m.code||m.name,required:consumed,available:before});
+      inv.physical=before-consumed;
+      state.stockMovements.unshift({
+        id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),at:Number(done.at||Date.now()),kind:'input',key,
+        code:m.code||'',name:m.name||'',unit:m.unit||'',type:'CONSUMO_PRODUCAO',qty:consumed,lot:String(done.lot||''),
+        reason:'Produção '+String(req.number||req.id),user:String(done.user||'Produção'),
+        before:{physical:before},after:{physical:Number(inv.physical||0)}
+      });
+    }
+    for(const item of actualItems){
+      const qty=Math.max(0,Number(item.qty||0)); if(!(qty>0))continue;
+      const key=String(item.code||item.name||'');
+      const inv=state.inventory[key]||{code:item.code||'',name:item.name||'',brand:item.brand||'',unit:item.unit||'CX',physical:0,reserved:0,blocked:0};
+      if(!state.inventory[key])state.inventory[key]=inv;
+      const before=Number(inv.physical||0); inv.physical=before+qty;
+      state.stockMovements.unshift({
+        id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),at:Number(done.at||Date.now()),kind:'finished',key,
+        code:item.code||'',name:item.name||'',brand:item.brand||'',unit:item.unit||'CX',type:'ENTRADA_PRODUCAO',qty,lot:String(done.lot||''),
+        reason:'Produção '+String(req.number||req.id),user:String(done.user||'Produção'),
+        before:{physical:before},after:{physical:Number(inv.physical||0)}
+      });
+    }
+    for(const loss of Array.isArray(done.losses)?done.losses:[]){
+      const key=String(loss.code||loss.name||''),qty=Math.max(0,Number(loss.qty||0)); if(!(qty>0))continue;
+      state.stockMovements.unshift({
+        id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),at:Number(done.at||Date.now()),kind:String(loss.kind||'input'),
+        key,code:loss.code||'',name:loss.name||'',unit:loss.unit||'',type:'PERDA_PRODUCAO',qty,lot:String(done.lot||''),
+        reason:String(loss.reason||('Perda na produção '+String(req.number||req.id))),user:String(done.user||'Produção')
+      });
+    }
+    req.execution={
+      status:'CONCLUIDA',completedAt:Number(done.at||Date.now()),completedBy:String(done.user||'Produção'),
+      lot:String(done.lot||''),items:structuredClone(actualItems),materials:structuredClone(materials),
+      losses:structuredClone(Array.isArray(done.losses)?done.losses:[]),notes:String(done.notes||'')
+    };
   }
 }
 
