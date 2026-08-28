@@ -3445,14 +3445,10 @@ async function attemptLogin(){
     const legacyRole = result.user.role==='ADMIN' ? 'admin' : 'user';
     const label = result.user.name || window.FocadoAuth.roleLabel(result.user.role);
     applyRole(legacyRole, label);
-    resetSimulatorKeepingHistory();
-    renderBrandHeader();
-    renderEstadoOptions();
-    const all = renderTopBar();
-    renderProducts(all);
-    updateShareCount();
     hideLogin();
-    showHub();
+    document.getElementById('hubScreen').classList.add('hidden');
+    sessionStorage.setItem('nova-era-modern-shell','1');
+    window.FocadoShell?.show?.(true);
     return;
   }
 
@@ -3618,7 +3614,9 @@ async function init(){
     }
   });
 
-  await bootApp();
+  const bootLegacy=()=>bootApp().catch(err=>console.warn('[FocadoLegacy] inicialização em segundo plano falhou',err));
+  if('requestIdleCallback' in window) requestIdleCallback(bootLegacy,{timeout:2500});
+  else setTimeout(bootLegacy,800);
 
   if(window.FocadoAuth?.remoteConfigured?.() && window.FocadoDataStore?.getSessionToken?.()){
     await window.FocadoAuth.restore();
@@ -3631,12 +3629,8 @@ async function init(){
   if((savedRole === 'admin' || savedRole === 'user') && !sessionExpired){
     applyRole(savedRole, savedLabel);
     hideLogin();
-    if(sessionStorage.getItem('nova-era-in-app') === '1'){
-      // já tinha entrado no simulador nessa sessão (ex: deu um refresh na página) — volta direto pra lá
-      document.getElementById('hubScreen').classList.add('hidden');
-    }else{
-      showHub();
-    }
+    document.getElementById('hubScreen').classList.add('hidden');
+    sessionStorage.setItem('nova-era-modern-shell','1');
   }else{
     // sessão inexistente ou expirada (ex: reabriu o app depois de um tempo) — força login de novo,
     // o que também garante que o reset do simulador aconteça
