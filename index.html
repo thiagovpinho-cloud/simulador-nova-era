@@ -1286,14 +1286,7 @@ const PIS_RATE = 0.0165;
 const COFINS_RATE = 0.076;
 const PIS_COFINS = PIS_RATE + COFINS_RATE;
 
-/* ============================================================
-   PARAMETRIZAÇÃO DE FRETES — CIF e Redespacho por estado,
-   em faixas de valor total do pedido (com impostos).
-   FOB é sempre 0% (o cliente banca o próprio frete).
-   Faixas (da maior pra menor): >50k, >20k, >15k, >10k, >5k, >2k.
-   null = "NÃO FAZEMOS" nessa combinação de estado/faixa.
-   Fonte: planilha PARAMETRIZAÇÃO_DE_FRETES.
-   ============================================================ */
+
 const FRETE_TIERS = [50000, 20000, 15000, 10000, 5000, 2000];
 const FRETE_PARAMS = {
   SP: { CIF:[0.06, 0.10, 0.14, 0.16, 0.18, 0.20], REDESPACHO:null },
@@ -1895,11 +1888,7 @@ function computeAll(){
 }
 
 
-/* ============================================================
-   ADAPTADOR DO MOTOR DE PRECIFICAÇÃO LEGADO
-   Mantém uma única fonte de cálculo enquanto o simulador é
-   migrado para módulos nativos do novo Focado.
-   ============================================================ */
+
 window.FocadoLegacySimulator = {
   async ready(){
     await loadState();
@@ -2021,9 +2010,7 @@ window.FocadoLegacySimulator = {
   }
 };
 
-/* ============================================================
-   FORMATTERS
-   ============================================================ */
+
 const parseBRNum = (v) => { const n = parseFloat(String(v ?? '').replace(',','.')); return isNaN(n) ? 0 : n; };
 
 /* ============================================================
