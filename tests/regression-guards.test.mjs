@@ -188,3 +188,17 @@ assert.ok(indexPerf.includes('finalPrice')&&indexPerf.includes('basePrice'),'Cot
 
 assert.ok(shell.includes("if(id==='cockpit'){open(()=>window.FocadoIndicators?.render());return}"),'Cockpit executivo deve usar FocadoIndicators');
 assert.ok(read('assets/core/auth-client.js').includes("cockpit:['ADMIN','FINANCEIRO']"),'Cockpit executivo deve respeitar permissão financeira');
+
+const customerLookup=read('assets/modules/customers.js');
+const representativeFantasy=read('assets/modules/representatives.js');
+assert.ok(customerLookup.includes("lookupCnpj(value)"),'Clientes deve possuir consulta automática de CNPJ');
+assert.ok(customerLookup.includes("'/api/cnpj/'"),'Clientes deve consultar CNPJ pelo backend autenticado do Focado');
+assert.ok(customerLookup.includes("'https://brasilapi.com.br/api/cnpj/v1/'"),'Clientes deve possuir fallback de consulta CNPJ');
+assert.ok(customerLookup.includes("CNPJ localizado. Dados cadastrais preenchidos automaticamente."),'Clientes deve informar sucesso da consulta CNPJ');
+for(const id of ['fcName','fcFantasyName','fcCep','fcBairro','fcCity','fcState','fcAddress','fcPhone','fcEmail']){
+  assert.ok(customerLookup.includes(id),'Consulta CNPJ deve preencher campo '+id);
+}
+assert.ok(customerLookup.includes("fantasyName:document.getElementById('fcFantasyName').value.trim()"),'Clientes deve persistir nome fantasia obtido/manual');
+assert.ok(representativeFantasy.includes("field('Nome fantasia','frFantasyName')"),'Representantes deve possuir campo Nome Fantasia');
+assert.ok(representativeFantasy.includes("fantasyName:document.getElementById('frFantasyName').value.trim()"),'Representantes deve persistir Nome Fantasia');
+assert.ok(representativeFantasy.includes("document.getElementById('frFantasyName').value=d.nomeFantasia||''"),'Consulta de CNPJ do representante deve preencher Nome Fantasia');
