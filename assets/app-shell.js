@@ -247,7 +247,8 @@
   window.addEventListener('load',()=>{setTimeout(()=>{
     if(sessionStorage.getItem('nova-era-role')){
       document.getElementById('hubScreen')?.classList.add('hidden');
-      showShell(true);
+      const active=document.querySelector('[data-fx-nav].active')?.dataset?.fxNav||'dashboard';
+      showShell(active==='dashboard');
     }
   },0)});
   window.FocadoShell={show:showShell,refresh:dashboard,navigate};
