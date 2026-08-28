@@ -156,6 +156,7 @@
         field('Cidade','fcCity',c.city)+
         field('UF','fcState',c.state)+
         representativeSelect(ops,c)+
+        field('Condição de pagamento','fcPaymentTerms',c.paymentTerms)+
         select('Status','fcActive',c.active!==false? 'ATIVO':'INATIVO',['ATIVO','INATIVO'])+
         '<label class="fc-field wide"><span>Endereço / Local de entrega</span><textarea id="fcAddress">'+esc(c.address||'')+'</textarea></label>'+
         '<label class="fc-field wide"><span>Observações</span><textarea id="fcNotes">'+esc(c.notes||'')+'</textarea></label>'+
@@ -206,6 +207,7 @@
         const rep=(load().representatives||[]).find(r=>String(r.id||'')===String(id));
         return rep?.name||'';
       })(),
+      paymentTerms:document.getElementById('fcPaymentTerms').value.trim(),
       active:document.getElementById('fcActive').value==='ATIVO',
       address:document.getElementById('fcAddress').value.trim(),
       notes:document.getElementById('fcNotes').value.trim(),
