@@ -17,3 +17,8 @@
 .fc-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .fc-btn.secondary{background:#fff;color:#0b6a51;border:1px solid #0b6a51}
 .fc-btn.secondary:hover{background:#eaf6f1}
+
+/* alinhamento final das ações de clientes */
+.fc-table th:last-child,.fc-table td:last-child{width:150px;text-align:right}
+.fc-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:nowrap}
+.fc-actions .fc-btn{display:inline-flex;align-items:center;justify-content:center;min-width:68px;height:38px;padding:0 14px;line-height:1;white-space:nowrap}
