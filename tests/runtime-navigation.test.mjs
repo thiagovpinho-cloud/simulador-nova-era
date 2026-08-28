@@ -112,3 +112,6 @@ assert.ok(loader.includes("'regras-margem':()=>typeof window.FocadoMarginRules?.
 assert.ok(shell.includes("['regras-margem','%','Regras de Margem']"),'Regras de Margem deve aparecer em Configurações');
 assert.ok(index.includes('assets/modules/margin-rules.css?v=20260828-margin-rules-v1'),'Regras de Margem deve ser pré-carregada com CSS');
 assert.ok(index.includes('assets/modules/margin-rules.js?v=20260828-margin-rules-v1'),'Regras de Margem deve ser pré-carregada com JavaScript');
+
+assert.ok(shell.includes("id==='cockpit'?'indicadores':id"),'Cockpit deve carregar o módulo de Indicadores');
+assert.ok(shell.includes("if(id==='cockpit'){open(()=>window.FocadoIndicators?.render());return}"),'Cockpit deve renderizar o mesmo dashboard executivo');
