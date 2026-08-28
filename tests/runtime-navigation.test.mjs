@@ -49,7 +49,7 @@ const staticModules=[
   'expedition','logistics','technical-sheets','bases','system-health','intelligence-core','intelligence','kanban'
 ];
 for(const m of staticModules){
-  const expected=m==='bases'?'assets/modules/bases.js?v=':'assets/modules/'+m+'.js?v=20260827-static-v1';
+  const expected=(m==='bases'||m==='inventory')?'assets/modules/'+m+'.js?v=':'assets/modules/'+m+'.js?v=20260827-static-v1';
   assert.ok(index.includes(expected),'Módulo ativo deve ser pré-carregado: '+m);
 }
 
