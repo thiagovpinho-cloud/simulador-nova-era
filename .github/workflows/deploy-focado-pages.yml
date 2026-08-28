@@ -81,7 +81,7 @@ jobs:
           test -n "$BASE"
           curl -fsS --retry 6 --retry-delay 3 "$BASE/" -o /tmp/focado-index.html
           grep -q "assets/modules/simulator.js?v=20260828-simulator-v5" /tmp/focado-index.html
-          grep -q "assets/modules/simulator.css?v=20260828-simulator-v3" /tmp/focado-index.html
+          grep -q "assets/modules/simulator.css?v=20260828-simulator-v4" /tmp/focado-index.html
           grep -q "assets/modules/margin-rules.js?v=20260828-margin-rules-v1" /tmp/focado-index.html
           grep -q "assets/modules/orders.js?v=20260828-profit-v1" /tmp/focado-index.html
           grep -q "assets/modules/orders.css?v=20260828-profit-v1" /tmp/focado-index.html
@@ -100,7 +100,7 @@ jobs:
           done
           test "$READY" = "1"
           curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/simulator.js?v=20260828-simulator-v5" -o /tmp/simulator.js
-          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/simulator.css?v=20260828-simulator-v3" -o /tmp/simulator.css
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/simulator.css?v=20260828-simulator-v4" -o /tmp/simulator.css
           curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/margin-rules.js?v=20260828-margin-rules-v1" -o /tmp/margin-rules.js
           curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/margin-rules.css?v=20260828-margin-rules-v1" -o /tmp/margin-rules.css
           curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/orders.js?v=20260828-profit-v1" -o /tmp/orders.js
