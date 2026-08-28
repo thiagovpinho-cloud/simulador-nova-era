@@ -170,6 +170,17 @@
     const key=String(domain||'').toLowerCase();
     if(key==='customers')state.customers=Array.isArray(result.data)?result.data:[];
     if(key==='orders')state.orders=Array.isArray(result.data)?result.data:[];
+    if(key==='inventory'&&result.data&&typeof result.data==='object'){
+      state.inventory=result.data.inventory||{};
+      state.inputInventory=result.data.inputInventory||{};
+    }
+    if(key==='movements')state.stockMovements=Array.isArray(result.data)?result.data:[];
+    if(key==='production')state.productionRequests=Array.isArray(result.data)?result.data:[];
+    if(key==='purchases'&&result.data&&typeof result.data==='object'){
+      state.purchaseRequests=Array.isArray(result.data.purchaseRequests)?result.data.purchaseRequests:[];
+      state.suppliers=Array.isArray(result.data.suppliers)?result.data.suppliers:[];
+    }
+    if(key==='carriers')state.carriers=Array.isArray(result.data)?result.data:[];
     writeLocal(state);
     return {...result,payload:state};
   }
