@@ -83,14 +83,14 @@ jobs:
           grep -q "assets/modules/simulator.js?v=20260828-simulator-v5" /tmp/focado-index.html
           grep -q "assets/modules/simulator.css?v=20260828-simulator-v4" /tmp/focado-index.html
           grep -q "assets/modules/margin-rules.js?v=20260828-margin-rules-v1" /tmp/focado-index.html
-          grep -q "assets/modules/orders.js?v=20260828-customer-master-v1" /tmp/focado-index.html
+          grep -q "assets/modules/orders.js?v=20260828-order-stability-v1" /tmp/focado-index.html
           grep -q "assets/modules/orders.css?v=20260828-profit-v1" /tmp/focado-index.html
 
           PROD="https://focado.pages.dev"
           READY=0
           for i in {1..36}; do
             if curl -fsS --retry 2 --retry-delay 2 "$PROD/?release=${GITHUB_SHA}" -o /tmp/focado-prod-index.html \
-              && grep -q "assets/modules/orders.js?v=20260828-customer-master-v1" /tmp/focado-prod-index.html; then
+              && grep -q "assets/modules/orders.js?v=20260828-order-stability-v1" /tmp/focado-prod-index.html; then
               READY=1
               echo "Production alias is serving validated order-profit revision."
               break
@@ -103,10 +103,11 @@ jobs:
           curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/simulator.css?v=20260828-simulator-v4" -o /tmp/simulator.css
           curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/margin-rules.js?v=20260828-margin-rules-v1" -o /tmp/margin-rules.js
           curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/margin-rules.css?v=20260828-margin-rules-v1" -o /tmp/margin-rules.css
-          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/orders.js?v=20260828-customer-master-v1" -o /tmp/orders.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/orders.js?v=20260828-order-stability-v1" -o /tmp/orders.js
           curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/orders.css?v=20260828-profit-v1" -o /tmp/orders.css
           curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/customers.js?v=20260828-master-v1" -o /tmp/customers.js
           curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/representatives.js?v=20260828-fantasy-v1" -o /tmp/representatives.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/app-shell.js?v=20260828-order-stability-v1" -o /tmp/app-shell.js
           grep -q "window.FocadoSimulator={render}" /tmp/simulator.js
           grep -q "(document.getElementById('focadoShell')||document.body).appendChild(modal)" /tmp/simulator.js
           grep -q "Cadastrar insumo" /tmp/simulator.js
@@ -127,6 +128,9 @@ jobs:
           grep -q "Fonte: Cadastro de Clientes" /tmp/orders.js
           grep -q "setForm('paymentTerms',customer.paymentTerms||'')" /tmp/orders.js
           grep -q ".fo-margin-cell" /tmp/orders.css
+          grep -q "function isFormOpen()" /tmp/orders.js
+          grep -q "if(window.FocadoOrders?.isFormOpen?.())return;" /tmp/app-shell.js
+          grep -q "if(active==='dashboard')dashboard();" /tmp/app-shell.js
           grep -q "lookupCnpj(value)" /tmp/customers.js
           grep -q "CNPJ localizado. Dados cadastrais preenchidos automaticamente." /tmp/customers.js
           grep -q "representativeSelect(ops,customer)" /tmp/customers.js
