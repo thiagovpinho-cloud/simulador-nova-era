@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260828-final-v1';
+  const VERSION='20260828-final-v2';
   const loaded=new Map();
   const defs={
     produtos:{css:'products.css',js:'products.js'},
@@ -59,10 +59,17 @@
     return true;
   }
   function css(href){
-    if(document.querySelector('link[data-focado-module="'+href+'"]'))return Promise.resolve();
+    const selector='link[data-focado-module="'+href+'"]';
+    const existing=document.querySelector(selector);
+    if(existing){
+      if(existing.dataset.loaded==='1'||existing.sheet)return Promise.resolve();
+      existing.remove();
+    }
     return new Promise((resolve,reject)=>{
       const el=document.createElement('link');el.rel='stylesheet';el.href='assets/modules/'+href+'?v='+VERSION;
-      el.dataset.focadoModule=href;el.onload=resolve;el.onerror=reject;
+      el.dataset.focadoModule=href;
+      el.onload=()=>{el.dataset.loaded='1';resolve()};
+      el.onerror=err=>{el.remove();reject(err||new Error('MODULE_CSS_LOAD_FAILED:'+href))};
       const ds=document.querySelector('link[href*="assets/design-system.css"]');
       if(ds)document.head.insertBefore(el,ds);else document.head.appendChild(el);
     });
@@ -75,13 +82,17 @@
     });
   }
   async function ensure(name){
-    const existing=contracts[name];
-    if(existing&&existing())return true;
     let def=defs[name];if(!def)return true;
     if(def.alias){await ensure(def.alias);verify(name);return true;}
     if(loaded.has(name))return loaded.get(name);
     const p=(async()=>{
       for(const dep of def.deps||[])await ensure(dep);
+      const existing=contracts[name];
+      if(existing&&existing()){
+        if(def.css)await css(def.css);
+        verify(name);
+        return true;
+      }
       await Promise.all([def.css?css(def.css):null,def.js?js(def.js):null].filter(Boolean));
       verify(name);
       return true;
