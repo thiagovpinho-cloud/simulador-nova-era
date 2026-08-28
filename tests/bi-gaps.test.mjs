@@ -30,7 +30,9 @@ applyDomain('FINANCEIRO',state,{changes:{monthlyTarget:{
   period:'2026-08',scope_type:'COMPANY',scope_id:'ALL',target_revenue:400,target_boxes:20,target_margin:.25
 }}});
 applyDomain('FINANCEIRO',state,{changes:{financialFact:{
-  order_id:'o1',taxes:20,discounts:5,returns:0,bonuses:0,commission:10,freight_allocated:15
+  order_id:'o1',invoice_number:'12345',invoice_date:'2026-08-08',invoice_status:'AUTORIZADA',
+  invoice_key:'12345678901234567890123456789012345678901234',
+  taxes:20,discounts:5,returns:0,bonuses:0,commission:10,freight_allocated:15
 }}});
 applyDomain('FINANCEIRO',state,{changes:{skuCost:{
   sku:'SKU-A',effective_from:'2026-01-01',unit_variable_cost:8
@@ -44,6 +46,8 @@ applyDomain('BASES',state,{changes:{base:{
 
 assert.equal(state.monthlyTargets.length,1);
 assert.equal(state.financialFacts.length,1);
+assert.equal(state.financialFacts[0].invoice_number,'12345');
+assert.equal(state.financialFacts[0].invoice_key.length,44);
 assert.equal(state.skuCosts.length,1);
 assert.equal(state.inventoryPolicy['SKU-A'].reorder_point,45);
 assert.equal(state.productionBases.SENIR.capacityPerDay,120);
@@ -105,3 +109,19 @@ assert.ok(shell.includes("['bi-config','⚙','Parâmetros BI']"),'Menu deve expo
 assert.ok(loader.includes("'bi-config':{css:'bi-config.css',js:'bi-config.js'}"),'Loader deve registrar governança BI');
 assert.ok(configUi.includes("saveDomain('FINANCEIRO'"),'Dados financeiros devem usar domínio auditável');
 assert.ok(configUi.includes("saveDomain('ESTOQUE'"),'Política de estoque deve usar domínio auditável');
+
+const nativeFinance=fs.readFileSync(new URL('../assets/modules/finance.js',import.meta.url),'utf8');
+const inventoryUi=fs.readFileSync(new URL('../assets/modules/inventory.js',import.meta.url),'utf8');
+assert.ok(nativeFinance.includes('Número da NF'),'Financeiro deve capturar número da NF');
+assert.ok(nativeFinance.includes('Data de emissão'),'Financeiro deve capturar data da NF');
+assert.ok(nativeFinance.includes('Chave NF-e'),'Financeiro deve capturar chave NF-e');
+for(const field of ['Impostos','Descontos','Devoluções','Bonificações','Comissão','Frete alocado'])assert.ok(nativeFinance.includes(field),'Campo financeiro ausente: '+field);
+assert.ok(nativeFinance.includes('Metas mensais'),'Financeiro deve possuir metas mensais');
+assert.ok(nativeFinance.includes('Custos variáveis por SKU'),'Financeiro deve possuir custos históricos por SKU');
+for(const field of ['Estoque mínimo','Ponto de reposição','Estoque de segurança'])assert.ok(inventoryUi.includes(field),'Campo de estoque ausente: '+field);
+
+const invoiceState=structuredClone(state);
+invoiceState.biPolicy.revenueRecognition='INVOICED';
+assert.equal(grossRevenue(invoiceState,{from:'2026-08-01',to:'2026-08-31'}).value,200);
+invoiceState.financialFacts[0].invoice_status='CANCELADA';
+assert.equal(grossRevenue(invoiceState,{from:'2026-08-01',to:'2026-08-31'}).value,0);
