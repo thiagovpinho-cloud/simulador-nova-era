@@ -567,5 +567,6 @@
     else window.open('https://wa.me/?text='+encodeURIComponent(text+'\n\nO arquivo Excel foi baixado para envio.'),'_blank');
   }
 
-  window.FocadoOrders={render,openOrder:openForm,openNew:()=>openForm(),renderReport};
+  function isFormOpen(){return Boolean(document.getElementById('foOrderForm'))}
+  window.FocadoOrders={render,openOrder:openForm,openNew:()=>openForm(),renderReport,isFormOpen};
 })();
