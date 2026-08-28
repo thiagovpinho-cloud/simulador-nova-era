@@ -103,7 +103,11 @@
         filterBar()+
         '<div class="fbi-kpis">'+
           kpiCard('Volume vendido',num(k.sold_boxes?.value)+' cx','Quantidade dos pedidos filtrados','', 'fbiRanking')+
-          kpiCard('Faturamento base',money(k.brand_share?.totalRevenue),'Base atual para share por marca','green','fbiBrands')+
+          kpiCard('Faturamento bruto',money(k.gross_revenue?.value),'Reconhecido conforme regra oficial','green','fbiBrands')+
+          kpiCard('Faturamento líquido',k.net_revenue?.complete?money(k.net_revenue?.value):'Dados pendentes',k.net_revenue?.complete?'Após impostos e abatimentos':'Complete fatos financeiros dos pedidos',k.net_revenue?.complete?'green':'warn','fbiGovernance')+
+          kpiCard('Margem contribuição',k.contribution_margin?.complete&&k.contribution_margin?.value!=null?pct(k.contribution_margin.value):'Dados pendentes',k.contribution_margin?.complete?'Margem ponderada da carteira':'Complete custos e fatos financeiros',k.contribution_margin?.complete?'blue':'warn','fbiGovernance')+
+          kpiCard('OTIF',k.otif?.value==null?'—':pct(k.otif.value),(k.otif?.evaluated||0)+' pedido(s) avaliados · '+(k.otif?.excluded||0)+' excluído(s)',k.otif?.complete?'blue':'warn','fbiOtif')+
+          kpiCard('Meta × realizado',k.target_vs_actual?.complete&&k.target_vs_actual?.achievement!=null?pct(k.target_vs_actual.achievement):'Sem meta',k.target_vs_actual?.complete?(money(k.target_vs_actual.actualRevenue)+' realizado'):'Cadastre a meta do período',k.target_vs_actual?.complete?'green':'warn','fbiGovernance')+
           kpiCard('Lead time médio',lead.averagesDays?.total==null?'—':fmtDays(lead.averagesDays.total),'Pedido → entrega','blue','fbiLead')+
           kpiCard('Pedidos atrasados',num(k.delayed_orders?.value),'Entregues ou abertos fora da data','danger','fbiDelayed')+
         '</div>'+
@@ -115,8 +119,14 @@
           '<section class="fbi-panel" id="fbiRanking"><div class="fbi-panel-head"><div><h2>Ranking de SKUs · faturamento</h2><p>Top 10 com caminho até os pedidos de origem.</p></div></div>'+rankingTable(k.sku_ranking?.byRevenue,'revenue')+'</section>'+
           '<section class="fbi-panel"><div class="fbi-panel-head"><div><h2>Ranking de SKUs · volume</h2><p>Top 10 em caixas vendidas.</p></div></div>'+rankingTable(k.sku_ranking?.byVolume,'volume')+'</section>'+
         '</div>'+
+        '<div class="fbi-grid">'+
+          '<section class="fbi-panel" id="fbiOtif"><div class="fbi-panel-head"><div><h2>OTIF — prazo e quantidade</h2><p>Avalia somente entregas com data e evidência de quantidade expedida.</p></div><div class="fbi-lead-mini"><span>Resultado</span><b>'+(k.otif?.value==null?'—':pct(k.otif.value))+'</b></div></div>'+
+            '<div class="fbi-quality"><div><span>Avaliados</span><b>'+num(k.otif?.evaluated)+'</b></div><div><span>Dentro OTIF</span><b>'+num(k.otif?.passed)+'</b></div><div><span>Sem evidência suficiente</span><b>'+num(k.otif?.excluded)+'</b></div></div></section>'+
+          '<section class="fbi-panel" id="fbiGovernance"><div class="fbi-panel-head"><div><h2>Completude dos dados</h2><p>O sistema não publica um KPI como definitivo sem os dados de origem.</p></div><button class="fbi-btn" id="fbiOpenGovernance">Parâmetros BI</button></div>'+
+            '<div class="fbi-quality"><div><span>Faturamento líquido</span><b>'+(k.net_revenue?.complete?'Completo':'Pendente')+'</b></div><div><span>Margem</span><b>'+(k.contribution_margin?.complete?'Completa':'Pendente')+'</b></div><div><span>Política de estoque</span><b>'+(k.inventory_risk?.complete?'Completa':'Pendente')+'</b></div></div></section>'+
+        '</div>'+
         '<section class="fbi-panel" id="fbiDelayed"><div class="fbi-panel-head"><div><h2>Pedidos atrasados</h2><p>Pedidos com data prometida vencida, abertos ou já entregues.</p></div><button class="fbi-btn" id="fbiGoLogistics">Abrir Logística</button></div>'+delayedTable(k.delayed_orders?.rows)+'</section>'+
-        '<div class="fbi-note">Indicadores financeiros ainda incompletos não são exibidos como definitivos. Faturamento líquido, margem e meta × realizado só entram quando seus dados auditáveis forem adicionados.</div>'+
+        '<div class="fbi-note">KPIs com dados incompletos aparecem explicitamente como pendentes; o Focado não estima impostos, custos, metas ou quantidades sem registro auditável.</div>'+
       '</div>';
 
     bind();
@@ -184,6 +194,7 @@
     $('#fbiApply').onclick=()=>render(readFilters());
     $('#fbiClear').onclick=()=>render({from:'',to:'',brand:'',client:'',sku:'',status:'',asOf:new Date().toISOString().slice(0,10)});
     $('#fbiGoLogistics').onclick=()=>{active=false;window.FocadoShell?.navigate?.('logistica')};
+    if($('#fbiOpenGovernance'))$('#fbiOpenGovernance').onclick=()=>{active=false;window.FocadoShell?.navigate?.('bi-config')};
     document.querySelectorAll('[data-scroll]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.scroll)?.scrollIntoView({behavior:'smooth',block:'start'}));
     document.querySelectorAll('[data-brand-filter]').forEach(b=>b.onclick=()=>render({...current,brand:b.dataset.brandFilter}));
     document.querySelectorAll('[data-open-order]').forEach(b=>b.onclick=()=>openOrder(b.dataset.openOrder));
