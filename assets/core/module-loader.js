@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260828-margin-rules-v1';
+  const VERSION='20260828-edit-actions-v2';
   const loaded=new Map();
   const defs={
     simulador:{css:'simulator.css',js:'simulator.js'},
