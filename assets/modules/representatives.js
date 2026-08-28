@@ -82,7 +82,7 @@
       '<div class="fr-table-wrap"><table class="fr-table"><thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Telefone</th><th>E-mail</th><th>Cidade/UF</th><th>Comissão</th><th>Status</th><th></th></tr></thead><tbody id="frBody"></tbody></table></div></div>'+
       '<div class="fr-modal hidden" id="frModal"><div class="fr-modal-card"><h2 id="frTitle">Novo representante</h2><div class="fr-grid">'+
         '<label class="fr-doc-field"><span>CPF/CNPJ</span><div class="fr-doc-wrap"><input id="frDoc" inputmode="numeric" placeholder="Digite o documento"><button type="button" id="frValidateDoc">Validar</button></div><small class="fr-doc-status" id="frDocStatus"></small></label>'+
-        field('Nome / Razão social','frName')+field('Telefone','frPhone')+field('E-mail','frEmail','email')+
+        field('Nome / Razão social','frName')+field('Nome fantasia','frFantasyName')+field('Telefone','frPhone')+field('E-mail','frEmail','email')+
         field('Cidade','frCity')+field('UF','frUf')+
         '<label><span>Comissão</span><div class="fr-percent-wrap"><input id="frCommission" type="number" min="0" max="4" step="0.01" inputmode="decimal"><strong>%</strong></div><small class="fr-commission-hint">Máximo permitido: 4,00%</small></label>'+
         field('Observações','frNotes')+
@@ -92,11 +92,11 @@
     function paint(){
       const qq=q.value.trim().toLowerCase();
       const rows=reps.filter(r=>{
-        const match=!qq||[r.name,r.document,r.phone,r.email,r.city,r.uf].some(v=>String(v||'').toLowerCase().includes(qq));
+        const match=!qq||[r.name,r.fantasyName,r.document,r.phone,r.email,r.city,r.uf].some(v=>String(v||'').toLowerCase().includes(qq));
         const st=status.value==='TODOS'||(status.value==='ATIVOS'&&r.active!==false)||(status.value==='INATIVOS'&&r.active===false);
         return match&&st;
       });
-      body.innerHTML=rows.map(r=>'<tr><td><b>'+esc(r.name)+'</b></td><td>'+esc(r.document||'—')+'</td><td>'+esc(r.phone||'—')+'</td><td>'+esc(r.email||'—')+'</td><td>'+esc([r.city,r.uf].filter(Boolean).join('/'))+'</td><td>'+((Number(r.commission)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}))+'%</td><td><span class="fr-status '+(r.active===false?'off':'on')+'">'+(r.active===false?'Inativo':'Ativo')+'</span></td><td><div class="fr-row-actions"><button data-edit="'+esc(r.id)+'">Editar</button><button data-toggle="'+esc(r.id)+'">'+(r.active===false?'Ativar':'Inativar')+'</button></div></td></tr>').join('')||'<tr><td colspan="8" class="fr-empty">Nenhum representante encontrado.</td></tr>';
+      body.innerHTML=rows.map(r=>'<tr><td><b>'+esc(r.name)+'</b>'+(r.fantasyName?'<small>'+esc(r.fantasyName)+'</small>':'')+'</td><td>'+esc(r.document||'—')+'</td><td>'+esc(r.phone||'—')+'</td><td>'+esc(r.email||'—')+'</td><td>'+esc([r.city,r.uf].filter(Boolean).join('/'))+'</td><td>'+((Number(r.commission)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}))+'%</td><td><span class="fr-status '+(r.active===false?'off':'on')+'">'+(r.active===false?'Inativo':'Ativo')+'</span></td><td><div class="fr-row-actions"><button data-edit="'+esc(r.id)+'">Editar</button><button data-toggle="'+esc(r.id)+'">'+(r.active===false?'Ativar':'Inativar')+'</button></div></td></tr>').join('')||'<tr><td colspan="8" class="fr-empty">Nenhum representante encontrado.</td></tr>';
       body.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openModal(reps.find(r=>r.id===b.dataset.edit)));
       body.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=async()=>{const r=reps.find(x=>x.id===b.dataset.toggle);if(!r)return;r.active=r.active===false?true:false;await save(ops);render()});
     }
@@ -107,6 +107,7 @@
       editing=r||null;
       document.getElementById('frTitle').textContent=r?'Editar representante':'Novo representante';
       document.getElementById('frName').value=r?.name||'';
+      document.getElementById('frFantasyName').value=r?.fantasyName||'';
       document.getElementById('frDoc').value=formatDocument(r?.document||'');
       document.getElementById('frDocStatus').textContent='';
       document.getElementById('frPhone').value=r?.phone||'';
@@ -131,6 +132,7 @@
     function applyCnpjData(d){
       if(!d)return;
       document.getElementById('frName').value=d.razaoSocial||d.nomeFantasia||'';
+      document.getElementById('frFantasyName').value=d.nomeFantasia||'';
       const phoneEl=document.getElementById('frPhone'),emailEl=document.getElementById('frEmail');
       if(phoneEl&&!phoneEl.value.trim()&&d.dddTelefone1)phoneEl.value=d.dddTelefone1;
       if(emailEl&&!emailEl.value.trim()&&d.email)emailEl.value=d.email;
@@ -184,6 +186,7 @@
       }
       const data={
         name,
+        fantasyName:document.getElementById('frFantasyName').value.trim(),
         document:digits(document.getElementById('frDoc').value),
         phone:document.getElementById('frPhone').value.trim(),
         email:document.getElementById('frEmail').value.trim(),
