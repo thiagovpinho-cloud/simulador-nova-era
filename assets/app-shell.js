@@ -7,7 +7,7 @@
 
   const navGroups=[
     ['Principal',[['dashboard','⌂','Dashboard'],['cockpit','◉','Cockpit Operacional'],['kanban','▦','Kanban Operacional']]],
-    ['Comercial',[['clientes','♙','Clientes'],['representantes','♣','Representantes'],['pedidos','▤','Pedidos Comerciais']]],
+    ['Comercial',[['clientes','♙','Clientes'],['representantes','♣','Representantes'],['pedidos','▤','Pedidos Comerciais'],['simulador','∑','Simulador']]],
     ['Operações',[['pcp','⌘','PCP'],['production','⚙','Produção'],['inventory','▣','Estoque'],['inputs','◇','Insumos'],['purchases','↻','Compras'],['expedicao','⇱','Expedição']]],
     ['Logística',[['logistica','▰','Logística'],['entregas','✓','Entregas'],['transportadoras','⌁','Transportadoras']]],
     ['Cadastros',[['produtos','◫','Produtos'],['fichas','▧','Fichas Técnicas'],['bases','▦','Bases Produtivas']]],
@@ -164,6 +164,7 @@
       return
     }
     if(id==='representantes'){open(()=>window.FocadoRepresentatives?.render());return}
+    if(id==='simulador'){open(()=>window.FocadoSimulator?.render());return}
     if(id==='pedidos'){
       open(()=>window.FocadoOrders?.render());
       refreshInBackground('orders',()=>window.FocadoOrders?.render());
