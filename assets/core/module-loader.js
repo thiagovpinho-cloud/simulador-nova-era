@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260828-final-v2';
+  const VERSION='20260828-final-v3';
   const loaded=new Map();
   const defs={
     produtos:{css:'products.css',js:'products.js'},
@@ -60,6 +60,8 @@
   }
   function css(href){
     const selector='link[data-focado-module="'+href+'"]';
+    const preloaded=document.querySelector('link[href*="assets/modules/'+href+'"]');
+    if(preloaded&&preloaded.sheet)return Promise.resolve();
     const existing=document.querySelector(selector);
     if(existing){
       if(existing.dataset.loaded==='1'||existing.sheet)return Promise.resolve();
