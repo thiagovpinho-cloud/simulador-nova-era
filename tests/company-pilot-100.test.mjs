@@ -54,7 +54,7 @@ const expectedRoutes={
 };
 for(const [role,routes] of Object.entries(expectedRoutes)){
   for(const route of routes){
-    assert.ok(auth.includes(route+':[')||auth.includes("'"+route+"':['),role+' deve possuir regra de acesso para '+route);
+    assert.ok(auth.includes(route+':[')||auth.includes("'"+route+"':["),role+' deve possuir regra de acesso para '+route);
     assert.ok(auth.includes("'"+role+"'")||auth.includes(role+":"'"),'Role '+role+' deve existir');
     assert.ok(shell.includes("['"+route+"'")||shell.includes("id==='"+route+"'"),'Rota '+route+' deve existir na interface');
   }
