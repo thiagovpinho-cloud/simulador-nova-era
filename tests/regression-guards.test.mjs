@@ -93,3 +93,9 @@ assert.ok(intelligenceCore.includes('auditorFindings'),'Motor deve gerar achados
 assert.ok(intelligenceCore.includes('confidence'),'Sugestões devem carregar confiança/evidência');
 assert.ok(intelligenceUI.includes('renderCockpit'),'UI deve possuir Cockpit');
 assert.ok(intelligenceUI.includes('renderAuditor'),'UI deve possuir Corpo Auditor');
+
+const ordersStage2=read('assets/modules/orders.js');
+assert.ok(ordersStage2.includes("saveDomain('COMERCIAL'"),'Pedidos deve usar escrita transacional por domínio');
+assert.ok(!dataStoreV2.includes("JSON.stringify({domain,changes,orderId,revision})"),'Domínios não devem conflitar por revisão global');
+assert.ok(dataStoreV2.includes('expectedStatus'),'Gravação por pedido deve proteger mudança concorrente de etapa');
+assert.ok(worker.includes('ORDER_STATE_CHANGED'),'Backend deve rejeitar transição com estado obsoleto');
