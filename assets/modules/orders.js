@@ -34,17 +34,16 @@
   let correctionMode=false;
   let editRequested=false;
   const currentRole=()=>{
-    const modern=String(window.FocadoAuth?.getRole?.()||'').toUpperCase();
-    if(modern)return modern;
-    const userRole=String(window.FocadoAuth?.getUser?.()?.role||'').toUpperCase();
-    if(userRole)return userRole;
     const legacy=String(sessionStorage.getItem('nova-era-role')||'').toLowerCase();
-    if(legacy==='admin')return 'ADMIN';
     const label=String(sessionStorage.getItem('nova-era-role-label')||'').toLowerCase();
-    if(label.includes('administrador'))return 'ADMIN';
+    if(legacy==='admin'||label.includes('administrador'))return 'ADMIN';
     if(label.includes('diretor'))return 'DIRETOR';
     if(label.includes('gestor'))return 'GESTOR';
-    return '';
+    const userRole=String(window.FocadoAuth?.getUser?.()?.role||'').toUpperCase();
+    if(['ADMIN','DIRETOR','GESTOR'].includes(userRole))return userRole;
+    const modern=String(window.FocadoAuth?.getRole?.()||'').toUpperCase();
+    if(['ADMIN','DIRETOR','GESTOR'].includes(modern))return modern;
+    return modern||userRole||'';
   };
   const canEditExisting=()=>['ADMIN','DIRETOR','GESTOR'].includes(currentRole());
   function ensureOrderIds(ops){
