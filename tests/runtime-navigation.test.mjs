@@ -34,6 +34,7 @@ const activeRoutes=[
   ['transportadoras',"window.FocadoLogistics?.renderCarriers"],
   ['corpo-auditor',"window.FocadoIntelligenceUI?.renderAuditor"],
   ['system-health',"window.FocadoSystemHealth?.render"],
+  ['config',"window.FocadoSettings?.render"],
   ['usuarios',"window.FocadoUsers?.render"]
 ];
 
@@ -55,7 +56,10 @@ assert.ok(loader.includes("cockpit:()=>typeof window.FocadoIntelligenceUI?.rende
 assert.ok(loader.includes("fichas:()=>typeof window.FocadoTechnicalSheets?.render==='function'"),'Fichas deve ter contrato');
 assert.ok(loader.includes("bases:()=>typeof window.FocadoBases?.render==='function'"),'Bases deve ter contrato');
 assert.ok(loader.includes("usuarios:()=>typeof window.FocadoUsers?.render==='function'"),'Usuários deve ter contrato');
+assert.ok(loader.includes("config:()=>typeof window.FocadoSettings?.render==='function'"),'Configurações deve ter contrato');
 assert.ok(index.includes('assets/modules/users.js?v='),'Usuários deve ser pré-carregado para navegação imediata');
+assert.ok(index.includes('assets/modules/settings.js?v='),'Configurações deve ser pré-carregada para navegação imediata');
+assert.ok(index.includes('assets/modules/settings.css?v='),'Configurações deve carregar estilo próprio');
 assert.ok(index.includes('assets/modules/users.css?v='),'Usuários deve carregar estilo próprio sem corrida lazy');
 
 assert.ok(orders.includes('window.FocadoOrders={render,openOrder:openForm'),'Pedidos deve expor abertura nativa');
