@@ -248,3 +248,8 @@ assert.ok(indexPerf.includes('privileged-edit-actions.js?v=20260828-edit-actions
 assert.ok(privilegedEditActions.includes("['ADMIN','DIRETOR','GESTOR']"),'Edição privilegiada deve aceitar somente Admin, Diretor e Gestor');
 assert.ok(privilegedEditActions.includes('data.fcEdit')||privilegedEditActions.includes('dataset.fcEdit'),'Clientes deve receber ação Editar privilegiada');
 assert.ok(privilegedEditActions.includes('data.foEdit')||privilegedEditActions.includes('dataset.foEdit'),'Pedidos deve receber ação Editar privilegiada');
+
+const ordersDeleteUi=read('assets/modules/orders.js');
+assert.ok(ordersDeleteUi.includes('data-fo-delete'),'Pedidos em rascunho devem exibir ação Excluir');
+assert.ok(ordersDeleteUi.includes("o.status==='COMERCIAL'"),'Excluir deve ficar restrito a pedidos em preenchimento');
+assert.ok(ordersDeleteUi.includes("['ADMIN','DIRETOR','GESTOR']"),'Excluir deve respeitar perfis privilegiados');
