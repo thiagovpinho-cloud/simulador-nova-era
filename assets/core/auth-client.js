@@ -24,6 +24,7 @@
     representantes:['ADMIN','COMERCIAL'],
     oportunidades:['ADMIN','COMERCIAL'],
     pedidos:['ADMIN','COMERCIAL'],
+    simulador:['ADMIN','COMERCIAL','FINANCEIRO'],
     fichas:['ADMIN','COMERCIAL','PCP','PRODUCAO'],
     pcp:['ADMIN','PCP'],
     production:['ADMIN','PCP','PRODUCAO'],
