@@ -94,8 +94,10 @@
     if(!res.ok)return {ok:false,mode:'remote',status:res.status,code:body.error||'LOGIN_FAILED'};
     window.FocadoDataStore?.setSessionToken?.(body.token);
     saveUser(body.user);
-    await window.FocadoDataStore?.hydrateLocalCache?.();
     window.dispatchEvent(new CustomEvent('focado:auth-changed',{detail:{user:body.user}}));
+    Promise.resolve(window.FocadoDataStore?.hydrateLocalCache?.())
+      .then(()=>window.dispatchEvent(new CustomEvent('focado:cache-hydrated',{detail:{user:body.user}})))
+      .catch(err=>console.warn('[FocadoAuth] sincronização pós-login em segundo plano falhou',err));
     return {ok:true,mode:'remote',user:body.user};
   }
 
