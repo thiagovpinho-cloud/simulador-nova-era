@@ -13,3 +13,7 @@
 @media(max-width:560px){.fc-cnpj-wrap{flex-direction:column}.fc-cnpj-wrap button{min-height:38px}}
 
 .fc-rep-hint{display:block;min-height:13px;font-size:8px;color:var(--fx-muted)}
+
+.fc-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.fc-btn.secondary{background:#fff;color:#0b6a51;border:1px solid #0b6a51}
+.fc-btn.secondary:hover{background:#eaf6f1}
