@@ -187,7 +187,7 @@ assert.ok(indexPerf.includes('quoteOrder(o={})'),'Motor do simulador deve expor 
 assert.ok(indexPerf.includes('finalPrice')&&indexPerf.includes('basePrice'),'Cotação deve decompor preço final em preço-base');
 
 assert.ok(shell.includes("if(id==='cockpit'){open(()=>window.FocadoIndicators?.render());return}"),'Cockpit executivo deve usar FocadoIndicators');
-assert.ok(read('assets/core/auth-client.js').includes("cockpit:['ADMIN','FINANCEIRO']"),'Cockpit executivo deve respeitar permissão financeira');
+assert.ok(read('assets/core/auth-client.js').includes("cockpit:['ADMIN','DIRETOR','GESTOR','FINANCEIRO']"),'Cockpit executivo deve respeitar permissão executiva/financeira');
 
 const customerLookup=read('assets/modules/customers.js');
 const representativeFantasy=read('assets/modules/representatives.js');
@@ -242,3 +242,9 @@ assert.ok(orderStability.includes("function isFormOpen(){return Boolean(document
 assert.ok(shellStability.includes("if(window.FocadoOrders?.isFormOpen?.())return;"),'Refresh em segundo plano não pode fechar pedido em preenchimento');
 assert.ok(shellStability.includes("if(active==='dashboard')dashboard();"),'Cache hidratado só pode redesenhar Dashboard quando Dashboard estiver ativo');
 assert.ok(shellStability.includes("showShell(active==='dashboard');"),'Restauração do shell deve preservar a rota atual');
+
+const privilegedEditActions=read('assets/core/privileged-edit-actions.js');
+assert.ok(indexPerf.includes('privileged-edit-actions.js?v=20260828-edit-actions-v5'),'Hotfix de edição privilegiada deve ser carregado por último');
+assert.ok(privilegedEditActions.includes("['ADMIN','DIRETOR','GESTOR']"),'Edição privilegiada deve aceitar somente Admin, Diretor e Gestor');
+assert.ok(privilegedEditActions.includes('data.fcEdit')||privilegedEditActions.includes('dataset.fcEdit'),'Clientes deve receber ação Editar privilegiada');
+assert.ok(privilegedEditActions.includes('data.foEdit')||privilegedEditActions.includes('dataset.foEdit'),'Pedidos deve receber ação Editar privilegiada');
