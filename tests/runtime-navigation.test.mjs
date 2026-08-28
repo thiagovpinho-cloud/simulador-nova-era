@@ -52,7 +52,7 @@ const staticModules=[
   'expedition','logistics','technical-sheets','bases','system-health','intelligence-core','intelligence','kanban'
 ];
 for(const m of staticModules){
-  const expected=(m==='bases'||m==='inventory'||m==='orders'||m==='production')?'assets/modules/'+m+'.js?v=':'assets/modules/'+m+'.js?v=20260827-static-v1';
+  const expected=['bases','inventory','orders','production','customers','representatives'].includes(m)?'assets/modules/'+m+'.js?v=':'assets/modules/'+m+'.js?v=20260827-static-v1';
   assert.ok(index.includes(expected),'Módulo ativo deve ser pré-carregado: '+m);
 }
 
@@ -115,3 +115,7 @@ assert.ok(index.includes('assets/modules/margin-rules.js?v=20260828-margin-rules
 
 assert.ok(shell.includes("id==='cockpit'?'indicadores':id"),'Cockpit deve carregar o módulo de Indicadores');
 assert.ok(shell.includes("if(id==='cockpit'){open(()=>window.FocadoIndicators?.render());return}"),'Cockpit deve renderizar o mesmo dashboard executivo');
+
+assert.ok(index.includes('assets/modules/customers.js?v=20260828-cnpj-v1'),'Clientes deve publicar revisão com consulta de CNPJ');
+assert.ok(index.includes('assets/modules/customers.css?v=20260828-cnpj-v1'),'Clientes deve publicar CSS da consulta de CNPJ');
+assert.ok(index.includes('assets/modules/representatives.js?v=20260828-fantasy-v1'),'Representantes deve publicar revisão com Nome Fantasia');
