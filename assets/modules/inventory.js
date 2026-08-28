@@ -172,11 +172,30 @@
   function openItem(key){
     const ops=load(),inv=(ops.inventory||{})[key];if(!inv){alert('Item não encontrado.');return}
     const movements=(ops.stockMovements||[]).filter(m=>String(m.key)===String(key)||String(m.code)===String(inv.code)).slice().sort((a,b)=>(b.at||0)-(a.at||0));
+    const policy=(ops.inventoryPolicy||{})[String(inv.code||key)]||(ops.inventoryPolicy||{})[key]||{};
     content().innerHTML='<div class="fi-page"><div class="fi-head"><div>'+back()+'<h1 style="margin-top:12px">'+esc(inv.name||key)+'</h1><p>'+esc(inv.code||'')+(inv.brand?' · '+esc(inv.brand):'')+'</p></div></div>'+
       '<div class="fi-kpis"><div class="fi-kpi"><span>Físico</span><strong>'+fmt(inv.physical)+'</strong></div><div class="fi-kpi"><span>Reservado</span><strong>'+fmt(inv.reserved)+'</strong></div><div class="fi-kpi"><span>Bloqueado</span><strong>'+fmt(inv.blocked)+'</strong></div><div class="fi-kpi"><span>Disponível</span><strong>'+fmt(avail(inv))+'</strong></div></div>'+
+      '<div class="fi-panel"><h2>Política de estoque</h2><p class="fi-note">Esses campos alimentam o risco de ruptura e a reposição do BI.</p><div class="fi-grid">'+
+        '<label class="fi-field"><span>Estoque mínimo</span><input id="fiMinStock" type="number" min="0" step="1" value="'+esc(policy.minimum_stock||0)+'"></label>'+
+        '<label class="fi-field"><span>Ponto de reposição</span><input id="fiReorderPoint" type="number" min="0" step="1" value="'+esc(policy.reorder_point||0)+'"></label>'+
+        '<label class="fi-field"><span>Estoque de segurança</span><input id="fiSafetyStock" type="number" min="0" step="1" value="'+esc(policy.safety_stock||0)+'"></label>'+
+      '</div><div class="fi-actions"><button class="fi-btn primary" id="fiSavePolicy">Salvar política</button></div></div>'+
       '<div class="fi-panel"><h2>Saldo por base</h2>'+(Object.keys(inv.bases||{}).length?'<div class="fi-table-wrap"><table class="fi-table"><thead><tr><th>Base</th><th>Saldo físico atribuído</th></tr></thead><tbody>'+Object.entries(inv.bases).map(([b,v])=>'<tr><td>'+esc(b)+'</td><td>'+fmt(v)+' '+esc(inv.unit||'CX')+'</td></tr>').join('')+'</tbody></table></div>':'<div class="fi-empty">Ainda não há saldo separado por base.</div>')+'</div>'+
       '<div class="fi-panel"><h2>Histórico do produto</h2>'+movementHistoryFull(movements)+'</div></div>';
     bindBack();
+    document.getElementById('fiSavePolicy').onclick=async()=>{
+      const sku=String(inv.code||key);
+      const result=await window.FocadoDataStore?.saveDomain?.('ESTOQUE',{inventoryPolicy:{
+        sku,
+        minimum_stock:document.getElementById('fiMinStock').value,
+        reorder_point:document.getElementById('fiReorderPoint').value,
+        safety_stock:document.getElementById('fiSafetyStock').value
+      }});
+      if(!result?.ok){alert('Não foi possível salvar a política de estoque.');return}
+      if(result?.payload)window.FocadoDataStore?.writeLocal?.(result.payload);
+      alert('Política de estoque salva.');
+      openItem(key);
+    };
   }
   function movementHistoryFull(rows){
     if(!rows.length)return '<div class="fi-empty">Nenhuma movimentação registrada para este produto.</div>';
