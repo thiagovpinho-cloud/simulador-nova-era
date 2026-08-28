@@ -1,4 +1,4 @@
-export const RULES_VERSION='2026.08.28.4';
+export const RULES_VERSION='2026.08.28.5';
 
 export const DOMAIN_PERMISSION=Object.freeze({
   COMERCIAL:'orders.write',
@@ -432,9 +432,19 @@ function applyCustomers(state,body){
   state.customers=Array.isArray(state.customers)?state.customers:[];
   if(c.customer&&typeof c.customer==='object'){
     const incoming=structuredClone(c.customer);
-    const idx=state.customers.findIndex(x=>String(x.id)===String(incoming.id));
-    if(idx>=0)state.customers[idx]=incoming;
-    else state.customers.unshift(incoming);
+    const norm=v=>String(v||'').replace(/\D/g,'');
+    let idx=state.customers.findIndex(x=>String(x.id)===String(incoming.id));
+    if(idx<0&&norm(incoming.cnpj)){
+      const matches=state.customers
+        .map((x,i)=>({x,i}))
+        .filter(({x})=>norm(x.cnpj)===norm(incoming.cnpj))
+        .sort((a,b)=>Number(b.x.updatedAt||b.x.createdAt||0)-Number(a.x.updatedAt||a.x.createdAt||0));
+      if(matches.length)idx=matches[0].i;
+    }
+    if(idx>=0){
+      incoming.id=state.customers[idx].id||incoming.id;
+      state.customers[idx]={...state.customers[idx],...incoming};
+    }else state.customers.unshift(incoming);
   }
 }
 
