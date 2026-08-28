@@ -194,7 +194,10 @@
     const ops=load();ensureCatalog(ops);correctionMode=false;
     let order=id?(ops.orders||[]).find(o=>o.id===id):null;
     if(!order){order=createBlank(ops);editingId=null;editRequested=true}
-    else {editingId=order.id;editRequested=Boolean(requestEdit);correctionMode=Boolean(requestEdit&&order.status!=='COMERCIAL')}
+    else {
+      editingId=order.id;editRequested=Boolean(requestEdit);correctionMode=Boolean(requestEdit&&order.status!=='COMERCIAL');
+      order=syncPaymentTermsFromCustomer(structuredClone(order),ops);
+    }
     renderForm(order,ops);
   }
   function renderForm(o,ops){
@@ -406,6 +409,16 @@
     const key=normalizeCnpj(cnpj);
     return (ops.customers||[]).find(x=>normalizeCnpj(x.cnpj)===key)||null;
   }
+  function syncPaymentTermsFromCustomer(order,ops){
+    if(!order)return order;
+    const customer=(ops.customers||[]).find(x=>String(x.id||'')===String(order.customerId||''))||customerByCnpj(order.cnpj,ops);
+    if(!customer)return order;
+    const next=String(customer.paymentTerms||'').trim();
+    if(next&&String(order.paymentTerms||'').trim()!==next){
+      order.paymentTerms=next;
+    }
+    return order;
+  }
   function bindCustomerSelection(ops,o){
     const select=document.getElementById('foCnpj'),status=document.getElementById('foCnpjStatus');
     function applyCustomer(){
@@ -432,7 +445,7 @@
       scheduleProfitability(ops);
     }
     select.onchange=applyCustomer;
-    if(select.value&&!o.customerId)applyCustomer();
+    if(select.value)applyCustomer();
   }
 
   function collect(){
