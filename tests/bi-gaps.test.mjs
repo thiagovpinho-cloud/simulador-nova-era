@@ -32,7 +32,8 @@ applyDomain('FINANCEIRO',state,{changes:{monthlyTarget:{
 applyDomain('FINANCEIRO',state,{changes:{financialFact:{
   order_id:'o1',invoice_number:'12345',invoice_date:'2026-08-08',invoice_status:'AUTORIZADA',
   invoice_key:'12345678901234567890123456789012345678901234',
-  taxes:20,discounts:5,returns:0,bonuses:0,commission:10,freight_allocated:15
+  taxes:0,icms:0,pis:0,cofins:0,ipi:0,st:0,contract:0,
+  discounts:5,returns:0,bonuses:0,commission:10,freight_allocated:15
 }}});
 applyDomain('FINANCEIRO',state,{changes:{skuCost:{
   sku:'SKU-A',effective_from:'2026-01-01',unit_variable_cost:8
@@ -58,12 +59,12 @@ assert.equal(gross.value,200);
 
 const net=netRevenue(state,{from:'2026-08-01',to:'2026-08-31'});
 assert.equal(net.complete,true);
-assert.equal(net.value,175);
+assert.equal(net.value,90);
 
 const margin=contributionMargin(state,{from:'2026-08-01',to:'2026-08-31'});
 assert.equal(margin.complete,true);
-assert.equal(margin.contribution,70);
-assert.equal(Number(margin.value.toFixed(4)),0.4);
+assert.equal(margin.contribution,90);
+assert.equal(Number(margin.value.toFixed(4)),0.45);
 
 const service=otif(state,{from:'2026-08-01',to:'2026-08-31'});
 assert.equal(service.complete,true);
@@ -115,7 +116,7 @@ const inventoryUi=fs.readFileSync(new URL('../assets/modules/inventory.js',impor
 assert.ok(nativeFinance.includes('Número da NF'),'Financeiro deve capturar número da NF');
 assert.ok(nativeFinance.includes('Data de emissão'),'Financeiro deve capturar data da NF');
 assert.ok(nativeFinance.includes('Chave NF-e'),'Financeiro deve capturar chave NF-e');
-for(const field of ['Impostos','Descontos','Devoluções','Bonificações','Comissão','Frete alocado'])assert.ok(nativeFinance.includes(field),'Campo financeiro ausente: '+field);
+for(const field of ['ICMS','PIS','COFINS','IPI','ST','Contrato','Descontos','Devoluções','Bonificações','Comissão','Frete alocado'])assert.ok(nativeFinance.includes(field),'Campo financeiro ausente: '+field);
 assert.ok(nativeFinance.includes('Metas mensais'),'Financeiro deve possuir metas mensais');
 assert.ok(nativeFinance.includes('Custos variáveis por SKU'),'Financeiro deve possuir custos históricos por SKU');
 for(const field of ['Estoque mínimo','Ponto de reposição','Estoque de segurança'])assert.ok(inventoryUi.includes(field),'Campo de estoque ausente: '+field);
