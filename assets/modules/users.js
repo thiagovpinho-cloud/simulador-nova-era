@@ -3,6 +3,8 @@
 
   const ROLES=[
     ['ADMIN','Administrador','Acesso total, usuários, auditoria e configurações.'],
+    ['DIRETOR','Diretor','Visão executiva e acesso gerencial a clientes e pedidos.'],
+    ['GESTOR','Gestor','Gestão comercial com permissão para editar clientes e pedidos.'],
     ['COMERCIAL','Comercial','Clientes, representantes, pedidos e produtos.'],
     ['PCP','PCP','Planejamento, produção, bases e fichas técnicas.'],
     ['PRODUCAO','Produção','Produção, bases, produtos e fichas técnicas.'],
