@@ -58,7 +58,8 @@ for(let i=1;i<=30;i++){
     brand:brands[i%2],client:'Cliente Fogo '+i,cnpj:'12345678000199',
     city:i%3===0?'Campinas':'Mococa',uf:'SP',orderDate:'2026-08-'+String(1+(i%8)).padStart(2,'0'),
     requestedDeliveryDate:promised,freightType:i%4===0?'FOB':'CIF',
-    items:[{id:'fi'+i,code,name,qty,price}],
+    items:[{id:'fi'+i,code,name,qty,price,dispatchedQty:status==='ENTREGUE'?qty:null}],
+    expedition:status==='ENTREGUE'?{stockReleasedAt:Date.parse(actual+'T08:00:00Z'),status:'LIBERADO'}:{},
     logistics:{
       deliveryConfirmed:status==='ENTREGUE',
       actualDeliveryDate:status==='ENTREGUE'?actual:'',
@@ -160,6 +161,7 @@ console.log(JSON.stringify({
   otif:bi.summary.otif,
   targetAchievement:bi.summary.targetAchievement,
   delayed:bi.kpis.delayed_orders?.value,
+  otifEvaluated:bi.kpis.otif?.evaluated,
   directorChecklist,
   auditorFindings,
   specialistReview,
