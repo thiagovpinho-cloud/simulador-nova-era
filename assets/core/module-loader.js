@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260828-simulator-v1';
+  const VERSION='20260828-simulator-v2';
   const loaded=new Map();
   const defs={
     simulador:{css:'simulator.css',js:'simulator.js'},
