@@ -11,6 +11,7 @@ const inventory=read('assets/modules/inventory.js');
 const pcp=read('assets/modules/pcp.js');
 const shell=read('assets/app-shell.js');
 const shared=read('shared/domain-rules.js');
+const platformV2=read('worker/src/platform-v2.js');
 
 // Fonte única: backend nenhum pode redefinir fluxo, permissões ou validadores.
 for(const [name,src] of [['worker',worker],['api/domain',apiDomain],['api/transition',apiTransition]]){
@@ -20,6 +21,11 @@ for(const [name,src] of [['worker',worker],['api/domain',apiDomain],['api/transi
 }
 assert.ok(!worker.includes('function validateTransition(order)'), 'Worker não pode duplicar validateTransition');
 assert.ok(!apiTransition.includes('function validate('), 'API transition não pode duplicar validação');
+
+// Segurança: rotinas destrutivas não podem permanecer expostas no runtime.
+assert.ok(!worker.includes('/maintenance/operational-reset-20260828'),'Rota pública de reset operacional não pode existir');
+assert.ok(!platformV2.includes('resetOperationalData20260828'),'Rotina destrutiva one-off deve sair do bundle de produção');
+assert.ok(worker.includes('GET,POST,PUT,PATCH,OPTIONS'),'CORS deve permitir PATCH usado pela gestão de usuários');
 
 // Fluxo oficial deve permanecer único.
 assert.ok(shared.includes("PCP:Object.freeze({to:'LOGISTICA'"),'PCP deve seguir para Logística');
@@ -64,6 +70,9 @@ const dataStoreV2=read('assets/core/data-store.js');
 const shellV2=read('assets/app-shell.js');
 const healthModule=read('assets/modules/system-health.js');
 assert.ok(dataStoreV2.includes('refreshDomainV2'),'DataStore deve suportar refresh de domínio v2');
+assert.ok(!dataStoreV2.includes("mode:'local-fallback'"),'Gravação remota não pode cair silenciosamente para local');
+assert.ok(dataStoreV2.includes("mode:'blocked'"),'Escrita sem API deve ser explicitamente bloqueada');
+assert.ok(dataStoreV2.includes("mode:'remote-failed'"),'Falha de servidor deve permanecer visível ao chamador');
 assert.ok(shellV2.includes("refreshInBackground('customers'"),'Clientes deve sincronizar Data v2 em segundo plano');
 assert.ok(shellV2.includes("refreshInBackground('orders'"),'Pedidos deve sincronizar Data v2 em segundo plano');
 assert.ok(!shellV2.includes("if(id==='clientes')await window.FocadoDataStore?.refreshDomainV2?.('customers')"),'Clientes não pode bloquear a abertura esperando Data v2');
