@@ -1975,72 +1975,25 @@ window.FocadoLegacySimulator = {
     scheduleSave();return this.snapshot();
   },
   setMarginTarget(value){STATE.marginTarget=Math.max(0,Number(value)||0);scheduleSave();return this.snapshot()},
-  quoteOrder(options={}){
-    const brandId=String(options.brandId||STATE.activeBrand||'');
-    const brand=BRANDS[brandId];
-    if(!brand)throw new Error('SIMULATOR_BRAND_NOT_FOUND');
-    const bstate=STATE.brands[brandId];
-    const uf=String(options.uf||bstate.global.estado||'SP').toUpperCase();
-    if(!IMPOSTOS[uf])throw new Error('SIMULATOR_UF_NOT_SUPPORTED');
-    const freightType=String(options.freightType||bstate.global.tipoFrete||'CIF').toUpperCase();
-    const manualFreight=options.manualFreight!=null?Boolean(options.manualFreight):Boolean(bstate.global.freteManual);
-    const rules=options.marginRules||{};
-    const classify=key=>String(rules[key]||'CUSTO').toUpperCase()==='MARGEM'?'MARGEM':'CUSTO';
-    const items=(Array.isArray(options.items)?options.items:[]).filter(x=>Number(x.qty)>0&&Number(x.finalPrice)>0);
-    const prepared=items.map(item=>{
-      const idx=brand.products.findIndex(p=>String(p.id)===String(item.productId));
-      if(idx<0)return {error:'SIMULATOR_PRODUCT_NOT_FOUND',item};
-      const def=brand.products[idx],original=bstate.products[idx];
-      const st=structuredClone(original);
-      st.pricing.qtdCaixas=Math.max(0,Number(item.qty)||0);
-      if(item.freightPerBox!=null)st.pricing.frete=Math.max(0,Number(item.freightPerBox)||0);
-      const effectiveSt=uf==='SP'?0:Number(st.pricing.icmsst||0);
-      const divisor=1+Number(st.pricing.ipi||0)+effectiveSt;
-      st.pricing.vendaCX=divisor>0?Math.max(0,Number(item.finalPrice)||0)/divisor:0;
-      const g={comissao:Number(bstate.global.comissao||0),icms:IMPOSTOS[uf][def.ncm][0],estado:uf};
-      const core=computeCore(def,st,g,brand,bstate);
-      return {item,idx,def,st,g,core};
-    });
-    const invalid=prepared.find(x=>x.error);
-    if(invalid)return {ok:false,error:invalid.error,item:invalid.item};
-    const orderFinal=prepared.reduce((s,x)=>s+x.core.AP,0);
-    const freightInfo=freightType==='CIF'?getFreightInfo(uf,'CIF',orderFinal):
-      freightType==='REDESPACHO'?getFreightInfo(uf,'REDESPACHO',orderFinal):
-      {available:true,pct:0,tierLabel:null};
-    const rows=prepared.map(x=>{
-      let freight=0,freightAuto=true;
-      if(freightType==='FOB')freight=0;
-      else if(manualFreight){freight=Math.max(0,Number(x.item.freightPerBox??x.st.pricing.frete)||0);freightAuto=false}
-      else if(freightInfo.available)freight=Number(freightInfo.pct||0)*x.core.O;
-      else{freight=Math.max(0,Number(x.item.freightPerBox??x.st.pricing.frete)||0);freightAuto=false}
-      const r=finishProduct(x.core,x.st,x.g,freight);
-      const components={
-        product_cost:Number(r.AB||0),
-        icms:Number(r.H||0),
-        pis:Number(r.G||0)*PIS_RATE,
-        cofins:Number(r.G||0)*COFINS_RATE,
-        ipi:Number(r.K||0),
-        st:Number(r.M||0),
-        freight:Number(r.Z||0),
-        commission:Number(r.S||0),
-        contract:Number(r.O||0)*Number(x.st.pricing.contrato||0)
-      };
-      const classifiedCosts=Object.entries(components).reduce((sum,[key,value])=>sum+(classify(key)==='CUSTO'?Number(value||0):0),0);
-      const finalPrice=Number(r.O||0);
-      const marginValue=finalPrice-classifiedCosts;
-      return {
-        productId:x.def.id,name:x.def.name,ncm:x.def.ncm,qty:Number(x.st.pricing.qtdCaixas||0),
-        finalPrice,basePrice:Number(r.G||0),costPerBox:Number(r.AB||0),
-        marginValue,marginPct:finalPrice>0?marginValue/finalPrice:null,
-        components,rules:Object.fromEntries(Object.keys(components).map(k=>[k,classify(k)])),
-        freight:{type:freightType,value:Number(r.Z||0),automatic:freightAuto,available:freightInfo.available!==false,tierLabel:freightInfo.tierLabel||null,reason:freightInfo.reason||null}
-      };
-    });
-    const gross=rows.reduce((s,r)=>s+r.finalPrice*r.qty,0);
-    const marginValue=rows.reduce((s,r)=>s+r.marginValue*r.qty,0);
-    return {ok:true,brandId,uf,freightType,gross,marginValue,marginPct:gross>0?marginValue/gross:null,freightInfo,rows};
+  quoteOrder(o={}){
+    const id=String(o.brandId||STATE.activeBrand||''),b=BRANDS[id];if(!b)throw new Error('SIMULATOR_BRAND_NOT_FOUND');
+    const bs=STATE.brands[id],uf=String(o.uf||bs.global.estado||'SP').toUpperCase();if(!IMPOSTOS[uf])throw new Error('SIMULATOR_UF_NOT_SUPPORTED');
+    const ft=String(o.freightType||bs.global.tipoFrete||'CIF').toUpperCase(),mf=o.manualFreight!=null?!!o.manualFreight:!!bs.global.freteManual,rules=o.marginRules||{},cl=k=>String(rules[k]||'CUSTO').toUpperCase()==='MARGEM'?'MARGEM':'CUSTO';
+    const src=(Array.isArray(o.items)?o.items:[]).filter(x=>Number(x.qty)>0&&Number(x.finalPrice)>0),p=src.map(item=>{
+      const i=b.products.findIndex(x=>String(x.id)===String(item.productId));if(i<0)return {e:'SIMULATOR_PRODUCT_NOT_FOUND',item};
+      const d=b.products[i],s=structuredClone(bs.products[i]);s.pricing.qtdCaixas=Math.max(0,Number(item.qty)||0);if(item.freightPerBox!=null)s.pricing.frete=Math.max(0,Number(item.freightPerBox)||0);
+      const div=1+Number(s.pricing.ipi||0)+(uf==='SP'?0:Number(s.pricing.icmsst||0));s.pricing.vendaCX=div?Math.max(0,Number(item.finalPrice)||0)/div:0;
+      const g={comissao:Number(bs.global.comissao||0),icms:IMPOSTOS[uf][d.ncm][0],estado:uf};return {item,d,s,g,c:computeCore(d,s,g,b,bs)};
+    }),bad=p.find(x=>x.e);if(bad)return {ok:false,error:bad.e,item:bad.item};
+    const total=p.reduce((a,x)=>a+x.c.AP,0),fi=ft==='CIF'?getFreightInfo(uf,'CIF',total):ft==='REDESPACHO'?getFreightInfo(uf,'REDESPACHO',total):{available:true,pct:0,tierLabel:null};
+    const rows=p.map(x=>{
+      let z=0,auto=true;if(ft!=='FOB'){if(mf||!fi.available){z=Math.max(0,Number(x.item.freightPerBox??x.s.pricing.frete)||0);auto=false}else z=Number(fi.pct||0)*x.c.O}
+      const r=finishProduct(x.c,x.s,x.g,z),v={product_cost:Number(r.AB||0),icms:Number(r.H||0),pis:Number(r.G||0)*PIS_RATE,cofins:Number(r.G||0)*COFINS_RATE,ipi:Number(r.K||0),st:Number(r.M||0),freight:Number(r.Z||0),commission:Number(r.S||0),contract:Number(r.O||0)*Number(x.s.pricing.contrato||0)};
+      const cost=Object.entries(v).reduce((a,[k,n])=>a+(cl(k)==='CUSTO'?Number(n||0):0),0),fp=Number(r.O||0),mv=fp-cost;
+      return {productId:x.d.id,name:x.d.name,ncm:x.d.ncm,qty:Number(x.s.pricing.qtdCaixas||0),finalPrice:fp,basePrice:Number(r.G||0),costPerBox:Number(r.AB||0),marginValue:mv,marginPct:fp?mv/fp:null,components:v,rules:Object.fromEntries(Object.keys(v).map(k=>[k,cl(k)])),freight:{type:ft,value:Number(r.Z||0),automatic:auto,available:fi.available!==false,tierLabel:fi.tierLabel||null,reason:fi.reason||null}};
+    }),gross=rows.reduce((a,x)=>a+x.finalPrice*x.qty,0),mv=rows.reduce((a,x)=>a+x.marginValue*x.qty,0);
+    return {ok:true,brandId:id,uf,freightType:ft,gross,marginValue:mv,marginPct:gross?mv/gross:null,freightInfo:fi,rows};
   },
-
   addInput(input={}){
     const brand=curBrand(),b=curState();
     const code=String(input.code||'').trim(),desc=String(input.desc||'').trim(),unit=String(input.unit||'').trim().toUpperCase();
