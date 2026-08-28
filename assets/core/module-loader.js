@@ -1,9 +1,10 @@
 (function(){
   'use strict';
-  const VERSION='20260828-simulator-v3';
+  const VERSION='20260828-margin-rules-v1';
   const loaded=new Map();
   const defs={
     simulador:{css:'simulator.css',js:'simulator.js'},
+    'regras-margem':{css:'margin-rules.css',js:'margin-rules.js'},
     produtos:{css:'products.css',js:'products.js'},
     fichas:{css:'technical-sheets.css',js:'technical-sheets.js'},
     bases:{css:'bases.css',js:'bases.js'},
@@ -32,6 +33,7 @@
   };
   const contracts={
     simulador:()=>typeof window.FocadoSimulator?.render==='function',
+    'regras-margem':()=>typeof window.FocadoMarginRules?.render==='function',
     produtos:()=>typeof window.FocadoProducts?.render==='function',
     fichas:()=>typeof window.FocadoTechnicalSheets?.render==='function',
     bases:()=>typeof window.FocadoBases?.render==='function',
