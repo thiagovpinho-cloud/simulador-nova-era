@@ -3419,7 +3419,9 @@ async function attemptLogin(){
     if(!result.ok){
       err.textContent = result.code==='INVALID_CREDENTIALS'
         ? 'Login ou senha incorretos. Tente novamente.'
-        : 'Não foi possível autenticar no servidor. Verifique a conexão.';
+        : result.code==='LOGIN_TEMPORARILY_BLOCKED'
+          ? 'Muitas tentativas incorretas. Digite a senha correta para liberar o acesso.'
+          : 'Não foi possível autenticar no servidor. Verifique a conexão.';
       document.getElementById('loginPassword').value = '';
       document.getElementById('loginPassword').focus();
       return;
