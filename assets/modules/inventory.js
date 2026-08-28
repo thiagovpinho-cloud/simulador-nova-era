@@ -99,23 +99,34 @@
     })).filter(x=>x.product&&(x.qty>0||x.breakQty>0));
     if(!rows.length){alert('Informe ao menos uma quantidade inventariada ou uma quebra.');return}
     if(!confirm('Finalizar este inventário?\n\nOs volumes inventariados serão SOMADOS ao estoque e as quebras serão SUBTRAÍDAS.'))return;
-    const batchId='inv_'+Date.now(),user=window.FocadoAuth?.getUser?.()?.name||'Estoque';
-    const result=await mutateFinished(ops=>{
-      for(const row of rows){
-        const [key,inv]=ensureFinished(ops,row.product,row.unit);
-        inv.bases=inv.bases||{};inv.bases[base]=Number(inv.bases[base]||0)+row.qty-row.breakQty;
-        const before=Number(inv.physical||0),after=Math.max(0,before+row.qty-row.breakQty);
-        if(row.breakQty>before+row.qty){
-          alert('A quebra de '+row.product.name+' é maior que o saldo disponível após o inventário.');
-          return false;
-        }
-        inv.physical=after;inv.unit=row.unit;inv.lastInventoryDate=date;inv.lastInventoryBase=base;
-        if(row.qty>0)ops.stockMovements.unshift({id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),batchId,at:new Date(date+'T12:00:00').getTime(),kind:'finished',key,code:row.product.code,name:row.product.name,brand:row.product.brand,unit:row.unit,type:'INVENTARIO_ENTRADA',qty:row.qty,base,warehouse:base,reason:'Inventário físico',note,user,before:{physical:before},after:{physical:before+row.qty}});
-        if(row.breakQty>0)ops.stockMovements.unshift({id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),batchId,at:new Date(date+'T12:00:00').getTime(),kind:'finished',key,code:row.product.code,name:row.product.name,brand:row.product.brand,unit:row.unit,type:'QUEBRA',qty:row.breakQty,base,warehouse:base,reason:'Quebra informada no inventário',note,user,before:{physical:before+row.qty},after:{physical:after}});
+    const batchId='inv_'+Date.now(),user=window.FocadoAuth?.getUser?.()?.name||'Estoque',at=new Date(date+'T12:00:00').getTime();
+    const movements=[];
+    for(const row of rows){
+      const key=productKey(row.product);
+      const current=(load().inventory||{})[key]||Object.values(load().inventory||{}).find(v=>String(v?.code||'')===String(row.product.code||''))||{physical:0,reserved:0,blocked:0};
+      if(row.breakQty>Number(current.physical||0)+row.qty){
+        alert('A quebra de '+row.product.name+' é maior que o saldo disponível após o inventário.');
+        return;
       }
-      ops.inventoryCounts.unshift({id:batchId,at:new Date(date+'T12:00:00').getTime(),date,base,note,user,mode:'ADITIVO',items:rows.map(r=>({productId:r.product.id,code:r.product.code,name:r.product.name,brand:r.product.brand,qty:r.qty,unit:r.unit,breakQty:r.breakQty}))});
-    });
-    if(result?.ok===false){alert('Não foi possível salvar o inventário. Nenhum lançamento foi perdido; tente novamente.');return}
+      if(row.qty>0)movements.push({
+        id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),batchId,at,kind:'finished',key,
+        code:row.product.code,name:row.product.name,brand:row.product.brand,unit:row.unit,type:'INVENTARIO_ENTRADA',
+        qty:row.qty,deltaPhysical:row.qty,base,reason:'Inventário físico',note,user
+      });
+      if(row.breakQty>0)movements.push({
+        id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),batchId,at,kind:'finished',key,
+        code:row.product.code,name:row.product.name,brand:row.product.brand,unit:row.unit,type:'QUEBRA',
+        qty:row.breakQty,deltaPhysical:-row.breakQty,base,reason:'Quebra informada no inventário',note,user
+      });
+    }
+    const inventoryCount={id:batchId,at,date,base,note,user,mode:'ADITIVO',items:rows.map(r=>({
+      productId:r.product.id,code:r.product.code,name:r.product.name,brand:r.product.brand,qty:r.qty,unit:r.unit,breakQty:r.breakQty
+    }))};
+    const result=await window.FocadoDataStore?.saveDomain?.('ESTOQUE',{movements,inventoryCount});
+    if(!result?.ok){alert('Não foi possível salvar o inventário. Nenhuma movimentação foi confirmada.');return}
+    if(result?.payload)window.FocadoDataStore?.writeLocal?.(result.payload);
+    await window.FocadoDataStore?.refreshDomainV2?.('inventory');
+    await window.FocadoDataStore?.refreshDomainV2?.('movements');
     alert('Inventário finalizado e estoque atualizado.');
     render();
   }
@@ -157,14 +168,18 @@
     const condition=document.getElementById('fiMovCondition').value,palletized=document.getElementById('fiMovPalletized').value==='SIM',boxesPerPallet=Math.max(0,Number(document.getElementById('fiMovBoxes').value)||0),chapatex=document.getElementById('fiMovChapatex').value==='SIM',note=document.getElementById('fiMovNote').value.trim();
     if(!date||!p||!(qty>0)){alert('Informe data, produto e volume recebido.');return}
     if(palletized&&!(boxesPerPallet>0)){alert('Informe quantas caixas há por palete.');return}
-    const pallets=palletized?Math.ceil(qty/boxesPerPallet):0,user=window.FocadoAuth?.getUser?.()?.name||'Expedição';
-    const result=await mutateFinished(ops=>{
-      const [key,inv]=ensureFinished(ops,p,unit),before=Number(inv.physical||0);
-      inv.physical=before+qty;inv.unit=unit;inv.bases=inv.bases||{};inv.bases[base]=Number(inv.bases[base]||0)+qty;inv.lastReceiptDate=date;inv.lastReceiptBase=base;
-      if(condition==='BLOQUEADO')inv.blocked=Number(inv.blocked||0)+qty;
-      ops.stockMovements.unshift({id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),at:new Date(date+'T12:00:00').getTime(),kind:'finished',key,code:p.code,name:p.name,brand:p.brand,unit,type:'ENTRADA_PRODUCAO',qty,base,warehouse:base,condition,palletized,boxesPerPallet,pallets,chapatex,note,reason:'Recebimento de produção',user,before:{physical:before},after:{physical:before+qty}});
-    });
-    if(result?.ok===false){alert('Não foi possível registrar a entrada. Tente novamente.');return}
+    const pallets=palletized?Math.ceil(qty/boxesPerPallet):0,user=window.FocadoAuth?.getUser?.()?.name||'Estoque';
+    const key=productKey(p);
+    const result=await window.FocadoDataStore?.saveDomain?.('ESTOQUE',{movement:{
+      id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+      at:new Date(date+'T12:00:00').getTime(),kind:'finished',key,code:p.code,name:p.name,brand:p.brand,unit,
+      type:'ENTRADA_PRODUCAO',qty,deltaPhysical:qty,deltaBlocked:condition==='BLOQUEADO'?qty:0,base,warehouse:base,
+      condition,palletized,boxesPerPallet,pallets,chapatex,note,reason:'Recebimento de produção',user
+    }});
+    if(!result?.ok){alert('Não foi possível registrar a entrada. Nenhuma alteração foi confirmada.');return}
+    if(result?.payload)window.FocadoDataStore?.writeLocal?.(result.payload);
+    await window.FocadoDataStore?.refreshDomainV2?.('inventory');
+    await window.FocadoDataStore?.refreshDomainV2?.('movements');
     alert('Entrada registrada e estoque atualizado.');
     renderMovementEntry();
   }
