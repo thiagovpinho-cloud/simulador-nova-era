@@ -170,8 +170,9 @@ export function auditSnapshot(state,domain,orderId){
   if(d==='TRANSPORTADORAS')return state.carriers||[];
   if(d==='SOLICITACAO_PRODUCAO')return state.productionRequests||[];
   if(d==='COMPRAS')return {purchaseRequests:state.purchaseRequests||[],suppliers:state.suppliers||[],inputInventory:state.inputInventory||{}};
-  if(d==='ESTOQUE')return {inventory:state.inventory||{},inputInventory:state.inputInventory||{},stockMovements:(state.stockMovements||[]).slice(0,25)};
-  if(d==='FINANCEIRO')return state.finance||{};
+  if(d==='ESTOQUE')return {inventory:state.inventory||{},inputInventory:state.inputInventory||{},stockMovements:(state.stockMovements||[]).slice(0,25),inventoryPolicy:state.inventoryPolicy||{}};
+  if(d==='FINANCEIRO')return {finance:state.finance||{},biPolicy:state.biPolicy||{},monthlyTargets:state.monthlyTargets||[],financialFacts:state.financialFacts||[],skuCosts:state.skuCosts||[]};
+  if(d==='BASES')return {productionBases:state.productionBases||{},productionCapacityHistory:(state.productionCapacityHistory||[]).slice(0,50)};
   return null;
 }
 
