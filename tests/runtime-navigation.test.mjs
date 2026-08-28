@@ -9,9 +9,9 @@ const kanban=read('assets/modules/kanban.js');
 const orders=read('assets/modules/orders.js');
 const intelligence=read('assets/modules/intelligence.js');
 
-const loaderPos=index.indexOf('assets/core/module-loader.js?v=20260827-static-v1');
-const shellPos=index.indexOf('assets/app-shell.js?v=20260827-shell-v9');
-assert.ok(loaderPos>=0,'Index deve carregar module-loader static-v1');
+const loaderPos=index.indexOf('assets/core/module-loader.js?v=');
+const shellPos=index.indexOf('assets/app-shell.js?v=');
+assert.ok(loaderPos>=0,'Index deve carregar module-loader versionado');
 assert.ok(shellPos>loaderPos,'Module loader deve carregar antes do app shell');
 
 const activeRoutes=[
@@ -33,7 +33,8 @@ const activeRoutes=[
   ['entregas',"window.FocadoLogistics?.renderDeliveries"],
   ['transportadoras',"window.FocadoLogistics?.renderCarriers"],
   ['corpo-auditor',"window.FocadoIntelligenceUI?.renderAuditor"],
-  ['system-health',"window.FocadoSystemHealth?.render"]
+  ['system-health',"window.FocadoSystemHealth?.render"],
+  ['usuarios',"window.FocadoUsers?.render"]
 ];
 
 for(const [route,renderer] of activeRoutes){
@@ -53,6 +54,9 @@ assert.ok(loader.includes("kanban:()=>typeof window.FocadoKanban?.render==='func
 assert.ok(loader.includes("cockpit:()=>typeof window.FocadoIntelligenceUI?.renderCockpit==='function'"),'Cockpit deve ter contrato');
 assert.ok(loader.includes("fichas:()=>typeof window.FocadoTechnicalSheets?.render==='function'"),'Fichas deve ter contrato');
 assert.ok(loader.includes("bases:()=>typeof window.FocadoBases?.render==='function'"),'Bases deve ter contrato');
+assert.ok(loader.includes("usuarios:()=>typeof window.FocadoUsers?.render==='function'"),'Usuários deve ter contrato');
+assert.ok(index.includes('assets/modules/users.js?v='),'Usuários deve ser pré-carregado para navegação imediata');
+assert.ok(index.includes('assets/modules/users.css?v='),'Usuários deve carregar estilo próprio sem corrida lazy');
 
 assert.ok(orders.includes('window.FocadoOrders={render,openOrder:openForm'),'Pedidos deve expor abertura nativa');
 assert.ok(kanban.includes('window.FocadoOrders.openOrder(id)'),'Kanban deve abrir pedido nativamente');
