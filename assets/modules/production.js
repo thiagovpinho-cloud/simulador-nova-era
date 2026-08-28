@@ -7,6 +7,7 @@
   const load=()=>window.FocadoDataStore?.readLocal?.()||{};
   const role=()=>window.FocadoAuth?.getRole?.()||'';
   const canCreate=()=>['ADMIN','PCP'].includes(role());
+  const canExecute=()=>['ADMIN','PRODUCAO'].includes(role());
   const fmt=(v,d=3)=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
   let currentFilter={base:'TODAS',status:'TODOS',q:''};
 
@@ -56,7 +57,8 @@
     return result;
   }
   function requestStatus(r){
-    if(r.status==='FINALIZADA')return r.materialStatus==='COMPRAR'?['Finalizada · compra necessária','block']:['Finalizada','ready'];
+    if(r.execution?.status==='CONCLUIDA')return ['Produção concluída','ready'];
+    if(r.status==='FINALIZADA')return r.materialStatus==='COMPRAR'?['Finalizada · compra necessária','block']:['Aguardando apontamento','wait'];
     return ['Rascunho','wait'];
   }
   function render(state){
@@ -243,18 +245,70 @@
   function renderViewer(r,justFinalized=false){
     const s=r.snapshot||r,st=requestStatus(r);
     content().innerHTML='<div class="fpr-page">'+
-      '<div class="fpr-head"><div><button class="fpr-btn secondary" id="fprBack">← Solicitações</button><div class="fpr-eyebrow">DOCUMENTO FINALIZADO</div><h1>'+esc(r.number)+'</h1><p>Solicitação de Produção · '+esc(s.base)+'</p></div><div class="fpr-actions"><button class="fpr-btn secondary" id="fprPreviewPdf">Visualizar PDF</button><button class="fpr-btn secondary" id="fprPdf">Salvar uma cópia</button><button class="fpr-btn secondary" id="fprEmail">Enviar por e-mail</button><button class="fpr-btn primary" id="fprWhats">Enviar por WhatsApp</button></div></div>'+
+      '<div class="fpr-head"><div><button class="fpr-btn secondary" id="fprBack">← Solicitações</button><div class="fpr-eyebrow">DOCUMENTO FINALIZADO</div><h1>'+esc(r.number)+'</h1><p>Solicitação de Produção · '+esc(s.base)+'</p></div><div class="fpr-actions">'+(canExecute()&&r.status==='FINALIZADA'&&r.execution?.status!=='CONCLUIDA'?'<button class="fpr-btn primary" id="fprExecute">Apontar produção</button>':'')+'<button class="fpr-btn secondary" id="fprPreviewPdf">Visualizar PDF</button><button class="fpr-btn secondary" id="fprPdf">Salvar uma cópia</button><button class="fpr-btn secondary" id="fprEmail">Enviar por e-mail</button><button class="fpr-btn primary" id="fprWhats">Enviar por WhatsApp</button></div></div>'+
       (justFinalized?'<div class="fpr-success"><div class="fpr-success-icon">✓</div><div><b>Solicitação finalizada com sucesso</b><span>O documento foi congelado e agora está disponível somente para consulta e compartilhamento.</span></div></div>':'')+
       '<div class="fpr-grid"><div class="fpr-panel"><h2>Dados</h2><div class="fpr-alert"><b>Base:</b> '+esc(s.base)+'</div><div class="fpr-alert"><b>Data:</b> '+dbr(s.requestDate)+'</div><div class="fpr-alert"><b>Necessidade para:</b> '+dbr(s.needByDate)+'</div><div class="fpr-alert"><b>Solicitante:</b> '+esc(s.requestedBy||'')+'</div></div><div class="fpr-panel"><h2>Status</h2><div class="fpr-alert"><span class="fpr-chip '+st[1]+'">'+st[0]+'</span></div><div class="fpr-alert"><b>Insumos:</b> '+(s.materialStatus==='COMPRAR'?'Há necessidade de compra':'Suficientes para a produção')+'</div></div></div>'+
       '<div class="fpr-panel"><h2>Produtos solicitados</h2>'+viewerItems(s.items||[])+'</div>'+
       '<div class="fpr-panel"><h2>Análise de insumos</h2>'+viewerMaterials(s.materials||[])+'</div>'+
       '<div class="fpr-panel"><h2>Observações</h2><div class="fpr-alert">'+esc(s.notes||'Sem observações')+'</div></div></div>';
     document.getElementById('fprBack').onclick=()=>render(currentFilter);
+    if(document.getElementById('fprExecute'))document.getElementById('fprExecute').onclick=()=>renderExecution(r);
     document.getElementById('fprPreviewPdf').onclick=()=>generatePdf(r,'preview');
     document.getElementById('fprPdf').onclick=()=>generatePdf(r,'save');
     document.getElementById('fprEmail').onclick=()=>share(r,'email');
     document.getElementById('fprWhats').onclick=()=>share(r,'whatsapp');
   }
+  function renderExecution(r){
+    const s=r.snapshot||r;
+    const items=s.items||[];
+    content().innerHTML='<div class="fpr-page">'+
+      '<div class="fpr-head"><div><button class="fpr-btn secondary" id="fprExecBack">← Solicitação</button><div class="fpr-eyebrow">APONTAMENTO DE PRODUÇÃO</div><h1>'+esc(r.number)+'</h1><p>Consumo real de insumos, quantidade produzida, perdas e lote.</p></div><div class="fpr-actions"><button class="fpr-btn primary" id="fprExecSave">Concluir produção</button></div></div>'+
+      '<div class="fpr-panel"><div class="fpr-grid">'+
+        '<label class="fpr-field"><span>Lote</span><input id="fprExecLot" placeholder="Ex.: L20260828-01"></label>'+
+        '<label class="fpr-field"><span>Data do apontamento</span><input id="fprExecDate" type="date" value="'+today()+'"></label>'+
+      '</div></div>'+
+      '<div class="fpr-panel"><h2>Quantidade efetivamente produzida</h2><div class="fpr-table-wrap"><table class="fpr-table"><thead><tr><th>SKU</th><th>Produto</th><th>Planejado</th><th>Produzido</th></tr></thead><tbody>'+
+        items.map((i,n)=>'<tr data-exec-item="'+n+'"><td>'+esc(i.product?.code||i.code||'')+'</td><td>'+esc(i.product?.name||i.name||'')+'</td><td>'+Number(i.qty||0)+' cx</td><td><input data-actual type="number" min="0" step="1" value="'+Number(i.qty||0)+'" style="width:100px"></td></tr>').join('')+
+      '</tbody></table></div></div>'+
+      '<div class="fpr-panel"><h2>Perdas de produção</h2><p class="fpr-muted">Opcional. Registre perdas que precisam ficar auditáveis.</p><div class="fpr-grid">'+
+        '<label class="fpr-field"><span>Código do insumo/produto</span><input id="fprLossCode" placeholder="Código"></label>'+
+        '<label class="fpr-field"><span>Quantidade perdida</span><input id="fprLossQty" type="number" min="0" step="0.001" value="0"></label>'+
+        '<label class="fpr-field"><span>Unidade</span><input id="fprLossUnit" placeholder="L, KG, UN, CX"></label>'+
+        '<label class="fpr-field"><span>Motivo</span><input id="fprLossReason" placeholder="Motivo da perda"></label>'+
+      '</div></div>'+
+      '<div class="fpr-panel"><h2>Observações do apontamento</h2><textarea id="fprExecNotes" style="width:100%;min-height:90px"></textarea></div></div>';
+
+    document.getElementById('fprExecBack').onclick=()=>renderViewer(r);
+    document.getElementById('fprExecSave').onclick=async()=>{
+      const lot=document.getElementById('fprExecLot').value.trim();
+      const date=document.getElementById('fprExecDate').value;
+      if(!lot||!date){alert('Informe lote e data do apontamento.');return}
+      const actualItems=[...document.querySelectorAll('[data-exec-item]')].map((row,n)=>{
+        const src=items[n]||{},p=src.product||src;
+        return {code:p.code||'',name:p.name||'',brand:p.brand||'',unit:p.unit||'CX',qty:Math.max(0,Number(row.querySelector('[data-actual]').value)||0)};
+      });
+      if(!actualItems.some(i=>i.qty>0)){alert('Informe a quantidade efetivamente produzida.');return}
+      const lossQty=Math.max(0,Number(document.getElementById('fprLossQty').value)||0);
+      const losses=lossQty>0?[{
+        kind:'input',code:document.getElementById('fprLossCode').value.trim(),name:document.getElementById('fprLossCode').value.trim(),
+        qty:lossQty,unit:document.getElementById('fprLossUnit').value.trim(),
+        reason:document.getElementById('fprLossReason').value.trim()||'Perda de produção'
+      }]:[];
+      const at=new Date(date+'T12:00:00').getTime();
+      const result=await window.FocadoDataStore?.saveDomain?.('SOLICITACAO_PRODUCAO',{complete:{
+        requestId:r.id,lot,at,items:actualItems,losses,notes:document.getElementById('fprExecNotes').value.trim(),
+        user:window.FocadoAuth?.getUser?.()?.name||'Produção'
+      }});
+      if(!result?.ok){alert('Não foi possível concluir o apontamento. '+(result?.error||''));return}
+      if(result?.payload)window.FocadoDataStore?.writeLocal?.(result.payload);
+      await window.FocadoDataStore?.refreshDomainV2?.('production');
+      await window.FocadoDataStore?.refreshDomainV2?.('inventory');
+      alert('Produção concluída. Insumos consumidos e produto acabado lançado no estoque.');
+      const fresh=(load().productionRequests||[]).find(x=>String(x.id)===String(r.id))||r;
+      renderViewer(fresh,true);
+    };
+  }
+
   function viewerItems(items){
     return '<table class="fpr-table"><thead><tr><th>Código</th><th>Produto</th><th>Marca</th><th>Quantidade</th><th>Paletizado</th><th>Chapatex</th><th>Caixas/palete</th><th>Paletes</th></tr></thead><tbody>'+items.map(i=>'<tr><td>'+esc(i.product?.code||'')+'</td><td>'+esc(i.product?.name||'')+'</td><td>'+esc(i.product?.brand||'')+'</td><td>'+Number(i.qty||0)+' cx</td><td>'+(i.palletized?'Sim':'Não')+'</td><td>'+(i.chapatex?'Sim':'Não')+'</td><td>'+(i.palletized?Number(i.boxesPerPallet||0):'—')+'</td><td>'+(i.palletized?Number(i.pallets||0):'—')+'</td></tr>').join('')+'</tbody></table>';
   }
