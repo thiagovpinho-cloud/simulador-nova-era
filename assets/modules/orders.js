@@ -253,10 +253,10 @@
           moneyField('Orçamento de logística','logisticsBudget',o.logisticsBudget)+
           readonlyField('Endereço / local de entrega','deliveryAddress',o.deliveryAddress,'wide')+
         '</div></div>'+
-        '<div class="fo-card"><div class="fo-card-head"><div><h2>Itens do pedido</h2><p>Informe o <b>preço final da caixa, já com IPI e ST</b>. O Focado consulta o simulador pela marca, produto e UF do cliente e calcula a margem em tempo real.</p></div>'+(editable?'<div class="fo-actions"><button class="fo-btn secondary" type="button" id="foProducts">Cadastrar produto</button><button class="fo-btn secondary" type="button" id="foAddItem">+ Linha</button></div>':'')+'</div>'+
+        '<div class="fo-card"><div class="fo-card-head"><div><h2>Itens do pedido</h2><p>Informe o <b>preço base da mercadoria por caixa, sem IPI e sem ST</b>, igual ao Simulador. Na margem, a referência logística é o orçamento de logística dividido pelo total de caixas do pedido.</p></div>'+(editable?'<div class="fo-actions"><button class="fo-btn secondary" type="button" id="foProducts">Cadastrar produto</button><button class="fo-btn secondary" type="button" id="foAddItem">+ Linha</button></div>':'')+'</div>'+
           '<datalist id="foProductCodes">'+cat.map(p=>'<option value="'+esc(p.code)+'">'+esc(p.name)+' · '+esc(p.brand)+'</option>').join('')+'</datalist>'+
           '<datalist id="foProductNames">'+cat.map(p=>'<option value="'+esc(p.name)+'">'+esc(p.code)+' · '+esc(p.brand)+'</option>').join('')+'</datalist>'+
-          '<div class="fo-items-wrap"><table class="fo-items" id="foItems"><thead><tr><th>Código</th><th>Produto</th><th>Quantidade</th><th>Preço final c/ impostos</th><th>Margem estimada</th><th>Total</th><th></th></tr></thead><tbody>'+items.map((i,n)=>itemRow(i,n,editable)).join('')+'</tbody></table></div><div class="fo-order-profit"><div id="foProfitSummary"><span>Margem estimada do pedido</span><strong>—</strong><small>Preencha produto, quantidade, preço e UF</small></div><div class="fo-total"><span>Total do pedido</span><strong id="foGrandTotal">'+money(value(o))+'</strong></div></div></div>'+
+          '<div class="fo-items-wrap"><table class="fo-items" id="foItems"><thead><tr><th>Código</th><th>Produto</th><th>Quantidade</th><th>Preço da mercadoria s/ IPI/ST</th><th>Margem estimada</th><th>Total</th><th></th></tr></thead><tbody>'+items.map((i,n)=>itemRow(i,n,editable)).join('')+'</tbody></table></div><div class="fo-order-profit"><div id="foProfitSummary"><span>Margem estimada do pedido</span><strong>—</strong><small>Preencha produto, quantidade, preço e UF</small></div><div class="fo-total"><span>Total do pedido</span><strong id="foGrandTotal">'+money(value(o))+'</strong></div></div></div>'+
         '<div class="fo-card"><h2>Observações comerciais</h2><textarea name="notes" '+readonly+' placeholder="Observações do pedido, particularidades do cliente, entrega ou negociação">'+esc(o.notes||'')+'</textarea></div>'+
       '</form>'+history(o)+'</div>';
     document.getElementById('foBack').onclick=()=>render(currentFilters);
@@ -329,7 +329,7 @@
     return '<label class="fo-field"><span>CNPJ do cliente cadastrado</span><select name="cnpj" id="foCnpj" '+(editable?'':'disabled')+'>'+options.join('')+'</select><small class="fo-master-hint">Fonte: Cadastro de Clientes</small></label>';
   }
   function itemRow(i,n,editable){
-    return '<tr data-item-row data-product-id="'+esc(i.productId||'')+'"><td><input data-k="code" list="foProductCodes" value="'+esc(i.code||'')+'" '+(editable?'':'disabled')+'></td><td><input data-k="name" list="foProductNames" value="'+esc(i.name||'')+'" '+(editable?'':'disabled')+'></td><td><input data-k="qty" type="number" min="0" step="1" value="'+esc(i.qty||'')+'" '+(editable?'':'disabled')+'></td><td><div class="fo-money-input"><span>R$</span><input data-k="price" type="text" inputmode="decimal" value="'+esc(moneyInput(i.price))+'" '+(editable?'':'disabled')+'></div><small class="fo-price-hint">Preço final com impostos</small></td><td class="fo-margin-cell"><span class="fo-margin pending">Aguardando dados</span><small></small></td><td class="fo-line-total">'+money((Number(i.qty)||0)*(Number(i.price)||0))+'</td><td>'+(editable?'<button type="button" class="fo-remove">×</button>':'')+'</td></tr>';
+    return '<tr data-item-row data-product-id="'+esc(i.productId||'')+'"><td><input data-k="code" list="foProductCodes" value="'+esc(i.code||'')+'" '+(editable?'':'disabled')+'></td><td><input data-k="name" list="foProductNames" value="'+esc(i.name||'')+'" '+(editable?'':'disabled')+'></td><td><input data-k="qty" type="number" min="0" step="1" value="'+esc(i.qty||'')+'" '+(editable?'':'disabled')+'></td><td><div class="fo-money-input"><span>R$</span><input data-k="price" type="text" inputmode="decimal" value="'+esc(moneyInput(i.price))+'" '+(editable?'':'disabled')+'></div><small class="fo-price-hint">Preço base · sem IPI/ST</small></td><td class="fo-margin-cell"><span class="fo-margin pending">Aguardando dados</span><small></small></td><td class="fo-line-total">'+money((Number(i.qty)||0)*(Number(i.price)||0))+'</td><td>'+(editable?'<button type="button" class="fo-remove">×</button>':'')+'</td></tr>';
   }
   function addItemRow(ops){
     const tbody=document.querySelector('#foItems tbody');tbody.insertAdjacentHTML('beforeend',itemRow({},tbody.children.length,true));bindItemEvents(ops);
@@ -347,23 +347,26 @@
       const snap=await window.FocadoLegacySimulator.ready(),brandId=brandIdFromLabel(brandLabel,snap);
       const items=rows.map(r=>({
         row:r,productId:r.dataset.productId||'',qty:Number(r.querySelector('[data-k="qty"]').value)||0,
-        finalPrice:parseMoneyInput(r.querySelector('[data-k="price"]').value)
+        basePrice:parseMoneyInput(r.querySelector('[data-k="price"]').value)
       }));
-      const valid=items.filter(x=>x.productId&&x.qty>0&&x.finalPrice>0);
+      const valid=items.filter(x=>x.productId&&x.qty>0&&x.basePrice>0);
       rows.forEach(r=>setMarginCell(r,null,'Aguardando dados'));
       if(!valid.length)return;
+      const totalBoxes=valid.reduce((sum,x)=>sum+Number(x.qty||0),0);
+      const logisticsBudget=parseMoneyInput(document.querySelector('[name="logisticsBudget"]')?.value||0);
+      const freightPerBox=totalBoxes>0?logisticsBudget/totalBoxes:0;
       const quote=window.FocadoLegacySimulator.quoteOrder({
-        brandId,uf,freightType,marginRules:ops.marginRules||{},
-        items:valid.map(x=>({productId:x.productId,qty:x.qty,finalPrice:x.finalPrice}))
+        brandId,uf,freightType,manualFreight:true,marginRules:ops.marginRules||{},
+        items:valid.map(x=>({productId:x.productId,qty:x.qty,basePrice:x.basePrice,freightPerBox}))
       });
       if(!quote?.ok){valid.forEach(x=>setMarginCell(x.row,null,'Sem vínculo no simulador'));return}
       valid.forEach(x=>{
         const q=quote.rows.find(r=>String(r.productId)===String(x.productId));
         if(!q){setMarginCell(x.row,null,'Sem cálculo');return}
-        setMarginCell(x.row,q.marginPct,q.freight?.available===false?'Frete sem faixa parametrizada':('Custo '+money(q.costPerBox)+' · Base '+money(q.basePrice)));
+        setMarginCell(x.row,q.marginPct,'Custo '+money(q.costPerBox)+' · Base '+money(q.basePrice)+' · Logística '+money(q.freight?.value||0)+'/cx');
       });
       const box=document.getElementById('foProfitSummary');
-      if(box)box.innerHTML='<span>Margem estimada do pedido</span><strong class="'+(quote.marginPct>=0?'ok':'bad')+'">'+(quote.marginPct*100).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%</strong><small>'+esc(uf)+' · '+esc(freightType)+' · conforme Regras de Margem</small>';
+      if(box)box.innerHTML='<span>Margem estimada do pedido</span><strong class="'+(quote.marginPct>=0?'ok':'bad')+'">'+(quote.marginPct*100).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%</strong><small>'+esc(uf)+' · '+esc(freightType)+' · Logística '+money(freightPerBox)+'/cx · preço sem IPI/ST</small>';
     }catch(err){
       console.warn('[OrdersProfitability]',err);valid?.forEach?.(x=>setMarginCell(x.row,null,'Não foi possível calcular'));
     }
@@ -394,6 +397,12 @@
         price.oninput=()=>{updateTotals();scheduleProfitability(ops)};
       }
       row.querySelectorAll('input:not([data-k="price"])').forEach(i=>i.addEventListener('input',()=>{updateTotals();scheduleProfitability(ops)}));
+      const logisticsBudget=document.querySelector('[name="logisticsBudget"]');
+      if(logisticsBudget&&!logisticsBudget.dataset.marginBound){
+        logisticsBudget.dataset.marginBound='1';
+        logisticsBudget.addEventListener('input',()=>scheduleProfitability(ops));
+        logisticsBudget.addEventListener('blur',()=>scheduleProfitability(ops));
+      }
     });
     document.querySelectorAll('.fo-remove').forEach(b=>b.onclick=()=>{if(document.querySelectorAll('[data-item-row]').length>1)b.closest('tr').remove();updateTotals();scheduleProfitability(ops)});
     scheduleProfitability(ops);
