@@ -44,13 +44,18 @@ ${message?`<div class="msg">${esc(message)}</div>`:""}
 }
 function corsHeaders(request,env){
   const origin=request.headers.get("origin")||"";
-  const allowed=new Set(["https://thiagovpinho-cloud.github.io",String(env.FOCADO_ALLOWED_ORIGIN||"")].filter(Boolean));
+  const allowed=new Set([
+    "https://thiagovpinho-cloud.github.io",
+    "https://focado.pages.dev",
+    String(env.FOCADO_ALLOWED_ORIGIN||"")
+  ].filter(Boolean));
+  const isFocadoPagesPreview=/^https:\/\/[a-z0-9-]+\.focado\.pages\.dev$/i.test(origin);
   const h={
     "access-control-allow-headers":"Authorization,Content-Type,If-Match,X-Bootstrap-Token",
     "access-control-allow-methods":"GET,POST,PUT,OPTIONS",
     "vary":"Origin"
   };
-  if(origin && allowed.has(origin))h["access-control-allow-origin"]=origin;
+  if(origin && (allowed.has(origin)||isFocadoPagesPreview))h["access-control-allow-origin"]=origin;
   return h;
 }
 function withCors(response,request,env){
