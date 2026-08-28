@@ -67,7 +67,7 @@
   function createBlank(ops){
     return {
       id:'op_'+Date.now(),number:nextNumber(ops),status:'COMERCIAL',createdAt:Date.now(),
-      brand:'Nova Era',client:'',cnpj:'',representative:'',salesChannel:'REPRESENTANTE',salesJustification:'',city:'',uf:'',cep:'',bairro:'',email:'',phone:'',
+      brand:'Nova Era',customerId:'',client:'',cnpj:'',representativeId:'',representative:'',salesChannel:'REPRESENTANTE',salesJustification:'',city:'',uf:'',cep:'',bairro:'',email:'',phone:'',
       orderDate:today(),requestedDeliveryDate:'',suggestedPickup:'',freightType:'CIF',paymentTerms:'',logisticsBudget:0,deliveryAddress:'',notes:'',
       commercial:{completedAt:null,completedBy:null},
       pcp:{deliveryBase:'',productionDate:'',availableDate:'',separated:false,scheduledQty:0,autoScheduled:false},
@@ -193,23 +193,24 @@
       '<form id="foOrderForm" class="fo-form">'+
         '<div class="fo-card"><h2>Dados do pedido</h2><div class="fo-fields">'+
           field('Número do pedido','number',o.number,'text',true)+
-          cnpjField(o.cnpj,editable)+
+          customerCnpjField(o,ops,editable)+
+          '<input type="hidden" name="customerId" value="'+esc(o.customerId||'')+'"><input type="hidden" name="representativeId" value="'+esc(o.representativeId||'')+'">'+
           field('Data do pedido','orderDate',o.orderDate,'date')+
           salesChannelField(o.salesChannel||'REPRESENTANTE')+
-          representativeField(o.representative,ops)+
+          readonlyField('Representante','representative',o.representative)+
           salesJustificationField(o.salesJustification||'',o.salesChannel||'REPRESENTANTE')+
-          field('Cliente / Razão social','client',o.client,'text',false,'wide')+
+          readonlyField('Cliente / Razão social','client',o.client,'wide')+
           selectField('Marca / Empresa','brand',o.brand,['Nova Era','New Green'])+
-          field('E-mail','email',o.email,'email')+
-          field('Telefone','phone',o.phone)+
+          readonlyField('E-mail','email',o.email)+
+          readonlyField('Telefone','phone',o.phone)+
         '</div><div class="fo-cnpj-status" id="foCnpjStatus"></div></div>'+
         '<div class="fo-card"><h2>Entrega e condição comercial</h2><div class="fo-fields">'+
-          field('CEP','cep',o.cep)+field('Bairro','bairro',o.bairro)+field('Cidade','city',o.city)+field('UF','uf',o.uf)+
+          readonlyField('CEP','cep',o.cep)+readonlyField('Bairro','bairro',o.bairro)+readonlyField('Cidade','city',o.city)+readonlyField('UF','uf',o.uf)+
           field('Data solicitada pelo cliente','requestedDeliveryDate',o.requestedDeliveryDate,'date')+
           selectField('Tipo de frete','freightType',o.freightType||'CIF',['CIF','FOB','Redespacho'])+
-          field('Condição de pagamento','paymentTerms',o.paymentTerms)+
+          readonlyField('Condição de pagamento','paymentTerms',o.paymentTerms)+
           moneyField('Orçamento de logística','logisticsBudget',o.logisticsBudget)+
-          field('Endereço / local de entrega','deliveryAddress',o.deliveryAddress,'text',false,'wide')+
+          readonlyField('Endereço / local de entrega','deliveryAddress',o.deliveryAddress,'wide')+
         '</div></div>'+
         '<div class="fo-card"><div class="fo-card-head"><div><h2>Itens do pedido</h2><p>Informe o <b>preço final da caixa, já com IPI e ST</b>. O Focado consulta o simulador pela marca, produto e UF do cliente e calcula a margem em tempo real.</p></div>'+(editable?'<div class="fo-actions"><button class="fo-btn secondary" type="button" id="foProducts">Cadastrar produto</button><button class="fo-btn secondary" type="button" id="foAddItem">+ Linha</button></div>':'')+'</div>'+
           '<datalist id="foProductCodes">'+cat.map(p=>'<option value="'+esc(p.code)+'">'+esc(p.name)+' · '+esc(p.brand)+'</option>').join('')+'</datalist>'+
@@ -234,17 +235,13 @@
       if(finalizeBtn)finalizeBtn.onclick=()=>persist(true);
       const cancelCorrection=document.getElementById('foCancelCorrection');
       if(cancelCorrection)cancelCorrection.onclick=()=>{correctionMode=false;renderForm(o,ops)};
-      bindCnpjLookup(ops,o);
+      bindCustomerSelection(ops,o);
       const salesChannel=document.getElementById('foSalesChannel');
-      const repSelect=document.querySelector('[name="representative"]');
       const justWrap=document.getElementById('foSalesJustificationWrap');
       if(salesChannel)salesChannel.onchange=()=>{
         const special=['VENDAS_INTERNAS','BONIFICACAO'].includes(salesChannel.value);
         if(justWrap)justWrap.style.display=special?'flex':'none';
-        if(repSelect)repSelect.disabled=special;
-        if(special&&repSelect)repSelect.value='';
       };
-      if(repSelect&&['VENDAS_INTERNAS','BONIFICACAO'].includes(salesChannel?.value||''))repSelect.disabled=true;
       const profitabilitySelectors=['brand','uf','freightType'];
       profitabilitySelectors.forEach(name=>{const el=document.querySelector('[name="'+name+'"]');if(el)el.addEventListener('change',()=>scheduleProfitability(ops))});
       const budget=document.querySelector('[name="logisticsBudget"]');
@@ -277,8 +274,18 @@
   function moneyField(label,name,val){
     return '<label class="fo-field"><span>'+label+'</span><div class="fo-money-input"><span>R$</span><input name="'+name+'" type="text" inputmode="decimal" value="'+esc(moneyInput(val))+'" '+(!formEditable?'disabled':'')+'></div></label>';
   }
-  function cnpjField(val,editable){
-    return '<label class="fo-field"><span>CNPJ</span><div class="fo-inline-input"><input name="cnpj" id="foCnpj" value="'+esc(formatCnpj(val))+'" inputmode="numeric" '+(editable?'':'disabled')+'><button type="button" id="foCnpjLookup" '+(editable?'':'disabled')+'>Buscar</button></div></label>';
+  function readonlyField(label,name,val,cls=''){
+    return '<label class="fo-field '+cls+'"><span>'+label+'</span><input name="'+name+'" value="'+esc(val||'')+'" readonly></label>';
+  }
+  function customerCnpjField(order,ops,editable){
+    const customers=(ops.customers||[]).filter(x=>x.active!==false&&normalizeCnpj(x.cnpj).length===14).slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'pt-BR'));
+    const current=normalizeCnpj(order.cnpj),hasCurrent=customers.some(x=>normalizeCnpj(x.cnpj)===current);
+    const options=['<option value="">Selecione um cliente cadastrado</option>'].concat(customers.map(x=>{
+      const label=formatCnpj(x.cnpj)+' · '+(x.name||x.fantasyName||'Cliente')+(x.fantasyName&&x.fantasyName!==x.name?' ('+x.fantasyName+')':'');
+      return '<option value="'+esc(normalizeCnpj(x.cnpj))+'" '+(normalizeCnpj(x.cnpj)===current?'selected':'')+'>'+esc(label)+'</option>';
+    }));
+    if(current&&!hasCurrent)options.push('<option value="'+esc(current)+'" selected>'+esc(formatCnpj(current)+' · histórico')+'</option>');
+    return '<label class="fo-field"><span>CNPJ do cliente cadastrado</span><select name="cnpj" id="foCnpj" '+(editable?'':'disabled')+'>'+options.join('')+'</select><small class="fo-master-hint">Fonte: Cadastro de Clientes</small></label>';
   }
   function itemRow(i,n,editable){
     return '<tr data-item-row data-product-id="'+esc(i.productId||'')+'"><td><input data-k="code" list="foProductCodes" value="'+esc(i.code||'')+'" '+(editable?'':'disabled')+'></td><td><input data-k="name" list="foProductNames" value="'+esc(i.name||'')+'" '+(editable?'':'disabled')+'></td><td><input data-k="qty" type="number" min="0" step="1" value="'+esc(i.qty||'')+'" '+(editable?'':'disabled')+'></td><td><div class="fo-money-input"><span>R$</span><input data-k="price" type="text" inputmode="decimal" value="'+esc(moneyInput(i.price))+'" '+(editable?'':'disabled')+'></div><small class="fo-price-hint">Preço final com impostos</small></td><td class="fo-margin-cell"><span class="fo-margin pending">Aguardando dados</span><small></small></td><td class="fo-line-total">'+money((Number(i.qty)||0)*(Number(i.price)||0))+'</td><td>'+(editable?'<button type="button" class="fo-remove">×</button>':'')+'</td></tr>';
@@ -377,40 +384,44 @@
     const b=await r.json();
     return {cnpj:b.cnpj,razaoSocial:b.razao_social,nomeFantasia:b.nome_fantasia,cep:b.cep,logradouro:b.logradouro,numero:b.numero,complemento:b.complemento,bairro:b.bairro,municipio:b.municipio,uf:b.uf,dddTelefone1:b.ddd_telefone_1,email:b.email};
   }
-  function bindCnpjLookup(ops,o){
-    const input=document.getElementById('foCnpj'),btn=document.getElementById('foCnpjLookup'),status=document.getElementById('foCnpjStatus');let busy=false,last='';
-    async function lookup(){
-      const cnpj=normalizeCnpj(input.value);input.value=formatCnpj(cnpj);
-      if(cnpj.length!==14){status.textContent='Informe os 14 dígitos do CNPJ.';status.className='fo-cnpj-status bad';return}
-      if(busy||cnpj===last)return;busy=true;last=cnpj;btn.disabled=true;status.textContent='Consultando CNPJ...';status.className='fo-cnpj-status';
-      const prev=previousOrderByCnpj(cnpj,ops,o.id);
-      try{
-        const b=await fetchCnpj(cnpj);
-        setForm('client',b.razaoSocial||b.nomeFantasia);
-        setForm('cep',b.cep);
-        setForm('bairro',b.bairro);
-        setForm('city',b.municipio);
-        setForm('uf',b.uf);
-        setForm('email',b.email);
-        setForm('phone',b.dddTelefone1);
-        const address=[b.logradouro,b.numero,b.complemento,b.bairro].filter(Boolean).join(', ');
-        setForm('deliveryAddress',address);
-        const reused=applyPrevious(prev);
-        status.textContent=(reused?'Cliente recorrente: dados comerciais e de entrega do último pedido reaproveitados. ':'')+'Dados cadastrais consultados pela BrasilAPI.';
-        status.className='fo-cnpj-status ok';scheduleProfitability(ops);
-      }catch(err){
-        const reused=applyPrevious(prev);
-        if(reused){status.textContent='Cliente recorrente: dados do último pedido reaproveitados. A consulta cadastral externa não respondeu.';status.className='fo-cnpj-status warn'}
-        else{status.textContent=err.status===404?'CNPJ não encontrado.':'Não foi possível consultar o CNPJ agora.';status.className='fo-cnpj-status bad'}
-      }finally{busy=false;btn.disabled=false}
+  function customerByCnpj(cnpj,ops){
+    const key=normalizeCnpj(cnpj);
+    return (ops.customers||[]).find(x=>normalizeCnpj(x.cnpj)===key)||null;
+  }
+  function bindCustomerSelection(ops,o){
+    const select=document.getElementById('foCnpj'),status=document.getElementById('foCnpjStatus');
+    function applyCustomer(){
+      const customer=customerByCnpj(select.value,ops);
+      if(!customer){
+        status.textContent=select.value?'Cliente histórico: cadastro mestre não localizado.':'Selecione um CNPJ cadastrado para preencher os dados do cliente.';
+        status.className='fo-cnpj-status '+(select.value?'warn':'');
+        return;
+      }
+      setForm('customerId',customer.id||'');
+      setForm('client',customer.name||customer.fantasyName||'');
+      setForm('cep',customer.cep||'');
+      setForm('bairro',customer.bairro||'');
+      setForm('city',customer.city||'');
+      setForm('uf',customer.state||customer.uf||'');
+      setForm('email',customer.email||'');
+      setForm('phone',customer.phone||'');
+      setForm('deliveryAddress',customer.address||'');
+      setForm('paymentTerms',customer.paymentTerms||'');
+      setForm('representativeId',customer.representativeId||'');
+      setForm('representative',customer.representative||'');
+      status.textContent='Dados preenchidos pelo Cadastro de Clientes.';
+      status.className='fo-cnpj-status ok';
+      scheduleProfitability(ops);
     }
-    btn.onclick=lookup;input.onblur=lookup;input.oninput=()=>{const d=normalizeCnpj(input.value);input.value=formatCnpj(d);if(d.length===14)setTimeout(lookup,120)};
+    select.onchange=applyCustomer;
+    if(select.value&&!o.customerId)applyCustomer();
   }
 
   function collect(){
     const form=document.getElementById('foOrderForm'),fd=new FormData(form),ops=load(),brand=fd.get('brand')||'';
     return {
-      number:document.querySelector('[name="number"]')?.value||'',orderDate:fd.get('orderDate')||'',representative:fd.get('representative')||'',
+      number:document.querySelector('[name="number"]')?.value||'',orderDate:fd.get('orderDate')||'',customerId:fd.get('customerId')||'',
+      representativeId:fd.get('representativeId')||'',representative:fd.get('representative')||'',
       salesChannel:fd.get('salesChannel')||'REPRESENTANTE',salesJustification:fd.get('salesJustification')||'',
       client:fd.get('client')||'',cnpj:normalizeCnpj(fd.get('cnpj')),brand,city:fd.get('city')||'',uf:String(fd.get('uf')||'').toUpperCase().slice(0,2),
       cep:fd.get('cep')||'',bairro:fd.get('bairro')||'',email:fd.get('email')||'',phone:fd.get('phone')||'',
