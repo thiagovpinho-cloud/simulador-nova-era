@@ -1,4 +1,4 @@
-export const BI_ANALYTICS_VERSION='2026.08.28.1';
+export const BI_ANALYTICS_VERSION='2026.08.28.2';
 
 const DAY_MS=86400000;
 
@@ -327,11 +327,12 @@ export function productionLoad(state,filters={}){
     .filter(r=>String(r.status||'').toUpperCase()==='FINALIZADA');
   const map=new Map();
   for(const r of requests){
-    const date=String(r.needByDate||r.requestDate||'').slice(0,10);
+    const s=r.snapshot||r;
+    const date=String(s.needByDate||s.requestDate||r.needByDate||r.requestDate||'').slice(0,10);
     if(f.from&&date&&date<f.from)continue;
     if(f.to&&date&&date>f.to)continue;
-    const base=String(r.base||'SEM BASE');
-    const qty=(r.items||[]).reduce((sum,i)=>sum+num(i.qty),0);
+    const base=String(s.base||r.base||'SEM BASE');
+    const qty=(s.items||r.items||[]).reduce((sum,i)=>sum+num(i.qty),0);
     const key=base+'|'+date;
     const cur=map.get(key)||{base,date,scheduledQty:0,requests:0,requestIds:[]};
     cur.scheduledQty+=qty;cur.requests++;cur.requestIds.push(r.id);map.set(key,cur);
