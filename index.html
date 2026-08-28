@@ -3,6 +3,8 @@
 <head>
 <script>
 (function(){
+  document.documentElement.classList.add('focado-booting');
+  setTimeout(()=>document.documentElement.classList.remove('focado-booting'),8000);
   try{
     const role=sessionStorage.getItem('nova-era-role');
     const token=sessionStorage.getItem('focado-api-session-token');
@@ -12,6 +14,8 @@
 })();
 </script>
 <style>
+html.focado-booting::before{content:"";position:fixed;inset:0;z-index:2147483647;background:#f6f8f7 url("focado-brand.svg?v=20260828-boot") center center/230px auto no-repeat}
+html.focado-booting body{overflow:hidden!important}
 html.focado-modern-session body > :not(#focadoShell):not(script){display:none!important}
 html.focado-modern-session body{background:#f6f8f7!important}
 </style>
@@ -1630,6 +1634,7 @@ function freshBrandState(brand){
   return {
     global: { estado: brand.defaultEstado, comissao: brand.defaultComissao, tipoFrete: 'CIF', freteManual: false },
     insumos: Object.fromEntries(brand.insumos.map(i => [i.code, {preco:i.preco}])),
+    customInsumos: [],
     products: brand.products.map(p => ({
       id:p.id,
       pricing: JSON.parse(JSON.stringify(p.pricing)),
@@ -1674,11 +1679,13 @@ function resetSimulatorKeepingHistory(){
     const keepDrafts = STATE.brands[key].orderDrafts;
     const keepScenarios = STATE.brands[key].scenarios;
     const keepInsumos = STATE.brands[key].insumos; // Base de Insumos: parametrização fixa, nunca zera
+    const keepCustomInsumos = STATE.brands[key].customInsumos||[];
     STATE.brands[key] = freshBrandState(BRANDS[key]);
     STATE.brands[key].orderHistory = keepHistory;
     STATE.brands[key].orderDrafts = keepDrafts;
     STATE.brands[key].scenarios = keepScenarios;
     STATE.brands[key].insumos = keepInsumos;
+    STATE.brands[key].customInsumos = keepCustomInsumos;
   });
   const keepClientDrafts = STATE.clientDrafts;
   STATE.activeBrand = 'novaera';
@@ -1727,6 +1734,8 @@ async function loadState(){
           if(!b.orderMeta) b.orderMeta = freshOrderMeta();
           if(!b.orderHistory) b.orderHistory = [];
           if(!b.orderDrafts) b.orderDrafts = [];
+          if(!Array.isArray(b.customInsumos)) b.customInsumos = [];
+          for(const ci of b.customInsumos){if(ci?.code&&!b.insumos[ci.code])b.insumos[ci.code]={preco:Number(ci.preco||0)}}
           if(!b.global.tipoFrete) b.global.tipoFrete = 'CIF';
           if(b.global.freteManual === undefined) b.global.freteManual = false;
         });
@@ -1755,24 +1764,24 @@ function computeMaterials(def, st, brand, bstate){
     const perdaValor = custoUnit * s.perda;
     const cic = custoUnit + perdaValor;
     cicUnit += cic;
-    return { code:ins.code, desc:ins.desc, unit:ins.unit, qty:s.qty, perda:s.perda, preco, cic, linked:true };
+    return { code:ins.code, desc:ins.desc, unit:s.unit||ins.unit, qty:s.qty, perda:s.perda, preco, cic, linked:true, source:'material', materialIndex:i };
   });
   // processo/mão de obra — vinculado à Base de Insumos quando a planilha original faz isso;
   // quando a célula original é um valor digitado direto (não vinculado), mantemos como campo próprio do produto
   const ps = st.processo;
   let procCode, procDesc, procUnit, procPreco, procLinked;
   if(def.processo.standalone){
-    procCode = 'PROCESSO'; procDesc = def.processo.desc; procUnit = def.processo.unit;
+    procCode = 'PROCESSO'; procDesc = def.processo.desc; procUnit = ps.unit||def.processo.unit;
     procPreco = ps.preco; procLinked = false;
   }else{
     const procIns = brand.insumosByCode[def.processo.insumo];
-    procCode = procIns.code; procDesc = procIns.desc; procUnit = procIns.unit;
+    procCode = procIns.code; procDesc = procIns.desc; procUnit = ps.unit||procIns.unit;
     procPreco = bstate.insumos[def.processo.insumo].preco; procLinked = true;
   }
   const procCustoUnit = procPreco * ps.qty;
   const procCic = procCustoUnit + procCustoUnit * ps.perda;
   cicUnit += procCic;
-  rows.push({ code:procCode, desc:procDesc, unit:procUnit, qty:ps.qty, perda:ps.perda, preco:procPreco, cic:procCic, linked:procLinked });
+  rows.push({ code:procCode, desc:procDesc, unit:procUnit, qty:ps.qty, perda:ps.perda, preco:procPreco, cic:procCic, linked:procLinked, source:'process' });
 
   return { rows, cicUnit, cicCaixa: cicUnit * def.unitsPerCaixa };
 }
@@ -1919,8 +1928,9 @@ window.FocadoLegacySimulator = {
         info:all.freightInfo,
         availability:all.freightAvailability
       },
-      insumos:brand.insumos.map(i=>({
+      insumos:[...brand.insumos,...(bstate.customInsumos||[])].map(i=>({
         code:i.code,desc:i.desc,unit:i.unit,group:i.group,
+        custom:Boolean(i.custom),
         preco:Number(bstate.insumos?.[i.code]?.preco??i.preco??0)
       })),
       products:brand.products.map((def,i)=>{
@@ -1962,9 +1972,21 @@ window.FocadoLegacySimulator = {
     scheduleSave();return this.snapshot();
   },
   setMarginTarget(value){STATE.marginTarget=Math.max(0,Number(value)||0);scheduleSave();return this.snapshot()},
+  addInput(input={}){
+    const brand=curBrand(),b=curState();
+    const code=String(input.code||'').trim(),desc=String(input.desc||'').trim(),unit=String(input.unit||'').trim().toUpperCase();
+    const group=String(input.group||'Outros').trim()||'Outros',preco=Math.max(0,Number(input.preco)||0);
+    if(!code||!desc||!unit)throw new Error('SIMULATOR_INPUT_FIELDS_REQUIRED');
+    if(brand.insumos.some(i=>String(i.code)===code)||(b.customInsumos||[]).some(i=>String(i.code)===code))throw new Error('SIMULATOR_INPUT_ALREADY_EXISTS');
+    b.customInsumos=Array.isArray(b.customInsumos)?b.customInsumos:[];
+    b.customInsumos.push({code,desc,unit,group,preco,custom:true,createdAt:Date.now()});
+    b.insumos[code]={preco};scheduleSave();return this.snapshot();
+  },
   setInputPrice(code,price){
     const b=curState();if(!b.insumos?.[code])throw new Error('SIMULATOR_INPUT_NOT_FOUND');
-    b.insumos[code].preco=Math.max(0,Number(price)||0);scheduleSave();return this.snapshot();
+    b.insumos[code].preco=Math.max(0,Number(price)||0);
+    const ci=(b.customInsumos||[]).find(i=>String(i.code)===String(code));if(ci)ci.preco=b.insumos[code].preco;
+    scheduleSave();return this.snapshot();
   },
   setPricing(productId,patch={}){
     const brand=curBrand(),b=curState(),idx=brand.products.findIndex(p=>p.id===productId);
@@ -1979,6 +2001,7 @@ window.FocadoLegacySimulator = {
     const brand=curBrand(),b=curState(),idx=brand.products.findIndex(p=>p.id===productId);
     if(idx<0||!b.products[idx].materials[index])throw new Error('SIMULATOR_MATERIAL_NOT_FOUND');
     const m=b.products[idx].materials[index];
+    if(patch.unit!=null)m.unit=String(patch.unit||'').trim().toUpperCase();
     if(patch.qty!=null)m.qty=Math.max(0,Number(patch.qty)||0);
     if(patch.perda!=null)m.perda=Math.max(0,Number(patch.perda)||0);
     scheduleSave();return this.snapshot();
@@ -1987,6 +2010,7 @@ window.FocadoLegacySimulator = {
     const brand=curBrand(),b=curState(),idx=brand.products.findIndex(p=>p.id===productId);
     if(idx<0)throw new Error('SIMULATOR_PRODUCT_NOT_FOUND');
     const p=b.products[idx].processo;
+    if(patch.unit!=null)p.unit=String(patch.unit||'').trim().toUpperCase();
     if(patch.qty!=null)p.qty=Math.max(0,Number(patch.qty)||0);
     if(patch.perda!=null)p.perda=Math.max(0,Number(patch.perda)||0);
     if(patch.preco!=null&&'preco' in p)p.preco=Math.max(0,Number(patch.preco)||0);
