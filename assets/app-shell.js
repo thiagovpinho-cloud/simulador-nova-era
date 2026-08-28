@@ -13,7 +13,7 @@
     ['Cadastros',[['produtos','◫','Produtos'],['fichas','▧','Fichas Técnicas'],['bases','▦','Bases Produtivas']]],
     ['Financeiro',[['financeiro','₿','Faturamento e Margem']]],
     ['Relatórios',[['relatorios','▥','Relatórios','soon'],['indicadores','◉','Indicadores'],['bi-config','⚙','Parâmetros BI']]],
-    ['Configurações',[['corpo-auditor','◇','Corpo Auditor'],['system-health','◎','Saúde & Auditoria'],['config','⚙','Configurações'],['usuarios','♚','Usuários e Perfis']]]
+    ['Configurações',[['corpo-auditor','◇','Corpo Auditor'],['system-health','◎','Saúde & Auditoria'],['regras-margem','%','Regras de Margem'],['config','⚙','Configurações'],['usuarios','♚','Usuários e Perfis']]]
   ];
 
   function navHtml(){
@@ -166,6 +166,7 @@
     }
     if(id==='representantes'){open(()=>window.FocadoRepresentatives?.render());return}
     if(id==='simulador'){open(()=>window.FocadoSimulator?.render());return}
+    if(id==='regras-margem'){open(()=>window.FocadoMarginRules?.render());return}
     if(id==='pedidos'){
       open(()=>window.FocadoOrders?.render());
       refreshInBackground('orders',()=>window.FocadoOrders?.render());
