@@ -187,4 +187,4 @@ assert.ok(indexPerf.includes('quoteOrder(o={})'),'Motor do simulador deve expor 
 assert.ok(indexPerf.includes('finalPrice')&&indexPerf.includes('basePrice'),'Cotação deve decompor preço final em preço-base');
 
 assert.ok(shell.includes("if(id==='cockpit'){open(()=>window.FocadoIndicators?.render());return}"),'Cockpit executivo deve usar FocadoIndicators');
-assert.ok(auth.includes("cockpit:['ADMIN','FINANCEIRO']"),'Cockpit executivo deve respeitar permissão financeira');
+assert.ok(read('assets/core/auth-client.js').includes("cockpit:['ADMIN','FINANCEIRO']"),'Cockpit executivo deve respeitar permissão financeira');
