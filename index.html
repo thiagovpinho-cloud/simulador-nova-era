@@ -875,7 +875,8 @@ html.focado-modern-session body{background:#f6f8f7!important}
     <div class="order-section-label">Fotos da fachada (até 3)</div>
     <div class="photo-grid">
       <div class="photo-slot" data-photo-idx="0">
-        <input type="file" accept="image
+        <input type="file" accept="image/*" hidden>
+<script>
 if (!window.storage) {
   window.storage = {
     async get(key){
