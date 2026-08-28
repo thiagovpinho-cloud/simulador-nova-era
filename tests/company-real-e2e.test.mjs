@@ -82,10 +82,23 @@ assert.equal(state.inputInventory.ETANOL.physical,800);
 
 applyDomain('SOLICITACAO_PRODUCAO',state,{changes:{request:{
   id:'prod1',number:'OP-REAL-001',status:'FINALIZADA',base:'SENIR',requestDate:'2026-08-16',needByDate:'2026-08-18',
-  items:[{code:'GEL70',name:'Álcool Gel 70',qty:15}]
+  materialStatus:'OK',
+  snapshot:{
+    base:'SENIR',requestDate:'2026-08-16',needByDate:'2026-08-18',materialStatus:'OK',
+    items:[{product:{code:'GEL70',name:'Álcool Gel 70',brand:'New Green',unit:'CX'},qty:15}],
+    materials:[{code:'ETANOL',name:'Etanol',unit:'L',required:150,available:800,shortage:0}]
+  }
 }}});
-state.inventory.GEL70.physical=15;
-state.stockMovements.unshift({id:'mov-prod-1',at:Date.parse('2026-08-18T12:00:00Z'),kind:'finished',key:'GEL70',code:'GEL70',name:'Álcool Gel 70',unit:'CX',type:'ENTRADA_PRODUCAO',qty:15,user:'Produção Empresa Piloto'});
+applyDomain('SOLICITACAO_PRODUCAO',state,{changes:{complete:{
+  requestId:'prod1',lot:'L-REAL-001',at:Date.parse('2026-08-18T12:00:00Z'),user:'Produção Empresa Piloto',
+  items:[{code:'GEL70',name:'Álcool Gel 70',brand:'New Green',unit:'CX',qty:15}],
+  losses:[]
+}}});
+assert.equal(state.productionRequests.find(x=>x.id==='prod1').execution.status,'CONCLUIDA');
+assert.equal(state.inputInventory.ETANOL.physical,650);
+assert.equal(state.inventory.GEL70.physical,15);
+assert.ok(state.stockMovements.some(x=>x.type==='CONSUMO_PRODUCAO'));
+assert.ok(state.stockMovements.some(x=>x.type==='ENTRADA_PRODUCAO'&&x.lot==='L-REAL-001'));
 applyDomain('PCP',state,{orderId:'o2',changes:{items:[{id:'o2-1',reservedQty:15,cutQty:0,deliveryBase:'SENIR',pcpAvailabilityDate:'2026-08-18',pcpBalanceDecision:'RESERVAR'}]}});
 assert.equal(validateTransition(order2),null);
 applyTransitionSideEffects(order2,'PCP');order2.status=transitionRule('PCP').to;
@@ -137,7 +150,8 @@ const acceptance={
   simulatedEmployees:people.length===100,
   commercialToPcp:true,
   purchaseReceipt:state.purchaseRequests[0].status==='RECEBIDO',
-  productionToStock:state.stockMovements.some(m=>m.type==='ENTRADA_PRODUCAO'),
+  productionToStock:state.stockMovements.some(m=>m.type==='ENTRADA_PRODUCAO'&&m.lot==='L-REAL-001'),
+  productionConsumesInputs:state.stockMovements.some(m=>m.type==='CONSUMO_PRODUCAO')&&state.inputInventory.ETANOL.physical===650,
   stockReservationAndDispatch:state.stockMovements.filter(m=>m.type==='SAIDA_PEDIDO').length===2,
   logisticsCompletion:state.orders.every(o=>o.status==='ENTREGUE'),
   financeFeedsBi:bi.summary.netRevenue===1070,
