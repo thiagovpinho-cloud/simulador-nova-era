@@ -13,6 +13,10 @@ function createHarness({failCssOnce=false}={}){
         const name=selector.match(/"([^"]+)"\]$/)?.[1];
         return links.find(x=>x.dataset.focadoModule===name)||null;
       }
+      if(selector.startsWith('link[href*="assets/modules/')){
+        const name=selector.match(/assets\/modules\/([^"]+)"/)?.[1];
+        return links.find(x=>String(x.href||'').includes('assets/modules/'+name))||null;
+      }
       if(selector.startsWith('script[data-focado-module="')){
         const name=selector.match(/"([^"]+)"\]$/)?.[1];
         return scripts.find(x=>x.dataset.focadoModule===name)||null;
@@ -68,3 +72,15 @@ function createHarness({failCssOnce=false}={}){
 }
 
 console.log('module-first-click: ok');
+
+
+// CSS pré-carregado no index deve impedir uma segunda requisição lazy no primeiro clique.
+{
+  const h=createHarness();
+  const preloaded={tagName:'LINK',dataset:{},href:'assets/modules/indicators.css?v=preloaded',sheet:{},remove(){}};
+  h.links.push(preloaded);
+  h.context.window.FocadoIndicators={render(){}};
+  await h.context.window.FocadoModules.ensure('indicadores');
+  assert.equal(h.links.filter(x=>String(x.href||'').includes('indicators.css')).length,1,'Loader não deve requisitar CSS de Indicadores pela segunda vez');
+  assert.equal(typeof h.context.window.FocadoIndicators.render,'function');
+}
