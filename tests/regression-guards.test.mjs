@@ -253,3 +253,14 @@ const ordersDeleteUi=read('assets/modules/orders.js');
 assert.ok(ordersDeleteUi.includes('data-fo-delete'),'Pedidos em rascunho devem exibir ação Excluir');
 assert.ok(ordersDeleteUi.includes("o.status==='COMERCIAL'"),'Excluir deve ficar restrito a pedidos em preenchimento');
 assert.ok(ordersDeleteUi.includes("['ADMIN','DIRETOR','GESTOR']"),'Excluir deve respeitar perfis privilegiados');
+
+const ordersMargin=read('assets/modules/orders.js');
+assert.ok(ordersMargin.includes('Preço da mercadoria s/ IPI/ST'),'Pedido deve exibir preço base sem IPI/ST');
+assert.ok(ordersMargin.includes('const freightPerBox=totalBoxes>0?logisticsBudget/totalBoxes:0'),'Margem deve usar orçamento de logística dividido pelo total de caixas');
+assert.ok(ordersMargin.includes('manualFreight:true'),'Pedido deve forçar frete manual por caixa na análise de margem');
+assert.ok(ordersMargin.includes('basePrice:x.basePrice'),'Pedido deve enviar preço base ao simulador');
+assert.ok(ordersMargin.includes('logisticsBudget.addEventListener'),'Alteração do orçamento logístico deve recalcular a margem');
+
+const simulatorInline=read('index.html');
+assert.ok(simulatorInline.includes('item.basePrice!=null?Number(item.basePrice):null'),'Simulador deve aceitar preço base do pedido sem converter IPI/ST');
+assert.ok(simulatorInline.includes('Number(x.basePrice??x.finalPrice)>0'),'Simulador deve validar preço base ou legado');
