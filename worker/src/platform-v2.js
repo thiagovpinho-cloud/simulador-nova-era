@@ -153,11 +153,13 @@ export async function appendChange(db,{userId,action,entityType,entityId,revisio
 export async function loginThrottle(db,email,ipHash){
   const r=await db.query(`select count(*)::int as n from public.focado_login_attempts
     where email=$1 and success=false and attempted_at>now()-interval '15 minutes'`,[email]);
-  if(Number(r.rows[0]?.n||0)>=5)throw Object.assign(new Error('LOGIN_TEMPORARILY_BLOCKED'),{status:429,code:'LOGIN_TEMPORARILY_BLOCKED'});
-  return async success=>{
+  const blocked=Number(r.rows[0]?.n||0)>=5;
+  const record=async success=>{
     await db.query('insert into public.focado_login_attempts(email,ip_hash,success) values($1,$2,$3)',[email,ipHash||null,Boolean(success)]);
     if(success)await db.query(`delete from public.focado_login_attempts where email=$1 and success=false`,[email]);
   };
+  record.blocked=blocked;
+  return record;
 }
 
 export function auditSnapshot(state,domain,orderId){
