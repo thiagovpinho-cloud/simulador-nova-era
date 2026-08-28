@@ -209,3 +209,29 @@ assert.ok(customerLookup.includes("id=\"fcRepresentative\""),'Representante do c
 assert.ok(customerLookup.includes("representativeId:document.getElementById('fcRepresentative').value"),'Cliente deve persistir representativeId');
 assert.ok(customerLookup.includes("return rep?.name||''"),'Cliente deve persistir também o nome atual do representante');
 assert.ok(!customerLookup.includes("field('Representante','fcRepresentative'"),'Campo livre de representante não pode voltar ao cadastro de clientes');
+
+const customerMasterOrders=read('assets/modules/orders.js');
+const customerMaster=read('assets/modules/customers.js');
+assert.ok(customerMaster.includes("field('Condição de pagamento','fcPaymentTerms'"),'Cadastro de cliente deve possuir Condição de Pagamento');
+assert.ok(customerMaster.includes("paymentTerms:document.getElementById('fcPaymentTerms').value.trim()"),'Cliente deve persistir Condição de Pagamento');
+assert.ok(customerMaster.includes("if(!customer.paymentTerms)"),'Cadastro mestre deve exigir Condição de Pagamento');
+assert.ok(customerMasterOrders.includes('customerCnpjField(o,ops,editable)'),'Pedido deve selecionar CNPJ a partir do cadastro de clientes');
+assert.ok(customerMasterOrders.includes("Fonte: Cadastro de Clientes"),'Pedido deve indicar a origem mestre do CNPJ');
+assert.ok(customerMasterOrders.includes("function bindCustomerSelection(ops,o)"),'Pedido deve preencher dados pelo cliente selecionado');
+for(const pair of [
+  ["client","customer.name||customer.fantasyName||''"],
+  ["cep","customer.cep||''"],
+  ["bairro","customer.bairro||''"],
+  ["city","customer.city||''"],
+  ["uf","customer.state||customer.uf||''"],
+  ["paymentTerms","customer.paymentTerms||''"],
+  ["representativeId","customer.representativeId||''"],
+  ["representative","customer.representative||''"]
+]){
+  assert.ok(customerMasterOrders.includes("setForm('"+pair[0]+"',"+pair[1]+")"),'Pedido deve herdar '+pair[0]+' do cadastro mestre');
+}
+assert.ok(customerMasterOrders.includes("customerId:fd.get('customerId')||''"),'Pedido deve persistir customerId');
+assert.ok(customerMasterOrders.includes("representativeId:fd.get('representativeId')||''"),'Pedido deve persistir representativeId');
+assert.ok(shared.includes("customerId:String(src.customerId||'')"),'Backend deve persistir customerId no pedido');
+assert.ok(shared.includes("representativeId:String(src.representativeId||'')"),'Backend deve persistir representativeId no pedido');
+assert.ok(!customerMasterOrders.includes("bindCnpjLookup(ops,o)"),'Pedido não deve voltar a consultar CNPJ externo em vez do cadastro mestre');
