@@ -114,6 +114,7 @@
 
   function showShell(openDashboard=true){
     if(!sessionStorage.getItem('nova-era-role'))return;
+    document.documentElement.classList.remove('focado-booting');
     syncBrandLogo();
     const hub=$('#hubScreen'); if(hub)hub.classList.add('hidden');
     shell.classList.remove('hidden');
