@@ -82,7 +82,7 @@
       const password=$('#fuPassword').value,password2=$('#fuPassword2').value,msg=$('#fuFormMsg');
       msg.className='fu-form-msg';msg.textContent='';
       if(password!==password2){msg.classList.add('error');msg.textContent='As senhas não coincidem.';return}
-      if(password.length<10){msg.classList.add('error');msg.textContent='A senha deve ter pelo menos 12 caracteres, com maiúscula, minúscula e número.';return}
+      if(password.length<12){msg.classList.add('error');msg.textContent='A senha deve ter pelo menos 12 caracteres, com maiúscula, minúscula e número.';return}
       const btn=form.querySelector('button[type="submit"]');btn.disabled=true;btn.textContent='Criando...';
       try{
         await request('POST',{name,email,role,password});
@@ -138,7 +138,7 @@
       };
       card.querySelector('[data-password]').onclick=async()=>{
         const p=prompt('Digite a nova senha (mínimo 12 caracteres, com maiúscula, minúscula e número):');if(p===null)return;
-        if(p.length<10){toast('A senha deve ter pelo menos 12 caracteres, com maiúscula, minúscula e número.',true);return}
+        if(p.length<12){toast('A senha deve ter pelo menos 12 caracteres, com maiúscula, minúscula e número.',true);return}
         try{await request('PATCH',{id,password:p});toast('Senha redefinida com sucesso.')}
         catch(err){toast(errorMessage(err.code),true)}
       };
