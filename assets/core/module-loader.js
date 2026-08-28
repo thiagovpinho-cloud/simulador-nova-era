@@ -22,7 +22,8 @@
     entregas:{alias:'logistica'},
     transportadoras:{alias:'logistica'},
     kanban:{css:'kanban.css',js:'kanban.js',deps:['pedidos']},
-    'system-health':{css:'system-health.css',js:'system-health.js'}
+    'system-health':{css:'system-health.css',js:'system-health.js'},
+    usuarios:{css:'users.css',js:'users.js'}
   };
   const contracts={
     produtos:()=>typeof window.FocadoProducts?.render==='function',
@@ -40,7 +41,8 @@
     kanban:()=>typeof window.FocadoKanban?.render==='function',
     cockpit:()=>typeof window.FocadoIntelligenceUI?.renderCockpit==='function',
     'corpo-auditor':()=>typeof window.FocadoIntelligenceUI?.renderAuditor==='function',
-    'system-health':()=>typeof window.FocadoSystemHealth?.render==='function'
+    'system-health':()=>typeof window.FocadoSystemHealth?.render==='function',
+    usuarios:()=>typeof window.FocadoUsers?.render==='function'
   };
   function verify(name){
     const key=defs[name]?.alias||name;
