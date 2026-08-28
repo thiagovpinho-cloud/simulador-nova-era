@@ -288,7 +288,7 @@ function applyFinance(state,body){
 
   if(c.monthlyTarget&&typeof c.monthlyTarget==='object'){
     const t=structuredClone(c.monthlyTarget);
-    if(!/^\\d{4}-\\d{2}$/.test(String(t.period||'')))throw Object.assign(new Error('INVALID_TARGET_PERIOD'),{status:422});
+    if(!/^\d{4}-\d{2}$/.test(String(t.period||'')))throw Object.assign(new Error('INVALID_TARGET_PERIOD'),{status:422});
     t.scope_type=String(t.scope_type||'COMPANY').toUpperCase();
     t.scope_id=String(t.scope_id||'ALL');
     t.target_revenue=Math.max(0,Number(t.target_revenue||0));
@@ -311,7 +311,7 @@ function applyFinance(state,body){
     const cost=structuredClone(c.skuCost);
     cost.sku=String(cost.sku||'').trim();
     cost.effective_from=String(cost.effective_from||'').slice(0,10);
-    if(!cost.sku||!/^\\d{4}-\\d{2}-\\d{2}$/.test(cost.effective_from))throw Object.assign(new Error('INVALID_SKU_COST'),{status:422});
+    if(!cost.sku||!/^\d{4}-\d{2}-\d{2}$/.test(cost.effective_from))throw Object.assign(new Error('INVALID_SKU_COST'),{status:422});
     cost.unit_variable_cost=Math.max(0,Number(cost.unit_variable_cost||0));
     cost.updatedAt=Date.now();
     state.skuCosts=upsertBy(state.skuCosts,cost,x=>[x.sku,x.effective_from].join('|'));
