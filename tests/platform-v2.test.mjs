@@ -40,3 +40,8 @@ assert.ok(!platform.includes("do $ begin"),'Bloco DO com delimitador SQL inváli
 
 assert.ok(worker.includes('repairLegacyResetHash'),'Login deve reparar hash malformado gerado pelo reset anterior');
 assert.ok(worker.includes('pbkdf2$${p.iterations}$${p.hash}'),'Reset deve gravar hash PBKDF2 com separadores corretos');
+
+for(const domain of ["d==='inventory'","d==='movements'","d==='production'","d==='purchases'","d==='carriers'"]){
+  assert.ok(platform.includes(domain),'Leitura V2 operacional ausente: '+domain);
+}
+assert.ok(!worker.includes("await syncPlatformV2(db,row?.payload||{});\n      const data=await readDomainV2"),'Leitura V2 não deve depender de ressincronização do workspace');
