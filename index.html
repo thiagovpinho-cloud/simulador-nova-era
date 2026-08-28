@@ -3554,6 +3554,7 @@ function applyRole(role, label){
 }
 
 function showLogin(){
+  document.documentElement.classList.remove('focado-booting');
   document.documentElement.classList.remove('focado-modern-session');
   document.getElementById('loginScreen').classList.remove('hidden');
   document.getElementById('hubScreen').classList.add('hidden');
