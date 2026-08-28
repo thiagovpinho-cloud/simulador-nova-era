@@ -158,6 +158,17 @@ function applyInventory(state,body){
   if(c.inputInventory&&typeof c.inputInventory==='object')state.inputInventory=c.inputInventory;
   if(Array.isArray(c.stockMovements))state.stockMovements=c.stockMovements;
   if(Array.isArray(c.inventoryCounts))state.inventoryCounts=c.inventoryCounts;
+  if(c.inventoryPolicy&&typeof c.inventoryPolicy==='object'){
+    const p=structuredClone(c.inventoryPolicy);
+    p.sku=String(p.sku||'').trim();
+    if(!p.sku)throw Object.assign(new Error('INVENTORY_POLICY_SKU_REQUIRED'),{status:422});
+    p.minimum_stock=Math.max(0,Number(p.minimum_stock||0));
+    p.reorder_point=Math.max(0,Number(p.reorder_point||0));
+    p.safety_stock=Math.max(0,Number(p.safety_stock||0));
+    p.updatedAt=Date.now();
+    state.inventoryPolicy=state.inventoryPolicy||{};
+    state.inventoryPolicy[p.sku]=p;
+  }
 }
 
 function applyPurchases(state,body){
@@ -251,9 +262,59 @@ function applyExpedition(state,body){
   }
 }
 
+function upsertBy(list,incoming,keyFn){
+  const arr=Array.isArray(list)?list:[];
+  const key=keyFn(incoming);
+  const idx=arr.findIndex(x=>keyFn(x)===key);
+  if(idx>=0)arr[idx]={...arr[idx],...structuredClone(incoming)};
+  else arr.unshift(structuredClone(incoming));
+  return arr;
+}
+
 function applyFinance(state,body){
   const c=body.changes||{};
   state.finance={...(state.finance||{}),...pick(c,['approvedFreight','paymentStatus','invoiceStatus','creditStatus','notes'])};
+
+  if(c.biPolicy&&typeof c.biPolicy==='object'){
+    state.biPolicy={
+      revenueRecognition:'DELIVERED',
+      promisedDateRule:'REQUESTED_THEN_LOGISTICS',
+      inFullRule:'DISPATCHED_VS_CONFIRMED',
+      ...(state.biPolicy||{}),
+      ...pick(c.biPolicy,['revenueRecognition','promisedDateRule','inFullRule'])
+    };
+  }
+
+  if(c.monthlyTarget&&typeof c.monthlyTarget==='object'){
+    const t=structuredClone(c.monthlyTarget);
+    if(!/^\\d{4}-\\d{2}$/.test(String(t.period||'')))throw Object.assign(new Error('INVALID_TARGET_PERIOD'),{status:422});
+    t.scope_type=String(t.scope_type||'COMPANY').toUpperCase();
+    t.scope_id=String(t.scope_id||'ALL');
+    t.target_revenue=Math.max(0,Number(t.target_revenue||0));
+    t.target_boxes=Math.max(0,Number(t.target_boxes||0));
+    t.target_margin=t.target_margin===''||t.target_margin==null?null:Number(t.target_margin);
+    t.updatedAt=Date.now();
+    state.monthlyTargets=upsertBy(state.monthlyTargets,t,x=>[x.period,x.scope_type,x.scope_id].join('|'));
+  }
+
+  if(c.financialFact&&typeof c.financialFact==='object'){
+    const f=structuredClone(c.financialFact);
+    if(!f.order_id)throw Object.assign(new Error('FINANCIAL_FACT_ORDER_REQUIRED'),{status:422});
+    if(!getOrder(state,f.order_id))throw Object.assign(new Error('ORDER_NOT_FOUND'),{status:404});
+    for(const k of ['taxes','discounts','returns','bonuses','commission','freight_allocated'])f[k]=Math.max(0,Number(f[k]||0));
+    f.updatedAt=Date.now();
+    state.financialFacts=upsertBy(state.financialFacts,f,x=>String(x.order_id||''));
+  }
+
+  if(c.skuCost&&typeof c.skuCost==='object'){
+    const cost=structuredClone(c.skuCost);
+    cost.sku=String(cost.sku||'').trim();
+    cost.effective_from=String(cost.effective_from||'').slice(0,10);
+    if(!cost.sku||!/^\\d{4}-\\d{2}-\\d{2}$/.test(cost.effective_from))throw Object.assign(new Error('INVALID_SKU_COST'),{status:422});
+    cost.unit_variable_cost=Math.max(0,Number(cost.unit_variable_cost||0));
+    cost.updatedAt=Date.now();
+    state.skuCosts=upsertBy(state.skuCosts,cost,x=>[x.sku,x.effective_from].join('|'));
+  }
 }
 
 function applyCustomers(state,body){
