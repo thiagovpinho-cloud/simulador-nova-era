@@ -32,6 +32,8 @@
   let currentFilters={q:'',stage:'TODOS'};
   let editingId=null;
   let correctionMode=false;
+  let editRequested=false;
+  const canEditExisting=()=>['ADMIN','DIRETOR','GESTOR'].includes(window.FocadoAuth?.getRole?.()||'');
   function ensureOrderIds(ops){
     let changed=false;
     const used=new Set((ops.orders||[]).map(o=>String(o.id||'')).filter(Boolean));
@@ -85,8 +87,7 @@
   }
   function canCorrectPast(o,ops){
     if(!o||o.status==='COMERCIAL')return false;
-    const role=window.FocadoAuth?.getRole?.()||'';
-    return correctionRoles(ops).includes(role);
+    return canEditExisting();
   }
   function renderCorrectionPermissions(){
     const ops=load(),selected=new Set(correctionRoles(ops));
@@ -137,7 +138,7 @@
   }
 
   function render(filters){
-    currentFilters=filters||currentFilters;editingId=null;correctionMode=false;
+    currentFilters=filters||currentFilters;editingId=null;correctionMode=false;editRequested=false;
     const ops=ensureOrderIds(load());ensureCatalog(ops);
     const orders=(ops.orders||[]).slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     const filtered=orders.filter(o=>{
@@ -163,31 +164,36 @@
     const q=document.getElementById('foSearch'),st=document.getElementById('foStage');let timer;
     q.oninput=()=>{clearTimeout(timer);timer=setTimeout(()=>render({q:q.value,stage:st.value}),180)};
     st.onchange=()=>render({q:q.value,stage:st.value});
-    document.querySelectorAll('[data-fo-open]').forEach(b=>b.onclick=()=>openForm(b.dataset.foOpen));
+    document.querySelectorAll('[data-fo-open]').forEach(b=>b.onclick=()=>openForm(b.dataset.foOpen,false));
+    document.querySelectorAll('[data-fo-edit]').forEach(b=>b.onclick=()=>openForm(b.dataset.foEdit,true));
   }
   function stat(label,n,sub){return '<div class="fo-stat"><span>'+label+'</span><strong>'+n+'</strong><small>'+sub+'</small></div>'}
   function table(rows){
     if(!rows.length)return '<div class="fo-empty">Nenhum pedido encontrado.</div>';
+    const allowEdit=canEditExisting();
     return '<table class="fo-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>CNPJ</th><th>Representante</th><th>Data</th><th>Itens</th><th>Valor</th><th>Status</th><th>Previsão</th><th></th></tr></thead><tbody>'+rows.map(o=>{
       const s=stage(o.status);
-      return '<tr><td><div class="fo-order">'+esc(o.number)+'</div></td><td><div class="fo-client">'+esc(o.client||'—')+'</div><div class="fo-muted">'+esc([o.city,o.uf].filter(Boolean).join('/'))+'</div></td><td>'+esc(formatCnpj(o.cnpj)||'—')+'</td><td>'+esc(o.representative||'—')+'</td><td>'+dbr(o.orderDate)+'</td><td>'+(o.items||[]).length+'</td><td>'+money(value(o))+'</td><td><span class="fo-stage '+s[1]+'">'+s[0]+'</span></td><td>'+dbr(o.pcp?.availableDate||o.requestedDeliveryDate)+'</td><td><button class="fo-open" data-fo-open="'+esc(o.id)+'">Abrir</button></td></tr>';
+      return '<tr><td><div class="fo-order">'+esc(o.number)+'</div></td><td><div class="fo-client">'+esc(o.client||'—')+'</div><div class="fo-muted">'+esc([o.city,o.uf].filter(Boolean).join('/'))+'</div></td><td>'+esc(formatCnpj(o.cnpj)||'—')+'</td><td>'+esc(o.representative||'—')+'</td><td>'+dbr(o.orderDate)+'</td><td>'+(o.items||[]).length+'</td><td>'+money(value(o))+'</td><td><span class="fo-stage '+s[1]+'">'+s[0]+'</span></td><td>'+dbr(o.pcp?.availableDate||o.requestedDeliveryDate)+'</td><td><div class="fo-actions"><button class="fo-open" data-fo-open="'+esc(o.id)+'">Abrir</button>'+(allowEdit?'<button class="fo-open" data-fo-edit="'+esc(o.id)+'">Editar</button>':'')+'</div></td></tr>';
     }).join('')+'</tbody></table>';
   }
 
-  function openForm(id){
+  function openForm(id,requestEdit=false){
+    if(id&&requestEdit&&!canEditExisting()){alert('Seu perfil não possui permissão para editar pedidos.');return}
     const ops=load();ensureCatalog(ops);correctionMode=false;
     let order=id?(ops.orders||[]).find(o=>o.id===id):null;
-    if(!order){order=createBlank(ops);editingId=null}else editingId=order.id;
+    if(!order){order=createBlank(ops);editingId=null;editRequested=true}
+    else {editingId=order.id;editRequested=Boolean(requestEdit);correctionMode=Boolean(requestEdit&&order.status!=='COMERCIAL')}
     renderForm(order,ops);
   }
   function renderForm(o,ops){
-    const regularEditable=canEdit(o),correctionAllowed=canCorrectPast(o,ops);
+    const regularEditable=canEdit(o)&&(editingId===null||(editRequested&&canEditExisting())),correctionAllowed=canCorrectPast(o,ops);
+    const canOfferEdit=editingId!==null&&canEditExisting();
     const editable=regularEditable||(correctionMode&&correctionAllowed),readonly=editable?'':'disabled';formEditable=editable;
     const items=(o.items&&o.items.length?o.items:[{code:'',name:'',qty:'',price:''}]);
     const s=stage(o.status),cat=catalog(ops);
     content().innerHTML='<div class="fo-page">'+
       '<div class="fo-head"><div><button class="fo-back" id="foBack">← Histórico</button><h1>'+esc(o.number)+'</h1><p>Pedido comercial · <span class="fo-stage '+s[1]+'">'+s[0]+'</span></p></div><div class="fo-actions">'+
-        (editable?(correctionMode?'<button class="fo-btn secondary" id="foCancelCorrection">Cancelar correção</button><button class="fo-btn primary" id="foSave">Salvar correção</button>':'<button class="fo-btn secondary" id="foSave">Salvar rascunho</button><button class="fo-btn primary" id="foFinalize">Finalizar Comercial → PCP</button>'):(correctionAllowed?'<button class="fo-btn primary" id="foEditPast">Editar pedido</button>':''))+
+        (editable?(correctionMode?'<button class="fo-btn secondary" id="foCancelCorrection">Cancelar correção</button><button class="fo-btn primary" id="foSave">Salvar correção</button>':'<button class="fo-btn secondary" id="foSave">Salvar rascunho</button><button class="fo-btn primary" id="foFinalize">Finalizar Comercial → PCP</button>'):(canOfferEdit?'<button class="fo-btn primary" id="foEditPast">Editar pedido</button>':''))+
       '</div></div>'+(correctionMode?'<div class="fo-cnpj-status warn" style="margin-bottom:14px">Modo de correção ativado. O pedido permanecerá na etapa atual. Revise PCP, estoque/produção e logística se a alteração impactar quantidade, produto, preço, frete ou data.</div>':'')+
       '<div class="fo-flowline"><span class="'+(o.status==='COMERCIAL'?'active':'done')+'">1. Comercial</span><i>→</i><span class="'+(o.status==='PCP'?'active':(['ESTOQUE_PRODUCAO','LOGISTICA','ENTREGUE'].includes(o.status)?'done':'') )+'">2. PCP</span><i>→</i><span class="'+(['ESTOQUE_PRODUCAO','LOGISTICA'].includes(o.status)?'active':(o.status==='ENTREGUE'?'done':''))+'">3. Logística</span><i>→</i><span class="'+(o.status==='ENTREGUE'?'done':'')+'">4. Concluído</span></div>'+
       '<form id="foOrderForm" class="fo-form">'+
@@ -222,7 +228,7 @@
     const editPast=document.getElementById('foEditPast');
     if(editPast)editPast.onclick=()=>{
       if(!confirm('Editar este pedido já enviado?\n\nA etapa atual será mantida e a correção ficará registrada no histórico.'))return;
-      correctionMode=true;renderForm(o,ops);
+      editRequested=true;correctionMode=o.status!=='COMERCIAL';renderForm(o,ops);
     };
     if(editable){
       bindItemEvents(ops);
