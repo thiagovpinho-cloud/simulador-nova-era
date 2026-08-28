@@ -159,3 +159,20 @@ assert.ok(simulatorV3.includes('data-comp-loss'),'Perda da composição deve ser
 assert.ok(indexPerf.includes("if(patch.unit!=null)m.unit="),'Motor deve persistir unidade editada na fórmula');
 assert.ok(indexPerf.includes("if(patch.unit!=null)p.unit="),'Motor deve persistir unidade editada no processo');
 assert.ok(simulatorCssV3.includes('.fsim-modal'),'Cadastro de insumo deve possuir modal estilizado');
+
+const marginRulesModule=read('assets/modules/margin-rules.js');
+const financeRules=read('assets/modules/finance.js');
+const biRules=read('shared/bi-analytics.js');
+assert.ok(simulatorV3.includes("(document.getElementById('focadoShell')||document.body).appendChild(modal)"),'Modal de cadastrar insumo deve abrir dentro do shell moderno');
+assert.ok(marginRulesModule.includes("saveDomain?.('FINANCEIRO',{marginRules:readForm()})"),'Regras de Margem devem persistir pelo domínio Financeiro');
+for(const label of ['Custo do Produto','ICMS','PIS','COFINS','IPI','ST','Frete','Comissão','Contrato']){
+  assert.ok(marginRulesModule.includes(label),'Regra de margem ausente: '+label);
+}
+assert.ok(shared.includes("if(c.marginRules&&typeof c.marginRules==='object')"),'Backend de domínio deve persistir Regras de Margem');
+assert.ok(shared.includes("['CUSTO','MARGEM']"),'Backend deve aceitar somente CUSTO ou MARGEM');
+for(const field of ['icms','pis','cofins','ipi','st','contract']){
+  assert.ok(financeRules.includes("ffin"+field.charAt(0).toUpperCase()+field.slice(1))||financeRules.includes(field),'Financeiro deve capturar '+field);
+}
+assert.ok(biRules.includes('orderEconomics'),'BI deve centralizar economia do pedido');
+assert.ok(biRules.includes("if(rules[key]==='CUSTO')classifiedCosts+=value"),'BI deve abater somente fatores classificados como custo');
+assert.ok(biRules.includes('const gross=base+components.ipi+components.st'),'Faturamento bruto deve usar valor base final + IPI + ST');
