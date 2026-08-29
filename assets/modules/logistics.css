@@ -49,3 +49,31 @@
 .fl-info-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid #edf1ee}
 .fl-info-row:last-child{border-bottom:0}.fl-info-row span{font-size:9.5px;color:var(--fx-muted)}.fl-info-row b{font-size:10.5px}
 @media(max-width:800px){.fl-budget-row{grid-template-columns:1fr}.fl-budget-row>div{padding:11px 12px}}
+
+/* Logística — Mobile UX v2 */
+@media(max-width:700px){
+  .fl-head{align-items:flex-start;flex-direction:column}.fl-head h1{font-size:24px}.fl-head p{font-size:12px;line-height:1.4}
+  .fl-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}.fl-actions .fl-btn{min-height:44px;font-size:11px}
+  .fl-kpis{grid-template-columns:1fr 1fr;gap:8px}.fl-kpi{padding:12px}.fl-kpi span{font-size:10px}.fl-kpi strong{font-size:20px}
+  .fl-grid,.fl-detail-grid{grid-template-columns:1fr}
+  .fl-panel{padding:13px;border-radius:15px}.fl-panel h2{font-size:15px}
+  .fl-toolbar{padding:9px}.fl-search,.fl-select{width:100%;min-width:0;min-height:44px;font-size:16px}
+  .fl-table-wrap{border:0;background:transparent;overflow:visible}
+  .fl-table{display:block;min-width:0}
+  .fl-table thead{display:none}
+  .fl-table tbody{display:flex;flex-direction:column;gap:10px}
+  .fl-table tr{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;background:#fff;border:1px solid var(--fx-border);border-radius:16px;padding:14px;box-shadow:0 5px 18px rgba(17,43,33,.045)}
+  .fl-table td{display:block;border:0!important;padding:0!important;font-size:11px;min-width:0;overflow-wrap:anywhere}
+  .fl-table td::before{display:block;font-size:8px;font-weight:800;letter-spacing:.45px;text-transform:uppercase;color:var(--fx-muted);margin-bottom:3px}
+  .fl-table td:nth-child(1)::before{content:"Pedido"}.fl-table td:nth-child(2)::before{content:"Cliente"}.fl-table td:nth-child(3)::before{content:"Cidade/UF"}.fl-table td:nth-child(4)::before{content:"Transportadora"}.fl-table td:nth-child(5)::before{content:"Previsão"}.fl-table td:nth-child(6)::before{content:"Status"}
+  .fl-table td:last-child{grid-column:1/-1}.fl-table td:last-child::before{content:"Ação"}
+  .fl-open{width:100%;min-height:42px;font-size:10px}
+  .fl-form-grid{grid-template-columns:1fr!important;gap:12px}.fl-span-2{grid-column:auto}
+  .fl-field span{font-size:10px}.fl-field input,.fl-field select,.fl-field textarea{min-height:44px;font-size:16px}.fl-field textarea{min-height:96px}
+  .fl-form-actions{position:sticky;bottom:8px;z-index:2;background:rgba(244,247,245,.94);backdrop-filter:blur(10px);padding:8px;border-radius:14px}
+  .fl-form-actions .fl-btn{width:100%;min-height:44px}
+  .fl-budget-row{grid-template-columns:1fr}.fl-budget-row>div{padding:12px}
+  .fl-info-row{align-items:flex-start;flex-direction:column;gap:3px}
+  .fl-delivery-table{min-width:760px}
+}
+@media(max-width:430px){.fl-kpis{grid-template-columns:1fr}.fl-table tr{grid-template-columns:1fr}.fl-table td:last-child{grid-column:auto}}
