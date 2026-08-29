@@ -102,7 +102,7 @@ assert.ok(loader.includes("simulador:{css:'simulator.css',js:'simulator.js'}"),'
 assert.ok(loader.includes("simulador:()=>typeof window.FocadoSimulator?.render==='function'"),'Simulador moderno deve ter contrato');
 assert.ok(shell.includes("['simulador','∑','Simulador']"),'Simulador deve aparecer na barra lateral');
 
-assert.ok(/assets\/modules\/simulator\.css\?v=20260828-(?:simulator-v\d+|input-edit-save-v\d+)/.test(index),'Simulador deve ser pré-carregado com CSS');
+assert.ok(/assets\/modules\/simulator\.css\?v=(?:20260828-(?:simulator-v\d+|input-edit-save-v\d+)|20260829-mobile-v\d+)/.test(index),'Simulador deve ser pré-carregado com CSS');
 assert.ok(/assets\/modules\/simulator\.js\?v=20260828-(?:simulator-v\d+|input-edit-save-v\d+)/.test(index),'Simulador deve ser pré-carregado com JavaScript');
 const publishedHead=index.split('</head>',1)[0];
 assert.ok(!publishedHead.includes('\\n'),'Head não pode conter \\n literal visível no primeiro paint');
@@ -123,5 +123,5 @@ assert.ok(index.includes('assets/modules/representatives.js?v=20260828-fantasy-v
 assert.ok(/assets\/modules\/orders\.js\?v=20260828-(?:edit-actions-v\d+|payment-sync-v\d+|delete-order-v\d+|margin-logistics-v\d+)/.test(index),'Pedidos deve publicar revisão atual que consome cadastro mestre, edição e exclusão privilegiada');
 assert.ok(/assets\/modules\/customers\.js\?v=20260828-edit-actions-v\d+/.test(index),'Clientes deve publicar Condição de Pagamento mestre');
 
-assert.ok(/assets\/app-shell\.js\?v=20260828-edit-actions-v\d+/.test(index),'Shell deve publicar proteção contra rerender de formulário');
+assert.ok(/assets\/app-shell\.js\?v=(?:20260828-edit-actions-v\d+|20260829-mobile-v\d+)/.test(index),'Shell deve publicar proteção contra rerender de formulário e navegação mobile');
 assert.ok(/assets\/modules\/orders\.js\?v=20260828-(?:edit-actions-v\d+|payment-sync-v\d+|delete-order-v\d+|margin-logistics-v\d+)/.test(index),'Pedidos deve publicar proteção de formulário ativo');
