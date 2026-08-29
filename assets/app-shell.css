@@ -119,3 +119,43 @@
 .fx-search input{font-size:12px!important}
 .fx-user-meta b{font-size:11.5px!important}.fx-user-meta small{font-size:9.5px!important}
 .fx-logout,.fx-menu-toggle{min-width:40px;min-height:40px}
+
+/* Focado Mobile UX v1 — app-native responsive layer */
+.fx-mobile-backdrop{display:none}
+@media(max-width:760px){
+  #focadoShell{height:100dvh;min-height:100dvh;overflow:hidden}
+  .fx-main{height:100dvh;min-height:0}
+  .fx-topbar{position:sticky;top:0;z-index:2;height:60px;padding:0 10px;gap:8px}
+  .fx-menu-toggle{flex:0 0 44px;width:44px;height:44px;border-radius:12px;font-size:20px}
+  .fx-search{min-width:0;padding:8px 10px;border-radius:12px}
+  .fx-search input{font-size:16px!important}
+  .fx-user{gap:6px}
+  .fx-avatar{width:38px;height:38px;flex:0 0 38px}
+  .fx-logout{min-width:44px;min-height:44px;padding:8px;font-size:0}
+  .fx-logout::after{content:"Sair";font-size:10px}
+  .fx-content{padding:14px 12px max(24px,env(safe-area-inset-bottom));overscroll-behavior:contain}
+  .fx-sidebar{width:min(86vw,320px);z-index:5;box-shadow:18px 0 50px rgba(0,0,0,.24);padding-bottom:env(safe-area-inset-bottom)}
+  .fx-sidebar.open~.fx-main{}
+  .fx-mobile-backdrop{position:fixed;inset:0;z-index:4;background:rgba(2,31,25,.42);backdrop-filter:blur(2px)}
+  .fx-mobile-backdrop:has(+ .fx-sidebar.open){display:block}
+  .fx-brand{min-height:78px!important;padding:12px 16px!important}
+  .fx-brand>img#fxBrandLogo{width:176px!important;max-height:54px!important}
+  .fx-menu{padding:8px 10px 18px}
+  .fx-menu-label{padding:14px 10px 6px!important}
+  .fx-nav{min-height:46px!important;padding:11px 12px!important;border-radius:12px!important;font-size:13px!important}
+  .fx-nav-icon{width:22px;font-size:16px}
+  .fx-titlebar{align-items:flex-start;flex-direction:column;margin-bottom:14px}
+  .fx-titlebar h1,.fx-titlebar-premium h1{font-size:24px;line-height:1.12;letter-spacing:-.55px}
+  .fx-titlebar p,.fx-titlebar-premium p{font-size:12px;line-height:1.45}
+  .fx-kpis,.fx-kpis-premium{grid-template-columns:1fr 1fr;gap:8px}
+  .fx-kpi{padding:13px;border-radius:14px}
+  .fx-kpi strong{font-size:20px}
+  .fx-panel{padding:13px;border-radius:14px}
+  button,input,select,textarea{touch-action:manipulation}
+}
+@media(max-width:430px){
+  .fx-search{max-width:none}
+  .fx-search span{display:none}
+  .fx-avatar{display:none}
+  .fx-kpis,.fx-kpis-premium{grid-template-columns:1fr}
+}
