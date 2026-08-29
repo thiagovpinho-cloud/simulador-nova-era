@@ -318,3 +318,29 @@ const mobileIndicators=read('assets/modules/indicators.css');
 assert.ok(mobileIndicators.includes('Cockpit / Indicadores — Mobile UX v2'),'Cockpit deve publicar camada mobile v2');
 assert.ok(mobileIndicators.includes('.fbi-filters{grid-template-columns:1fr 1fr'),'Filtros do cockpit devem reorganizar no celular');
 assert.ok(mobileIndicators.includes('.fbi-modal{align-items:end'),'Detalhes do cockpit devem abrir como sheet mobile');
+
+const mobileProduction=read('assets/modules/production.css');
+assert.ok(mobileProduction.includes('Produção — Mobile UX v3'),'Produção deve publicar camada mobile v3');
+assert.ok(mobileProduction.includes('.fpr-table thead{display:none}'),'Produção deve converter tabela em cards no celular');
+
+const mobilePurchases=read('assets/modules/purchases.css');
+assert.ok(mobilePurchases.includes('Compras — Mobile UX v3'),'Compras deve publicar camada mobile v3');
+assert.ok(mobilePurchases.includes('.fpur-table-wrap thead{display:none}'),'Compras deve converter tabela em cards no celular');
+
+const mobileFinance=read('assets/modules/finance.css');
+assert.ok(mobileFinance.includes('Financeiro — Mobile UX v3'),'Financeiro deve publicar camada mobile v3');
+assert.ok(mobileFinance.includes('position:sticky;bottom:8px'),'Financeiro deve manter ações acessíveis no celular');
+
+const mobileKanban=read('assets/modules/kanban.css');
+assert.ok(mobileKanban.includes('Kanban — Mobile UX v3'),'Kanban deve publicar camada mobile v3');
+assert.ok(mobileKanban.includes('scroll-snap-type:x mandatory'),'Kanban deve navegar por colunas com snap no celular');
+
+const mobileProducts=read('assets/modules/products.css');
+assert.ok(mobileProducts.includes('Produtos — Mobile UX v3'),'Produtos deve publicar camada mobile v3');
+assert.ok(mobileProducts.includes('.fp-table thead{display:none}'),'Produtos deve converter tabela em cards no celular');
+
+const mobileSettings=read('assets/modules/settings.css');
+assert.ok(mobileSettings.includes('Configurações — Mobile UX v3'),'Configurações deve publicar camada mobile v3');
+
+const mobileUsers=read('assets/modules/users.css');
+assert.ok(mobileUsers.includes('Usuários — Mobile UX v3'),'Usuários deve publicar camada mobile v3');
