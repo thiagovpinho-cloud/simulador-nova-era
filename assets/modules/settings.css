@@ -11,3 +11,10 @@
 .fset-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}.fset-health{margin-top:12px}.fset-health-ok,.fset-health-error{border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:3px;font-size:11px}.fset-health-ok{background:#edf8ef;color:#237241}.fset-health-error{background:#fff0ef;color:#a83b35}
 .fset-toast{position:fixed;right:20px;bottom:20px;z-index:3000;padding:11px 14px;border-radius:10px;color:#fff;font-size:12px;font-weight:700;transform:translateY(20px);opacity:0;transition:.18s}.fset-toast.show{transform:none;opacity:1}.fset-toast.ok{background:#17663f}.fset-toast.error{background:#a73d36}
 @media(max-width:900px){.fset-grid{grid-template-columns:1fr}}@media(max-width:560px){.fset-actions{grid-template-columns:1fr}.fset-status{flex-direction:column}.fset-status b{max-width:none;text-align:left}}
+/* Configurações — Mobile UX v3 */
+@media(max-width:700px){
+  .fset-grid{grid-template-columns:1fr}.fset-card{padding:14px;border-radius:16px}.fset-card-head{flex-direction:column}.fset-card-head h2{font-size:15px}.fset-card-head p{font-size:11px;line-height:1.4}
+  .fset-form input,.fset-form select{min-height:44px;font-size:16px}.fset-form label{font-size:11px}
+  .fset-actions{grid-template-columns:1fr}.fset-primary,.fset-secondary{min-height:44px}
+  .fset-toast{left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));text-align:center}
+}
