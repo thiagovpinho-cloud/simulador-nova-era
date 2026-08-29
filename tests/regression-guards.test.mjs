@@ -272,3 +272,30 @@ assert.ok(simulatorInputs.includes('Cancelar'),'Base de Insumos deve permitir ca
 assert.ok(simulatorInputs.includes("(inputEditMode?'':'disabled')"),'Preços de insumos devem iniciar bloqueados');
 assert.ok(simulatorInputs.includes("inputDraft[i.dataset.inputPrice]"),'Alterações devem ficar em rascunho antes de salvar');
 assert.ok(simulatorInputs.includes('setInputPrice(item.code,value)'),'Salvar alterações deve aplicar preços ao motor');
+
+const mobileShell=read('assets/app-shell.css');
+assert.ok(mobileShell.includes('Focado Mobile UX v1'),'Shell deve publicar a camada mobile v1');
+assert.ok(mobileShell.includes('height:100dvh'),'Shell mobile deve usar viewport dinâmica');
+assert.ok(mobileShell.includes('.fx-mobile-backdrop'),'Menu mobile deve possuir backdrop');
+const mobileShellJs=read('assets/app-shell.js');
+assert.ok(mobileShellJs.includes('fxMobileBackdrop'),'Shell deve fechar menu pelo backdrop');
+assert.ok(mobileShellJs.includes("if(e.key==='Escape')"),'Shell deve fechar menu com Escape');
+
+const mobileOrders=read('assets/modules/orders.css');
+assert.ok(mobileOrders.includes('Pedidos — mobile-first presentation'),'Pedidos deve ter apresentação mobile dedicada');
+assert.ok(mobileOrders.includes('.fo-table thead{display:none}'),'Pedidos deve abandonar tabela desktop no celular');
+assert.ok(mobileOrders.includes('grid-template-columns:repeat(3,1fr)'),'Ações de pedido devem ser touch-friendly no celular');
+
+const mobileCustomers=read('assets/modules/customers.css');
+assert.ok(mobileCustomers.includes('Clientes — mobile-first presentation'),'Clientes deve ter apresentação mobile dedicada');
+assert.ok(mobileCustomers.includes('.fc-table thead{display:none}'),'Clientes deve abandonar tabela desktop no celular');
+
+const mobileRepresentatives=read('assets/modules/representatives.css');
+assert.ok(mobileRepresentatives.includes('Representantes — mobile-first presentation'),'Representantes deve ter apresentação mobile dedicada');
+
+const mobileSimulator=read('assets/modules/simulator.css');
+assert.ok(mobileSimulator.includes('Simulador — mobile-first presentation'),'Simulador deve ter apresentação mobile dedicada');
+
+const mobileIndex=read('index.html');
+assert.ok(mobileIndex.includes('viewport-fit=cover'),'Viewport deve respeitar safe areas no celular');
+assert.ok(!mobileIndex.includes('maximum-scale=1'),'Viewport não deve bloquear zoom de acessibilidade');
