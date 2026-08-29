@@ -299,3 +299,22 @@ assert.ok(mobileSimulator.includes('Simulador — mobile-first presentation'),'S
 const mobileIndex=read('index.html');
 assert.ok(mobileIndex.includes('viewport-fit=cover'),'Viewport deve respeitar safe areas no celular');
 assert.ok(!mobileIndex.includes('maximum-scale=1'),'Viewport não deve bloquear zoom de acessibilidade');
+
+const mobilePcp=read('assets/modules/pcp.css');
+assert.ok(mobilePcp.includes('PCP — Mobile UX v2'),'PCP deve publicar camada mobile v2');
+assert.ok(mobilePcp.includes('.fpcp-table thead{display:none}'),'PCP deve converter lista principal em cards no celular');
+assert.ok(mobilePcp.includes('min-height:44px;font-size:16px'),'PCP deve usar campos touch-friendly');
+
+const mobileInventory=read('assets/modules/inventory.css');
+assert.ok(mobileInventory.includes('Estoque — Mobile UX v2'),'Estoque deve publicar camada mobile v2');
+assert.ok(mobileInventory.includes('.fi-table thead{display:none}'),'Estoque deve converter tabela em cards no celular');
+
+const mobileLogistics=read('assets/modules/logistics.css');
+assert.ok(mobileLogistics.includes('Logística — Mobile UX v2'),'Logística deve publicar camada mobile v2');
+assert.ok(mobileLogistics.includes('.fl-table thead{display:none}'),'Logística deve converter tabela em cards no celular');
+assert.ok(mobileLogistics.includes('position:sticky;bottom:8px'),'Logística deve manter ação principal acessível no celular');
+
+const mobileIndicators=read('assets/modules/indicators.css');
+assert.ok(mobileIndicators.includes('Cockpit / Indicadores — Mobile UX v2'),'Cockpit deve publicar camada mobile v2');
+assert.ok(mobileIndicators.includes('.fbi-filters{grid-template-columns:1fr 1fr'),'Filtros do cockpit devem reorganizar no celular');
+assert.ok(mobileIndicators.includes('.fbi-modal{align-items:end'),'Detalhes do cockpit devem abrir como sheet mobile');
