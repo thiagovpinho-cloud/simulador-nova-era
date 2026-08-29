@@ -22,3 +22,38 @@
 .fc-table th:last-child,.fc-table td:last-child{width:150px;text-align:right}
 .fc-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:nowrap}
 .fc-actions .fc-btn{display:inline-flex;align-items:center;justify-content:center;min-width:68px;height:38px;padding:0 14px;line-height:1;white-space:nowrap}
+
+/* Clientes — mobile-first presentation */
+@media(max-width:700px){
+  .fc-page{padding:10px 0 56px}
+  .fc-head{gap:12px;margin-bottom:14px}
+  .fc-head h1{font-size:24px}
+  .fc-head p{font-size:12px;line-height:1.4}
+  .fc-head .fc-btn{min-height:44px;width:100%;font-size:12px}
+  .fc-toolbar{padding:9px;gap:8px}
+  .fc-search-wrap{width:100%;min-height:44px}
+  .fc-search-wrap input{font-size:16px}
+  .fc-muted{font-size:10px}
+  .fc-table-wrap{border:0;background:transparent;overflow:visible}
+  .fc-table{min-width:0;display:block}
+  .fc-table thead{display:none}
+  .fc-table tbody{display:flex;flex-direction:column;gap:10px}
+  .fc-table tr{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;background:#fff;border:1px solid var(--fx-border);border-radius:16px;padding:14px;box-shadow:0 5px 18px rgba(17,43,33,.045)}
+  .fc-table td{display:block;border:0!important;padding:0!important;font-size:11px;min-width:0;overflow-wrap:anywhere}
+  .fc-table td::before{display:block;font-size:8px;font-weight:800;letter-spacing:.45px;text-transform:uppercase;color:var(--fx-muted);margin-bottom:3px}
+  .fc-table td:nth-child(1)::before{content:"Cliente"}.fc-table td:nth-child(2)::before{content:"CNPJ"}.fc-table td:nth-child(3)::before{content:"E-mail"}.fc-table td:nth-child(4)::before{content:"Telefone"}.fc-table td:nth-child(5)::before{content:"Cidade / UF"}.fc-table td:nth-child(6)::before{content:"Endereço"}.fc-table td:nth-child(7)::before{content:"Representante"}.fc-table td:nth-child(8)::before{content:"Status"}
+  .fc-table th:last-child,.fc-table td:last-child{width:auto;text-align:left;grid-column:1/-1}
+  .fc-table td:last-child::before{content:"Ações"}
+  .fc-actions{justify-content:stretch;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .fc-actions .fc-btn{height:42px;min-width:0;font-size:10px}
+  .fc-card{padding:14px;border-radius:16px}
+  .fc-grid{grid-template-columns:1fr!important;gap:12px}
+  .fc-field.wide{grid-column:auto}
+  .fc-field span{font-size:10px}
+  .fc-field input,.fc-field select,.fc-field textarea{min-height:44px;font-size:16px;padding:10px 11px}
+  .fc-field textarea{min-height:100px}
+}
+@media(max-width:430px){
+  .fc-table tr{grid-template-columns:1fr}
+  .fc-table th:last-child,.fc-table td:last-child{grid-column:auto}
+}
