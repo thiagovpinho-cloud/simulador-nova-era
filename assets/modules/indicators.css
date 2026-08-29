@@ -26,3 +26,25 @@
 .fbi-progress-chart{margin:2px 0 14px;padding:11px;background:#f8faf9;border-radius:11px}.fbi-progress-head,.fbi-progress-foot{display:flex;justify-content:space-between;gap:10px}.fbi-progress-head span{font-size:8px;color:var(--fx-muted);font-weight:700}.fbi-progress-head b{font-size:10px}.fbi-progress-track{height:14px;background:#e8eeeb;border-radius:999px;overflow:hidden;margin:7px 0 4px}.fbi-progress-track i{display:block;height:100%;background:#15926d;border-radius:999px}.fbi-progress-foot{font-size:7px;color:var(--fx-muted)}
 .fbi-chart-empty{padding:18px;text-align:center;background:#f8faf9;border-radius:10px;color:var(--fx-muted);font-size:8.5px;margin-bottom:12px}
 @media(max-width:700px){.fbi-donut-wrap{grid-template-columns:1fr}.fbi-donut{width:130px;height:130px}.fbi-vchart button{grid-template-columns:75px 1fr auto}}
+
+/* Cockpit / Indicadores — Mobile UX v2 */
+@media(max-width:700px){
+  .fbi-page{gap:12px}
+  .fbi-head{align-items:flex-start;flex-direction:column}.fbi-head h1{font-size:24px}.fbi-head p{font-size:12px;line-height:1.4}
+  .fbi-meta{text-align:left}.fbi-meta b{font-size:10px}.fbi-meta span{font-size:9px}
+  .fbi-filters{grid-template-columns:1fr 1fr;padding:10px;gap:8px}
+  .fbi-filters label{font-size:9px}.fbi-filters input,.fbi-filters select{min-height:44px;font-size:16px}
+  .fbi-filter-actions{grid-column:1/-1;display:grid!important;grid-template-columns:1fr 1fr}
+  .fbi-btn{min-height:42px;font-size:10px}
+  .fbi-kpis{grid-template-columns:1fr 1fr;gap:8px}.fbi-kpi{padding:13px}.fbi-kpi span{font-size:9.5px}.fbi-kpi strong{font-size:20px}.fbi-kpi small{font-size:8.5px}
+  .fbi-grid{grid-template-columns:1fr}.fbi-panel{padding:13px;border-radius:15px}.fbi-panel-head h2{font-size:14px}.fbi-panel-head p{font-size:9.5px;line-height:1.35}
+  .fbi-table-wrap{overflow:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px}
+  .fbi-table{font-size:10px;min-width:620px}.fbi-table th{font-size:8px}.fbi-table td{font-size:10px}
+  .fbi-bar-label{font-size:10px}.fbi-bar-row small{font-size:8.5px}
+  .fbi-donut-wrap{grid-template-columns:1fr}.fbi-donut{width:128px;height:128px}
+  .fbi-legend button{min-height:42px}.fbi-legend span,.fbi-legend b{font-size:9.5px}
+  .fbi-vchart button{grid-template-columns:80px 1fr auto;min-height:38px}.fbi-vchart button>span,.fbi-vchart button>b{font-size:9px}
+  .fbi-modal{align-items:end;padding:10px}.fbi-modal-card{width:100%;max-height:90dvh;border-radius:20px 20px 0 0;padding:16px 14px max(18px,env(safe-area-inset-bottom))}
+  .fbi-modal-kpis{grid-template-columns:1fr 1fr}.fbi-modal-list button{min-height:44px}
+}
+@media(max-width:430px){.fbi-filters,.fbi-kpis,.fbi-modal-kpis{grid-template-columns:1fr}.fbi-filter-actions{grid-column:auto}}
