@@ -30,5 +30,18 @@ refreshWorkflowState(state,{at:456});
 assert.equal(state.workflowState.byOrder.o2.finance.status,'REGISTRADO');
 assert.equal(state.workflowState.byOrder.o2.nextAction.action,'SEM_PENDENCIA_CRITICA');
 assert.equal(state.workflowState.workQueue.length,1);
+assert.ok(Array.isArray(state.workflowEvents));
+
+// Mudança de responsabilidade deve gerar evento operacional auditável.
+const beforeEvents=state.workflowEvents.length;
+state.orders[0].items[0].reservedQty=5;
+state.inventory.P1.reserved=5;
+refreshWorkflowState(state,{at:789});
+assert.ok(state.workflowEvents.length>=beforeEvents);
+const latest=state.workflowEvents[0];
+assert.equal(latest.type,'NEXT_ACTION_CHANGED');
+assert.equal(latest.orderId,'o1');
+assert.equal(latest.from.action,'RESERVAR_ESTOQUE');
+assert.equal(latest.to.action,'GERAR_NECESSIDADE_PRODUCAO');
 
 console.log('workflow-state: ok');
