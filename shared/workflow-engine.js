@@ -124,6 +124,12 @@ export function computeNextAction(state,order,workflow=computeOrderWorkflow(stat
     return {area:'COMERCIAL',action:'CONCLUIR_PEDIDO',reason:'Pedido ainda não foi liberado pelo Comercial.',entityId:String(order.id)};
   }
 
+  // Uma entrega confirmada encerra as dependências operacionais anteriores.
+  // A partir daqui, qualquer pendência financeira tem precedência.
+  if(workflow.finance.status==='PENDENTE'){
+    return {area:'FINANCEIRO',action:'REGISTRAR_FATO_FINANCEIRO',reason:'Pedido entregue sem fato financeiro vinculado.',entityId:String(order.id)};
+  }
+
   const reservable=workflow.inventory.coverage?.find(x=>x.open>0&&x.free>0);
   if(reservable){
     return {area:'PCP',action:'RESERVAR_ESTOQUE',reason:'Há saldo físico disponível ainda não reservado para o pedido.',entityId:String(order.id),sku:reservable.key};
@@ -159,10 +165,6 @@ export function computeNextAction(state,order,workflow=computeOrderWorkflow(stat
 
   if(order.status==='LOGISTICA'&&!order.logistics?.deliveryConfirmed){
     return {area:'LOGISTICA',action:'ACOMPANHAR_ENTREGA',reason:'Pedido em fluxo logístico e entrega ainda não confirmada.',entityId:String(order.id)};
-  }
-
-  if(workflow.finance.status==='PENDENTE'){
-    return {area:'FINANCEIRO',action:'REGISTRAR_FATO_FINANCEIRO',reason:'Pedido entregue sem fato financeiro vinculado.',entityId:String(order.id)};
   }
 
   return {area:null,action:'SEM_PENDENCIA_CRITICA',reason:'Nenhuma próxima ação determinística foi identificada.',entityId:String(order.id)};
