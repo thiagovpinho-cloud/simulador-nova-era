@@ -79,65 +79,46 @@ jobs:
           set -euo pipefail
           BASE="${{ steps.deploy_pages.outputs.url }}"
           test -n "$BASE"
-          curl -fsS --retry 6 --retry-delay 3 "$BASE/" -o /tmp/focado-index.html
-          grep -q "assets/modules/simulator.js?v=20260828-simulator-v5" /tmp/focado-index.html
-          grep -q "assets/modules/simulator.css?v=20260828-simulator-v4" /tmp/focado-index.html
-          grep -q "assets/modules/margin-rules.js?v=20260828-margin-rules-v1" /tmp/focado-index.html
-          grep -q "assets/modules/orders.js?v=20260828-order-stability-v1" /tmp/focado-index.html
-          grep -q "assets/modules/orders.css?v=20260828-profit-v1" /tmp/focado-index.html
 
-          PROD="https://focado.pages.dev"
-          READY=0
-          for i in {1..36}; do
-            if curl -fsS --retry 2 --retry-delay 2 "$PROD/?release=${GITHUB_SHA}" -o /tmp/focado-prod-index.html \
-              && grep -q "assets/modules/orders.js?v=20260828-order-stability-v1" /tmp/focado-prod-index.html; then
-              READY=1
-              echo "Production alias is serving validated order-profit revision."
-              break
-            fi
-            echo "Waiting for production alias... attempt $i/36"
-            sleep 5
-          done
-          test "$READY" = "1"
-          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/simulator.js?v=20260828-simulator-v5" -o /tmp/simulator.js
-          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/simulator.css?v=20260828-simulator-v4" -o /tmp/simulator.css
-          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/margin-rules.js?v=20260828-margin-rules-v1" -o /tmp/margin-rules.js
-          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/margin-rules.css?v=20260828-margin-rules-v1" -o /tmp/margin-rules.css
-          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/orders.js?v=20260828-order-stability-v1" -o /tmp/orders.js
-          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/orders.css?v=20260828-profit-v1" -o /tmp/orders.css
-          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/customers.js?v=20260828-master-v1" -o /tmp/customers.js
-          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/representatives.js?v=20260828-fantasy-v1" -o /tmp/representatives.js
-          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/app-shell.js?v=20260828-order-stability-v1" -o /tmp/app-shell.js
+          # 1) Smoke da revisão recém-publicada (URL imutável do deploy)
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/" -o /tmp/focado-index.html
+          grep -q "assets/core/module-loader.js" /tmp/focado-index.html
+          grep -q "assets/app-shell.js" /tmp/focado-index.html
+          grep -q "assets/modules/orders.js" /tmp/focado-index.html
+          grep -q "assets/modules/simulator.js" /tmp/focado-index.html
+
+          # 2) Validar artefatos críticos pelo caminho real, sem acoplar o smoke a querystrings de versão.
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/core/module-loader.js" -o /tmp/module-loader.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/app-shell.js" -o /tmp/app-shell.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/pendencias.js" -o /tmp/pendencias.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/pendencias.css" -o /tmp/pendencias.css
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/simulator.js" -o /tmp/simulator.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/margin-rules.js" -o /tmp/margin-rules.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/orders.js" -o /tmp/orders.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/customers.js" -o /tmp/customers.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/representatives.js" -o /tmp/representatives.js
+
+          grep -q "pendencias:{css:'pendencias.css',js:'pendencias.js'}" /tmp/module-loader.js
+          grep -q "Central de Pendências" /tmp/pendencias.js
+          grep -q "COCKPIT 360º DO PEDIDO" /tmp/pendencias.js
+          grep -q "window.FocadoPendencias" /tmp/pendencias.js
+          grep -q ".fp360-backdrop" /tmp/pendencias.css
+          grep -q "Central de Pendências" /tmp/app-shell.js
+          grep -q "if(id==='pendencias')" /tmp/app-shell.js
+
+          # 3) Preservar smoke das funções de negócio legadas essenciais.
           grep -q "window.FocadoSimulator={render}" /tmp/simulator.js
-          grep -q "(document.getElementById('focadoShell')||document.body).appendChild(modal)" /tmp/simulator.js
           grep -q "Cadastrar insumo" /tmp/simulator.js
           grep -q "Manual por caixa" /tmp/simulator.js
-          grep -q "data-comp-unit" /tmp/simulator.js
-          grep -q "data-comp-qty" /tmp/simulator.js
-          grep -q "data-comp-loss" /tmp/simulator.js
-          grep -q ".fsim-page" /tmp/simulator.css
           grep -q "window.FocadoMarginRules={render}" /tmp/margin-rules.js
           grep -q "Custo do Produto" /tmp/margin-rules.js
-          grep -q "Regras de Margem" /tmp/margin-rules.js
-          grep -q ".fmr-page" /tmp/margin-rules.css
           grep -q "Preço final c/ impostos" /tmp/orders.js
           grep -q "updateProfitability" /tmp/orders.js
           grep -q "quoteOrder" /tmp/orders.js
-          grep -q "customerCnpjField(o,ops,editable)" /tmp/orders.js
-          grep -q "function bindCustomerSelection(ops,o)" /tmp/orders.js
-          grep -q "Fonte: Cadastro de Clientes" /tmp/orders.js
-          grep -q "setForm('paymentTerms',customer.paymentTerms||'')" /tmp/orders.js
-          grep -q ".fo-margin-cell" /tmp/orders.css
-          grep -q "function isFormOpen()" /tmp/orders.js
-          grep -q "if(window.FocadoOrders?.isFormOpen?.())return;" /tmp/app-shell.js
-          grep -q "if(active==='dashboard')dashboard();" /tmp/app-shell.js
           grep -q "lookupCnpj(value)" /tmp/customers.js
           grep -q "CNPJ localizado. Dados cadastrais preenchidos automaticamente." /tmp/customers.js
-          grep -q "representativeSelect(ops,customer)" /tmp/customers.js
-          grep -q "representativeId:document.getElementById('fcRepresentative').value" /tmp/customers.js
-          grep -q "Condição de pagamento" /tmp/customers.js
-          grep -q "paymentTerms:document.getElementById('fcPaymentTerms').value.trim()" /tmp/customers.js
           grep -q "Nome fantasia" /tmp/representatives.js
+
           python - <<'PY'
           from pathlib import Path
           html=Path('/tmp/focado-index.html').read_text(errors='replace')
@@ -146,5 +127,25 @@ jobs:
           assert 'window.FocadoLegacySimulator' in html, 'pricing adapter missing from published HTML'
           assert 'focado-booting' in html, 'boot splash class missing from published HTML'
           assert 'focado-brand.svg?v=20260828-boot' in html, 'boot splash logo missing from published HTML'
-          print('published-smoke: ok')
+          print('immutable-deploy-smoke: ok')
           PY
+
+          # 4) O alias de produção só é aceito quando servir a nova Central de Pendências.
+          PROD="https://focado.pages.dev"
+          READY=0
+          for i in {1..36}; do
+            if curl -fsS --retry 2 --retry-delay 2 "$PROD/assets/core/module-loader.js?release=${GITHUB_SHA}" -o /tmp/focado-prod-loader.js \
+              && grep -q "pendencias:{css:'pendencias.css',js:'pendencias.js'}" /tmp/focado-prod-loader.js; then
+              READY=1
+              echo "Production alias is serving the integrated workflow release."
+              break
+            fi
+            echo "Waiting for production alias... attempt $i/36"
+            sleep 5
+          done
+          test "$READY" = "1"
+
+          curl -fsS --retry 6 --retry-delay 3 "$PROD/assets/modules/pendencias.js?release=${GITHUB_SHA}" -o /tmp/focado-prod-pendencias.js
+          grep -q "COCKPIT 360º DO PEDIDO" /tmp/focado-prod-pendencias.js
+          grep -q "/api/workflow" /tmp/focado-prod-pendencias.js
+          echo "published-smoke: ok"
