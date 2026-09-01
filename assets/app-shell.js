@@ -6,7 +6,7 @@
   shell.id='focadoShell'; shell.className='hidden';
 
   const navGroups=[
-    ['Principal',[['dashboard','⌂','Dashboard'],['cockpit','◉','Cockpit Executivo'],['kanban','▦','Kanban Operacional']]],
+    ['Principal',[['dashboard','⌂','Dashboard'],['pendencias','⚡','Central de Pendências'],['cockpit','◉','Cockpit Executivo'],['kanban','▦','Kanban Operacional']]],
     ['Comercial',[['clientes','♙','Clientes'],['representantes','♣','Representantes'],['pedidos','▤','Pedidos Comerciais'],['simulador','∑','Simulador']]],
     ['Operações',[['pcp','⌘','PCP'],['production','⚙','Produção'],['inventory','▣','Estoque'],['inputs','◇','Insumos'],['purchases','↻','Compras'],['expedicao','⇱','Expedição']]],
     ['Logística',[['logistica','▰','Logística'],['entregas','✓','Entregas'],['transportadoras','⌁','Transportadoras']]],
@@ -18,7 +18,7 @@
 
   function navHtml(){
     return navGroups.map(([label,items])=>{
-      const visible=items.filter(([id])=>!window.FocadoAuth||window.FocadoAuth.can(id));
+      const visible=items.filter(([id])=>!window.FocadoAuth||window.FocadoAuth.can(id==='pendencias'?'cockpit':id));
       if(!visible.length)return '';
       return '<div class="fx-menu-label">'+label+'</div>'+visible.map(([id,icon,text,flag])=>'<button class="fx-nav '+(id==='dashboard'?'active':'')+'" data-fx-nav="'+id+'"><span class="fx-nav-icon">'+icon+'</span><span>'+text+'</span>'+(flag?'<span class="fx-nav-soon">em breve</span>':'')+'</button>').join('');
     }).join('');
@@ -130,7 +130,7 @@
   function hideShell(){shell.classList.add('hidden')}
   function setActive(id){document.querySelectorAll('[data-fx-nav]').forEach(b=>b.classList.toggle('active',b.dataset.fxNav===id))}
   async function navigate(id){
-    if(window.FocadoAuth && !window.FocadoAuth.can(id)){
+    if(window.FocadoAuth && !window.FocadoAuth.can(id==='pendencias'?'cockpit':id)){
       alert('Seu perfil não possui acesso a esta área.');
       return;
     }
@@ -158,6 +158,7 @@
         .catch(err=>console.warn('[FocadoDataStore] atualização em segundo plano falhou para '+domain,err));
     };
     if(id==='dashboard'){showShell(true);return}
+    if(id==='pendencias'){open(()=>window.FocadoPendencias?.render());return}
     if(id==='kanban'){open(()=>window.FocadoKanban?.render({q:'',brand:'TODAS'}));return}
     if(id==='clientes'){
       open(()=>window.FocadoCustomers?.render());

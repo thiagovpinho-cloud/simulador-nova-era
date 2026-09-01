@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const js=fs.readFileSync(new URL('../assets/modules/pendencias.js',import.meta.url),'utf8');
+const css=fs.readFileSync(new URL('../assets/modules/pendencias.css',import.meta.url),'utf8');
+assert.match(js,/\/api\/workflow/);
+assert.match(js,/Central de Pendências/);
+assert.match(js,/data-fp-route/);
+assert.match(js,/FocadoPendencias/);
+assert.match(js,/COCKPIT 360º DO PEDIDO/);
+assert.match(js,/renderOrder360/);
+assert.match(js,/data-fp-view/);
+assert.match(css,/\.fp-page/);
+assert.match(css,/\.fp360-backdrop/);
+assert.match(css,/\.fp360-flow/);
+assert.match(css,/@media/);
+console.log('pendencias-module: ok');
