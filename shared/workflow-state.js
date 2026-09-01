@@ -1,4 +1,5 @@
 import { computeOrderWorkflow, computeWorkQueue } from './workflow-engine.js';
+import { applySafeWorkflowAutomations } from './workflow-automation.js';
 
 export const WORKFLOW_STATE_VERSION='2026.09.01.2';
 
@@ -115,6 +116,7 @@ export function refreshWorkflowState(state,{at=Date.now()}={}){
     if(reactions.length)state.workflowReactions.unshift(...reactions);
   }
 
+  const automation=applySafeWorkflowAutomations(state,{at,byOrder});
   state.workflowEvents=state.workflowEvents.slice(0,1000);
   state.workflowReactions=state.workflowReactions.slice(0,1000);
   state.workflowState={
@@ -122,7 +124,8 @@ export function refreshWorkflowState(state,{at=Date.now()}={}){
     updatedAt:at,
     byOrder,
     workQueue:computeWorkQueue(state),
-    reactions:state.workflowReactions.slice(0,100)
+    reactions:state.workflowReactions.slice(0,100),
+    automation
   };
   return state.workflowState;
 }
