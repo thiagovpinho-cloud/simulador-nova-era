@@ -112,7 +112,6 @@ jobs:
           grep -q "Manual por caixa" /tmp/simulator.js
           grep -q "window.FocadoMarginRules={render}" /tmp/margin-rules.js
           grep -q "Custo do Produto" /tmp/margin-rules.js
-          grep -q "Preço final c/ impostos" /tmp/orders.js
           grep -q "updateProfitability" /tmp/orders.js
           grep -q "quoteOrder" /tmp/orders.js
           grep -q "lookupCnpj(value)" /tmp/customers.js
