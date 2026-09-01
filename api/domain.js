@@ -3,6 +3,7 @@ import { requireSession } from './_lib/auth.js';
 import { readWorkspace, writeWorkspace } from './_lib/store.js';
 import { db } from './_lib/db.js';
 import { DOMAIN_PERMISSION, applyDomain } from '../shared/domain-rules.js';
+import { refreshWorkflowState } from '../shared/workflow-state.js';
 
 const WORKSPACE='default';
 
@@ -30,6 +31,7 @@ export default async function handler(req,res){
     }
 
     applyDomain(domain,state,body);
+    refreshWorkflowState(state);
     const saved=await writeWorkspace(WORKSPACE,state,revision);
 
     const sql=db();
