@@ -129,7 +129,7 @@
         '<div class="fp-head"><div><span class="fp-eyebrow">FOCADO POR EXCEÇÃO</span><h1>Central de Pendências</h1><p>Prioriza o que ameaça prazo, fluxo e fechamento — e mostra exatamente quem precisa agir.</p></div><button id="fpRefresh" class="fp-refresh">Atualizar</button></div>'+
         summary(rows)+
         (groups.length?groups.map(([area,list])=>groupCard(area,list)).join(''):'<div class="fp-empty"><strong>Nenhuma pendência crítica.</strong><span>O fluxo não possui próxima ação determinística em aberto.</span></div>')+
-        '<div class="fp-foot">Workflow '+esc(data.version||'—')+' · revisão '+esc(data.revision??'—')+' · '+esc((data.reactions||[]).length)+' reação(ões) rastreada(s)</div>'+
+        '<div class="fp-automation-status '+(data.automation?.enabled?'on':'off')+'"><span>AUTOMAÇÃO SEGURA</span><strong>'+(data.automation?.enabled?'ATIVA':'DESATIVADA')+'</strong><small>'+(data.automation?.enabled?esc((data.automationState?.activeSignals||[]).length)+' sinal(is) técnico(s) ativo(s)':'feature flag desligada por padrão')+'</small></div>'+ '<div class="fp-foot">Workflow '+esc(data.version||'—')+' · revisão '+esc(data.revision??'—')+' · '+esc((data.reactions||[]).length)+' reação(ões) rastreada(s)</div>'+
         '</div>';
       bind();
     }catch(err){
