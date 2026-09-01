@@ -125,9 +125,13 @@ export function computeNextAction(state,order,workflow=computeOrderWorkflow(stat
   }
 
   // Uma entrega confirmada encerra as dependências operacionais anteriores.
-  // A partir daqui, qualquer pendência financeira tem precedência.
-  if(workflow.finance.status==='PENDENTE'){
-    return {area:'FINANCEIRO',action:'REGISTRAR_FATO_FINANCEIRO',reason:'Pedido entregue sem fato financeiro vinculado.',entityId:String(order.id)};
+  // A partir daqui, só pode restar o fechamento financeiro.
+  const delivered=order.status==='ENTREGUE'||Boolean(order.logistics?.deliveryConfirmed);
+  if(delivered){
+    if(workflow.finance.status==='PENDENTE'){
+      return {area:'FINANCEIRO',action:'REGISTRAR_FATO_FINANCEIRO',reason:'Pedido entregue sem fato financeiro vinculado.',entityId:String(order.id)};
+    }
+    return {area:null,action:'SEM_PENDENCIA_CRITICA',reason:'Pedido entregue e ciclo financeiro registrado.',entityId:String(order.id)};
   }
 
   const reservable=workflow.inventory.coverage?.find(x=>x.open>0&&x.free>0);
