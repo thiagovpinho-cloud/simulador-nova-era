@@ -6,7 +6,7 @@ assert.match(js,/\/api\/workflow/);
 assert.match(js,/Central de Pendências/);
 assert.match(js,/data-fp-route/);
 assert.match(js,/FocadoPendencias/);
-assert.match(js,/Cockpit 360º do Pedido/);
+assert.match(js,/COCKPIT 360º DO PEDIDO/);
 assert.match(js,/renderOrder360/);
 assert.match(js,/data-fp-view/);
 assert.match(css,/\.fp-page/);
