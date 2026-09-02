@@ -342,3 +342,60 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .fx-nav,.fds-btn,
   :is(.fpcp-btn,.fi-btn,.fl-btn,.fc-btn,.fpr-btn,.fpcp-open,.fi-open,.fl-open){min-height:44px!important}
 }
+
+
+/* FOCADO Mobile First — consistência transversal */
+@media(max-width:760px){
+  :is(.fpcp-page,.fi-page,.fl-page,.fc-page,.fpr-page,.fo-page,.fpur-page,.fexp-page,.ffin-page){
+    max-width:none!important;
+    margin:0!important;
+    padding:0 0 20px!important;
+  }
+  :is(.fpcp-head,.fi-head,.fl-head,.fc-head,.fpr-head,.fo-head,.fpur-head,.fexp-head,.ffin-head){
+    margin-bottom:12px!important;
+    gap:10px!important;
+    align-items:flex-start!important;
+    flex-direction:column!important;
+  }
+  :is(.fpcp-head,.fi-head,.fl-head,.fc-head,.fpr-head,.fo-head,.fpur-head,.fexp-head,.ffin-head) h1{
+    font-size:21px!important;
+    line-height:1.15!important;
+    letter-spacing:-.35px!important;
+  }
+  :is(.fpcp-head,.fi-head,.fl-head,.fc-head,.fpr-head,.fo-head,.fpur-head,.fexp-head,.ffin-head) p{
+    font-size:11px!important;
+    line-height:1.4!important;
+  }
+  :is(.fpcp-panel,.fi-panel,.fl-panel,.fc-card,.fpr-panel,.fo-card,.fpur-panel,.fexp-panel,.ffin-panel){
+    padding:13px!important;
+    border-radius:15px!important;
+    box-shadow:none!important;
+  }
+  :is(.fpcp-btn,.fi-btn,.fl-btn,.fc-btn,.fpr-btn,.fo-btn,.fpur-btn,.fexp-btn,.ffin-btn,.fpcp-open,.fi-open,.fl-open,.fo-open){
+    min-height:44px!important;
+    padding:10px 12px!important;
+    font-size:11px!important;
+    border-radius:11px!important;
+  }
+  :is(.fpcp-toolbar,.fi-toolbar,.fl-toolbar,.fc-toolbar,.fpr-toolbar,.fo-toolbar,.fpur-toolbar,.fexp-toolbar,.ffin-toolbar){
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+    padding:10px!important;
+    border-radius:14px!important;
+  }
+  :is(.fpcp-search,.fi-search,.fl-search,.fc-search,.fpr-search,.fo-search,.fpur-search,.fexp-search,.ffin-search,
+      .fpcp-select,.fi-select,.fl-select,.fo-select,.fpur-select){
+    min-width:0!important;
+    width:100%!important;
+    min-height:44px!important;
+    font-size:16px!important;
+  }
+  :is(.fpcp-field,.fi-field,.fl-field,.fc-field,.fpr-field,.fo-field,.fpur-field,.fexp-field,.ffin-field) :is(input,select,textarea){
+    min-height:44px!important;
+    font-size:16px!important;
+  }
+  :is(.fpcp-actions,.fi-actions,.fl-actions,.fc-actions,.fpr-actions,.fo-actions,.fpur-actions,.fexp-actions,.ffin-actions){
+    width:100%;
+  }
+}
