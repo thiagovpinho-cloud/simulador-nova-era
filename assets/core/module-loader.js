@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260902-ops-ux-v1';
+  const VERSION='20260902-ops-data-v1';
   const loaded=new Map();
   const defs={
     simulador:{css:'simulator.css',js:'simulator.js'},
