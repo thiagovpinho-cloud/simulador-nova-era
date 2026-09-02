@@ -55,7 +55,6 @@
     pcp:()=>typeof window.FocadoPCP?.render==='function',
     production:()=>typeof window.FocadoProduction?.render==='function',
     inventory:()=>typeof window.FocadoInventory?.render==='function',
-    'master-recipes':()=>Array.isArray(window.FocadoMasterRecipes?.recipes),
     inputs:()=>typeof window.FocadoInputs?.render==='function',
     'pcp-commercial-alerts':()=>typeof window.FocadoPCPCommercialAlerts?.notify==='function',
     purchases:()=>typeof window.FocadoPurchases?.render==='function',
