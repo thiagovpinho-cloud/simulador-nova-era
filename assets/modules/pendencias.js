@@ -140,10 +140,20 @@
     if(refresh)refresh.onclick=render;
   }
 
+  function friendlyError(err){
+    const code=String(err?.message||'');
+    if(code==='API_REQUIRED')return 'Sua sessão precisa ser renovada. Entre novamente no FOCADO.';
+    if(code==='WORKFLOW_HTTP_401'||code==='WORKFLOW_HTTP_403')return 'Sua sessão expirou ou não possui acesso a esta operação. Entre novamente.';
+    if(code.startsWith('WORKFLOW_HTTP_'))return 'A operação está temporariamente indisponível. Tente novamente em instantes.';
+    if(code==='WORKFLOW_INVALID_RESPONSE')return 'A Central recebeu uma resposta inválida. Atualize a página e tente novamente.';
+    return 'Não conseguimos atualizar as pendências agora. Tente novamente.';
+  }
+
   async function render(){
     const el=content();
     if(!el)return;
-    el.innerHTML='<div class="fp-page"><div class="fp-loading">Atualizando a operação…</div></div>';
+    el.setAttribute('aria-busy','true');
+    el.innerHTML='<div class="fp-page"><div class="fp-loading" role="status" aria-live="polite"><span class="fp-spinner" aria-hidden="true"></span><strong>Atualizando a operação…</strong><small>Buscando prioridades e responsáveis.</small></div></div>';
     try{
       const data=await loadWorkflow();
       lastWorkflow=data;
@@ -155,10 +165,12 @@
         (groups.length?groups.map(([area,list])=>groupCard(area,list)).join(''):'<div class="fp-empty"><strong>Nenhuma pendência crítica.</strong><span>O fluxo não possui próxima ação determinística em aberto.</span></div>')+
         '<div class="fp-automation-status '+(data.automation?.enabled?'on':'off')+'"><span>AUTOMAÇÃO SEGURA</span><strong>'+(data.automation?.enabled?'ATIVA':'DESATIVADA')+'</strong><small>'+(data.automation?.enabled?esc((data.automationState?.activeSignals||[]).length)+' sinal(is) técnico(s) ativo(s)':'feature flag desligada por padrão')+'</small></div>'+ '<div class="fp-foot">Workflow '+esc(data.version||'—')+' · revisão '+esc(data.revision??'—')+' · '+esc((data.reactions||[]).length)+' reação(ões) rastreada(s)</div>'+
         '</div>';
+      el.setAttribute('aria-busy','false');
       bind();
     }catch(err){
       console.error('[Pendencias]',err);
-      el.innerHTML='<div class="fp-page"><div class="fp-error"><strong>Não foi possível carregar a Central de Pendências.</strong><span>'+esc(err.message)+'</span><button id="fpRefresh">Tentar novamente</button></div></div>';
+      el.setAttribute('aria-busy','false');
+      el.innerHTML='<div class="fp-page"><div class="fp-error" role="alert"><strong>Não foi possível atualizar a Central de Pendências.</strong><span>'+esc(friendlyError(err))+'</span><button id="fpRefresh">Tentar novamente</button></div></div>';
       bind();
     }
   }
