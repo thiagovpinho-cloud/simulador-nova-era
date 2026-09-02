@@ -200,7 +200,7 @@
     const detail=draft
       ? 'O rascunho será removido definitivamente.'
       : 'Pedido e vínculos serão removidos; reservas/saídas serão revertidas.';
-    const ok=confirm('Excluir o pedido '+String(order.number||'')+'?\n\n'+detail+'\n\nEsta ação não poderá ser desfeita.');
+    const ok=confirm('Excluir o pedido '+String(order.number||'')+'?\n\n'+detail+'\n\nAção irreversível.');
     if(!ok)return;
     try{
       const changes=draft?{deleteOrderId:order.id}:{deleteOrderCascadeId:order.id};
