@@ -7,6 +7,7 @@
   const fmt=(v,d=3)=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
   const available=x=>Math.max(0,Number(x?.physical||0)-Number(x?.reserved||0)-Number(x?.blocked||0));
   let filters={q:'',brand:'TODAS',group:'TODOS'};
+  const canEdit=()=>['ADMIN','ESTOQUE'].includes(String(window.FocadoAuth?.getRole?.()||'').toUpperCase());
 
   async function motherCatalog(){
     const sim=window.FocadoLegacySimulator;
@@ -29,11 +30,11 @@
     const mother=await motherCatalog();
     const keys=new Set(catalog.map(x=>String(x.brand).toLowerCase()+'::'+String(x.code).toLowerCase()));
     const missing=mother.filter(x=>!keys.has(String(x.brand).toLowerCase()+'::'+String(x.code).toLowerCase()));
-    if(missing.length){
+    if(missing.length&&canEdit()){
       const result=await window.FocadoDataStore.saveDomain('INSUMOS',{seed:missing});
       if(result?.payload)window.FocadoDataStore.writeLocal(result.payload);
       ops=load();catalog=ops.inputCatalog||[];
-    }
+    }else if(missing.length)catalog=[...catalog,...missing];
     // Preserva itens físicos legados mesmo que não existam na planilha mãe.
     const knownCodes=new Set(catalog.map(x=>String(x.code)));
     const physical=Object.values(ops.inputInventory||{}).filter(x=>x?.code&&!knownCodes.has(String(x.code))).map(x=>({
@@ -58,12 +59,12 @@
     );
     const physicalTotal=Object.values(stock).reduce((s,x)=>s+Number(x.physical||0),0);
     el.innerHTML='<div class="fin-page">'+
-      '<div class="fin-head"><div><span>ESTOQUE DE INSUMOS</span><h1>Insumos</h1><p>Cadastro, preço e saldo físico independentes do estoque de produtos acabados.</p></div><button class="fin-btn primary" id="finNew">+ Cadastrar insumo</button></div>'+
+      '<div class="fin-head"><div><span>ESTOQUE DE INSUMOS</span><h1>Insumos</h1><p>Cadastro, preço e saldo físico independentes do estoque de produtos acabados.</p></div>'+(canEdit()?'<button class="fin-btn primary" id="finNew">+ Cadastrar insumo</button>':'<span class="fin-readonly">Consulta</span>')+'</div>'+
       '<div class="fin-kpis"><div><span>Base cadastrada</span><strong>'+catalog.length+'</strong><small>itens ativos</small></div><div><span>Com saldo físico</span><strong>'+Object.values(stock).filter(x=>Number(x.physical||0)>0).length+'</strong><small>itens em estoque</small></div><div><span>Saldo físico total</span><strong>'+fmt(physicalTotal,0)+'</strong><small>unidades de medida somadas apenas como referência</small></div></div>'+
       '<div class="fin-note"><b>Base-mãe do Simulador conectada.</b><span>Nova Era e New Green mantêm seus preços por marca. O saldo físico de matéria-prima permanece separado do estoque de produtos acabados.</span></div>'+
       '<div class="fin-toolbar"><input id="finSearch" placeholder="Buscar código, insumo, grupo ou marca" value="'+esc(filters.q)+'"><select id="finBrand"><option value="TODAS">Todas as marcas</option>'+brands.map(b=>'<option '+(filters.brand===b?'selected':'')+'>'+esc(b)+'</option>').join('')+'</select><select id="finGroup"><option value="TODOS">Todos os grupos</option>'+groups.map(g=>'<option '+(filters.group===g?'selected':'')+'>'+esc(g)+'</option>').join('')+'</select><span>'+rows.length+' item(ns)</span></div>'+
       '<div class="fin-table-wrap">'+table(rows,stock)+'</div></div>';
-    document.getElementById('finNew').onclick=()=>openEditor(null);
+    if(document.getElementById('finNew'))document.getElementById('finNew').onclick=()=>openEditor(null);
     document.getElementById('finSearch').oninput=e=>render({q:e.target.value});
     document.getElementById('finBrand').onchange=e=>render({brand:e.target.value});
     document.getElementById('finGroup').onchange=e=>render({group:e.target.value});
@@ -77,7 +78,7 @@
     if(!rows.length)return '<div class="fin-empty">Nenhum insumo encontrado.</div>';
     return '<table class="fin-table"><thead><tr><th>Marca</th><th>Código</th><th>Insumo</th><th>Grupo</th><th>Unidade</th><th>Preço vigente</th><th>Físico</th><th>Disponível</th><th></th></tr></thead><tbody>'+rows.map(x=>{
       const inv=stockFor(x,stock);
-      return '<tr><td><span class="fin-brand">'+esc(x.brand)+'</span></td><td><b>'+esc(x.code)+'</b></td><td>'+esc(x.name)+'</td><td>'+esc(x.group||'—')+'</td><td>'+esc(x.unit||'—')+'</td><td><strong>'+money(x.price)+'</strong></td><td>'+fmt(inv.physical)+'</td><td>'+fmt(available(inv))+'</td><td><button class="fin-btn small" data-fin-edit="'+esc(x.id)+'">Editar</button></td></tr>';
+      return '<tr><td><span class="fin-brand">'+esc(x.brand)+'</span></td><td><b>'+esc(x.code)+'</b></td><td>'+esc(x.name)+'</td><td>'+esc(x.group||'—')+'</td><td>'+esc(x.unit||'—')+'</td><td><strong>'+money(x.price)+'</strong></td><td>'+fmt(inv.physical)+'</td><td>'+fmt(available(inv))+'</td><td>'+(canEdit()?'<button class="fin-btn small" data-fin-edit="'+esc(x.id)+'">Editar</button>':'—')+'</td></tr>';
     }).join('')+'</tbody></table>';
   }
 
