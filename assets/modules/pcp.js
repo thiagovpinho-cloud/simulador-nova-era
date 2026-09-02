@@ -265,7 +265,7 @@
 
   function openOrder(id){
     const ops=ensureOrderIds(load()),key=String(id||'');
-    const o=(ops.orders||[]).find(x=>String(x.id||'')===key||String(x.number||'')===key);
+    const o=(ops.orders||[]).find(x=>String(x.id||'')===key);
     if(!o){alert('Não foi possível abrir este pedido. A lista será atualizada.');render(filters);return}
     renderDetail(o,ops);
   }

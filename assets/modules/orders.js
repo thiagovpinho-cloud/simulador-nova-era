@@ -509,7 +509,11 @@
       })
     };
   }
+  let persistInFlight=false;
   async function persist(finalize,silentNavigate=false){
+    if(persistInFlight)return false;
+    persistInFlight=true;
+    try{
     const ops=load();ensureCatalog(ops);ops.orders=ops.orders||[];
     const data=collect();
     const existing=editingId?ops.orders.find(x=>x.id===editingId):null;
@@ -591,6 +595,7 @@
       else{if(isCorrection)correctionMode=false;renderForm((load().orders||[]).find(x=>x.id===o.id)||o,load())}
     }
     return true;
+    }finally{persistInFlight=false}
   }
 
   function history(o){
