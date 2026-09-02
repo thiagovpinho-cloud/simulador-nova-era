@@ -75,7 +75,7 @@ const index=read('index.html');
 
 assert.match(inventory,/function productKey\(p\).*brand/);
 assert.match(inventory,/row\.product\.brand/);
-assert.match(loader,/inputs:\{css:'inputs\.css',js:'inputs\.js'\}/);
+assert.match(loader,/inputs:\{css:'inputs\.css',js:'inputs\.js'(?:,deps:\[[^\]]+\])?\}/);
 assert.ok(!loader.includes("inputs:{alias:'inventory'}"));
 assert.match(loader,/pcp-commercial-alerts/);
 assert.match(shell,/FocadoInputs/);
