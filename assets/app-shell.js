@@ -23,13 +23,42 @@
       return '<div class="fx-menu-label">'+label+'</div>'+visible.map(([id,icon,text,flag])=>'<button class="fx-nav '+(id==='dashboard'?'active':'')+'" data-fx-nav="'+id+'"><span class="fx-nav-icon">'+icon+'</span><span>'+text+'</span>'+(flag?'<span class="fx-nav-soon">em breve</span>':'')+'</button>').join('');
     }).join('');
   }
+  const mobilePrimaryByRole={
+    ADMIN:['cockpit','Gestão','◉'],
+    DIRETOR:['cockpit','Gestão','◉'],
+    GESTOR:['cockpit','Gestão','◉'],
+    COMERCIAL:['pedidos','Pedidos','▤'],
+    PCP:['pcp','PCP','⌘'],
+    PRODUCAO:['production','Produção','⚙'],
+    ESTOQUE:['inventory','Estoque','▣'],
+    LOGISTICA:['logistica','Logística','▰'],
+    COMPRAS:['purchases','Compras','↻'],
+    FINANCEIRO:['financeiro','Financeiro','₿']
+  };
+  function mobileNavHtml(){
+    const role=String(window.FocadoAuth?.getRole?.()||'COMERCIAL').toUpperCase();
+    const primary=mobilePrimaryByRole[role]||mobilePrimaryByRole.COMERCIAL;
+    return [
+      ['dashboard','⌂','Início'],
+      ['pendencias','⚡','Pendências'],
+      [primary[0],primary[2],primary[1]],
+      ['__more__','☰','Mais']
+    ].map(([id,icon,label])=>'<button class="fx-mobile-nav-btn '+(id==='dashboard'?'active':'')+'" data-mobile-route="'+id+'"><span>'+icon+'</span><b>'+label+'</b></button>').join('');
+  }
+  function refreshMobileNav(){
+    const nav=shell.querySelector('.fx-mobile-nav');
+    if(!nav)return;
+    nav.innerHTML=mobileNavHtml();
+    bindMobileNav();
+  }
   function refreshNav(){
     const menu=shell.querySelector('.fx-menu');
     if(!menu)return;
     menu.innerHTML=navHtml();
     bindNav();
+    refreshMobileNav();
   }
-  shell.innerHTML='<div class="fx-mobile-backdrop" id="fxMobileBackdrop" aria-hidden="true"></div><aside class="fx-sidebar" id="fxSidebar"><div class="fx-brand"><img id="fxBrandLogo" src="" alt="Focado"></div><div class="fx-menu">'+navHtml()+'</div><div class="fx-version">Versão 1.0 · Novo Frontend</div></aside><main class="fx-main"><header class="fx-topbar"><button class="fx-menu-toggle" id="fxMenuToggle">☰</button><div class="fx-search"><span>⌕</span><input id="fxSearch" placeholder="Buscar pedidos, clientes, produtos, insumos..."></div><div class="fx-user"><div class="fx-avatar" id="fxAvatar">A</div><div class="fx-user-meta"><b id="fxUserName">Administrador</b><small id="fxUserRole">Administrador</small></div><button class="fx-logout" id="fxLogout">Sair</button></div></header><section class="fx-content" id="fxContent"></section></main>';
+  shell.innerHTML='<div class="fx-mobile-backdrop" id="fxMobileBackdrop" aria-hidden="true"></div><aside class="fx-sidebar" id="fxSidebar"><div class="fx-brand"><img id="fxBrandLogo" src="" alt="Focado"></div><div class="fx-menu">'+navHtml()+'</div><div class="fx-version">Versão 1.0 · Novo Frontend</div></aside><main class="fx-main"><header class="fx-topbar"><button class="fx-menu-toggle" id="fxMenuToggle" aria-label="Abrir menu">☰</button><div class="fx-mobile-title"><b>FOCADO</b><small id="fxMobileRole">Operação</small></div><div class="fx-search"><span>⌕</span><input id="fxSearch" placeholder="Buscar pedidos, clientes, produtos, insumos..."></div><div class="fx-user"><div class="fx-avatar" id="fxAvatar">A</div><div class="fx-user-meta"><b id="fxUserName">Administrador</b><small id="fxUserRole">Administrador</small></div><button class="fx-logout" id="fxLogout">Sair</button></div></header><section class="fx-content" id="fxContent"></section><nav class="fx-mobile-nav" aria-label="Navegação principal mobile">'+mobileNavHtml()+'</nav></main>';
   document.body.appendChild(shell);
 
   function syncBrandLogo(){
@@ -245,12 +274,17 @@
     const role=user?.role||window.FocadoAuth?.getRole?.()||sessionStorage.getItem('nova-era-role')||'usuário';
     refreshNav();
     $('#fxUserName').textContent=label;
-    $('#fxUserRole').textContent=window.FocadoAuth?.roleLabel?.(role)||role;
+    const roleText=window.FocadoAuth?.roleLabel?.(role)||role;
+    $('#fxUserRole').textContent=roleText;
+    const mobileRole=$('#fxMobileRole'); if(mobileRole)mobileRole.textContent=roleText;
     $('#fxAvatar').textContent=label.charAt(0).toUpperCase();
     if(openDashboard){dashboard();setActive('dashboard')}
   }
   function hideShell(){shell.classList.add('hidden')}
-  function setActive(id){document.querySelectorAll('[data-fx-nav]').forEach(b=>b.classList.toggle('active',b.dataset.fxNav===id))}
+  function setActive(id){
+    document.querySelectorAll('[data-fx-nav]').forEach(b=>b.classList.toggle('active',b.dataset.fxNav===id));
+    document.querySelectorAll('[data-mobile-route]').forEach(b=>b.classList.toggle('active',b.dataset.mobileRoute===id));
+  }
   async function navigate(id){
     if(window.FocadoAuth && !window.FocadoAuth.can(id)){
       alert('Seu perfil não possui acesso a esta área.');
@@ -343,7 +377,18 @@
   }
   function bindDashboardLinks(){document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>navigate(b.dataset.open))}
   function bindNav(){document.querySelectorAll('[data-fx-nav]').forEach(b=>b.onclick=()=>{if(!b.querySelector('.fx-nav-soon'))navigate(b.dataset.fxNav)})}
+  function bindMobileNav(){
+    document.querySelectorAll('[data-mobile-route]').forEach(b=>b.onclick=()=>{
+      const route=b.dataset.mobileRoute;
+      if(route==='__more__'){
+        $('#fxSidebar')?.classList.add('open');
+        return;
+      }
+      navigate(route);
+    });
+  }
   bindNav();
+  bindMobileNav();
   const closeMobileNav=()=>$('#fxSidebar')?.classList.remove('open');
   $('#fxMenuToggle').onclick=()=>$('#fxSidebar').classList.toggle('open');
   $('#fxMobileBackdrop').onclick=closeMobileNav;
