@@ -172,7 +172,7 @@
       '</div>'+
       '<div class="fo-toolbar"><input class="fo-search" id="foSearch" placeholder="Buscar pedido, cliente, CNPJ, representante ou produto" value="'+esc(currentFilters.q)+'"><select class="fo-select" id="foStage"><option value="TODOS">Todos os status macro</option>'+[['PCP','Aguardando PCP'],['ESTOQUE_PRODUCAO','Produção / Estoque'],['LOGISTICA','Logística'],['ENTREGUE','Concluído']].map(x=>'<option value="'+x[0]+'" '+(currentFilters.stage===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')+'</select><span class="fo-muted">'+filtered.length+' pedido(s)</span></div>'+
       '<div class="fo-table-wrap">'+table(filtered)+'</div>'+
-      '<section class="fo-drafts" id="foDrafts"><div class="fo-drafts-head"><div><span>RASCUNHOS</span><h2>Pedidos ainda não enviados</h2><p>Use Editar para continuar o preenchimento ou Excluir para remover um rascunho.</p></div><strong>'+draftFiltered.length+'</strong></div>'+draftTable(draftFiltered)+'</section></div>';
+      window.FocadoOrderDrafts.render(draftFiltered,esc,money,value,dbr)+'</div>';
     document.getElementById('foNew').onclick=()=>openForm();
     document.getElementById('foPeriod').onclick=()=>renderReport(firstDayMonth(),today());
     const correctionPermissions=document.getElementById('foCorrectionPermissions');
@@ -185,10 +185,6 @@
     document.querySelectorAll('[data-fo-delete]').forEach(b=>b.onclick=()=>deleteOrder(b.dataset.foDelete));
   }
   function stat(label,n,sub){return '<div class="fo-stat"><span>'+label+'</span><strong>'+n+'</strong><small>'+sub+'</small></div>'}
-  function draftTable(rows){
-    if(!rows.length)return '<div class="fo-empty compact">Nenhum rascunho salvo.</div>';
-    return '<div class="fo-draft-list">'+rows.map(o=>'<div class="fo-draft-row"><div><span class="fo-stage draft">Rascunho</span><b>'+esc(o.number)+'</b><small>'+esc(o.client||'Cliente ainda não informado')+' · '+dbr(o.orderDate)+'</small></div><div class="fo-draft-value"><span>'+((o.items||[]).length)+' item(ns)</span><strong>'+money(value(o))+'</strong></div><div class="fo-actions"><button class="fo-open" data-fo-edit="'+esc(o.id)+'">Editar</button><button class="fo-open fo-delete-order" data-fo-delete="'+esc(o.id)+'">Excluir</button></div></div>').join('')+'</div>';
-  }
   function table(rows){
     if(!rows.length)return '<div class="fo-empty">Nenhum pedido encontrado.</div>';
     const allowEdit=canEditExisting();
