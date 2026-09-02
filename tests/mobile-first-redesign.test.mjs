@@ -44,3 +44,4 @@ assert.ok(!index.includes('assets/app-shell.css?v=20260829-mobile-v1'),'Versão 
 assert.ok(!index.includes('assets/app-shell.js?v=20260829-mobile-v1'),'JS visual antigo não pode continuar no index');
 
 console.log('mobile-first-redesign: ok');
+// RC gate: visual delivery and cache versioning validated together.
