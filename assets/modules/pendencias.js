@@ -15,8 +15,17 @@
   let lastWorkflow=null;
 
   async function loadWorkflow(){
-    const res=await fetch('/api/workflow',{credentials:'include',cache:'no-store'});
+    const store=window.FocadoDataStore;
+    const base=String(store?.getConfig?.().apiBaseUrl||'').replace(/\/$/,'');
+    const token=String(store?.getSessionToken?.()||'');
+    if(!base||!token)throw new Error('API_REQUIRED');
+    const res=await fetch(base+'/api/workflow',{
+      headers:{Authorization:'Bearer '+token},
+      cache:'no-store'
+    });
+    const type=String(res.headers.get('content-type')||'').toLowerCase();
     if(!res.ok)throw new Error('WORKFLOW_HTTP_'+res.status);
+    if(!type.includes('application/json'))throw new Error('WORKFLOW_INVALID_RESPONSE');
     return res.json();
   }
 
