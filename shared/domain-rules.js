@@ -34,6 +34,72 @@ export function getOrder(state,id){
   return orders.find(o=>String(o.id)===String(id));
 }
 
+function orderInventoryEntry(state,item){
+  state.inventory=state.inventory||{};
+  const keys=[item?.code,item?.productId,item?.name].map(v=>String(v||'')).filter(Boolean);
+  for(const key of keys)if(state.inventory[key])return state.inventory[key];
+  return Object.values(state.inventory).find(v=>String(v?.code||'')===String(item?.code||''))||null;
+}
+
+function referencesOrder(record,id,number){
+  if(!record||typeof record!=='object')return false;
+  const direct=['orderId','order_id','sourceOrderId','source_order_id','salesOrderId'];
+  if(direct.some(k=>String(record[k]||'')===id))return true;
+  if(Array.isArray(record.sourceOrderIds)&&record.sourceOrderIds.some(x=>String(x)===id))return true;
+  if(Array.isArray(record.orderIds)&&record.orderIds.some(x=>String(x)===id))return true;
+  return false;
+}
+
+function cascadeDeleteOrder(state,target){
+  const id=String(target.id),number=String(target.number||'');
+
+  // Reverte o efeito físico/reservado do pedido antes de remover seus registros.
+  for(const item of target.items||[]){
+    const inv=orderInventoryEntry(state,item);if(!inv)continue;
+    if(target.expedition?.stockReleasedAt){
+      const shipped=Math.max(0,Number(item.dispatchedQty??item.qty??0));
+      inv.physical=Math.max(0,Number(inv.physical||0)+shipped);
+    }else{
+      const reserved=Math.max(0,Number(item.reservedQty||0));
+      inv.reserved=Math.max(0,Number(inv.reserved||0)-reserved);
+    }
+  }
+
+  const reasonNeedle=('pedido '+number).toLowerCase();
+  state.stockMovements=(state.stockMovements||[]).filter(m=>{
+    if(referencesOrder(m,id,number))return false;
+    return !(number&&String(m.reason||'').toLowerCase().includes(reasonNeedle));
+  });
+  state.financialFacts=(state.financialFacts||[]).filter(x=>String(x.order_id||'')!==id&&!referencesOrder(x,id,number));
+  state.inventoryCounts=(state.inventoryCounts||[]).filter(x=>!referencesOrder(x,id,number));
+  state.freightRequests=(state.freightRequests||[]).filter(x=>!referencesOrder(x,id,number));
+
+  // Remove somente artefatos de Produção/Compras explicitamente vinculados ao pedido.
+  // Solicitações consolidadas compartilhadas permanecem para não afetar outros pedidos.
+  const removedProductionIds=new Set();
+  state.productionRequests=(state.productionRequests||[]).filter(x=>{
+    const hit=referencesOrder(x,id,number);
+    if(hit)removedProductionIds.add(String(x.id||''));
+    return !hit;
+  });
+  state.purchaseRequests=(state.purchaseRequests||[]).filter(x=>{
+    if(referencesOrder(x,id,number))return false;
+    const prodRef=String(x.productionRequestId||x.sourceProductionRequestId||'');
+    return !removedProductionIds.has(prodRef);
+  });
+
+  if(state.workflowState&&typeof state.workflowState==='object'){
+    if(state.workflowState.byOrder)delete state.workflowState.byOrder[id];
+    if(Array.isArray(state.workflowState.workQueue))state.workflowState.workQueue=state.workflowState.workQueue.filter(x=>String(x.orderId||'')!==id);
+    if(Array.isArray(state.workflowState.reactions))state.workflowState.reactions=state.workflowState.reactions.filter(x=>String(x.orderId||'')!==id);
+  }
+  if(state.automationState&&Array.isArray(state.automationState.signals)){
+    state.automationState.signals=state.automationState.signals.filter(x=>String(x.orderId||'')!==id);
+  }
+
+  state.orders=(state.orders||[]).filter(o=>String(o.id)!==id);
+}
+
 function applyCommercial(state,body){
   state.orders=Array.isArray(state.orders)?state.orders:[];
   const changes=body.changes||{};
@@ -77,12 +143,13 @@ function applyCommercial(state,body){
     return;
   }
 
-  if(changes.deleteOrderId){
-    const id=String(changes.deleteOrderId);
+  if(changes.deleteOrderId||changes.deleteOrderCascadeId){
+    const id=String(changes.deleteOrderId||changes.deleteOrderCascadeId);
     const target=state.orders.find(o=>String(o.id)===id);
     if(!target)throw Object.assign(new Error('ORDER_NOT_FOUND'),{status:404});
-    if(target.status!=='COMERCIAL')throw Object.assign(new Error('ORDER_DELETE_BLOCKED_AFTER_COMMERCIAL'),{status:422});
-    state.orders=state.orders.filter(o=>String(o.id)!==id);
+    if(changes.deleteOrderId&&target.status!=='COMERCIAL')throw Object.assign(new Error('ORDER_DELETE_BLOCKED_AFTER_COMMERCIAL'),{status:422});
+    if(changes.deleteOrderCascadeId)cascadeDeleteOrder(state,target);
+    else state.orders=state.orders.filter(o=>String(o.id)!==id);
     return;
   }
 
