@@ -115,3 +115,33 @@
   .fo-freight-options{grid-template-columns:1fr}
   .fo-freight-chip{white-space:normal}
 }
+
+
+/* Rascunhos comerciais — ações no fim do preenchimento */
+.fo-stage.draft{background:#fff4df;color:#9a5b0a}
+.fo-drafts{margin-top:22px;border-top:1px solid #dfe7e3;padding-top:18px}
+.fo-drafts-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:10px}
+.fo-drafts-head>div>span,.fo-form-finish>div>span{display:block;font-size:8px;font-weight:900;letter-spacing:.8px;color:#9a650f;margin-bottom:4px}
+.fo-drafts-head h2,.fo-form-finish h2{margin:0;color:#183b30;font-size:14px}
+.fo-drafts-head p,.fo-form-finish p{margin:4px 0 0;color:var(--fx-muted);font-size:9.5px;line-height:1.4}
+.fo-drafts-head>strong{display:grid;place-items:center;min-width:34px;height:34px;border-radius:11px;background:#fff4df;color:#9a5b0a;font-size:14px}
+.fo-draft-list{display:flex;flex-direction:column;gap:8px}
+.fo-draft-row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(120px,.6fr) auto;align-items:center;gap:14px;background:#fff;border:1px solid #e1e8e4;border-radius:13px;padding:12px}
+.fo-draft-row>div:first-child{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:5px 8px;min-width:0}
+.fo-draft-row>div:first-child b{font-size:11px;color:#183b30}
+.fo-draft-row>div:first-child small{grid-column:1/-1;color:var(--fx-muted);font-size:8.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fo-draft-value{text-align:right}.fo-draft-value span{display:block;font-size:8px;color:var(--fx-muted)}.fo-draft-value strong{display:block;margin-top:3px;font-size:12px;color:#183b30}
+.fo-form-finish{display:flex;align-items:center;justify-content:space-between;gap:18px;border:1px solid #cfe0d8;background:linear-gradient(135deg,#fff,#f5faf7);border-radius:16px;padding:16px;margin-top:2px}
+.fo-form-finish-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.fo-form-finish-actions .fo-btn{min-height:44px;padding:10px 16px}
+@media(max-width:700px){
+  .fo-drafts{margin-top:16px}
+  .fo-drafts-head,.fo-form-finish{flex-direction:column}
+  .fo-draft-row{grid-template-columns:1fr}
+  .fo-draft-value{text-align:left}
+  .fo-draft-row .fo-actions{display:grid;grid-template-columns:1fr 1fr;width:100%}
+  .fo-draft-row .fo-actions .fo-open{min-height:44px;font-size:11px}
+  .fo-form-finish{padding:14px}
+  .fo-form-finish-actions{display:grid;grid-template-columns:1fr;width:100%}
+  .fo-form-finish-actions .fo-btn{width:100%;min-height:48px;font-size:12px}
+}
