@@ -73,7 +73,7 @@ assert.match(freightCss,/background:#08785b/);
 
 assert.match(orders,/const canDelete=allowEdit;/);
 assert.match(orders,/deleteOrderCascadeId/);
-assert.match(orders,/Somente Administrador, Diretor ou Gestor/);
+assert.match(orders,/Apenas Admin, Diretor ou Gestor/);
 
 assert.match(pcp,/Últimos 10 pedidos processados/);
 assert.match(pcp,/slice\(0,10\)/);
