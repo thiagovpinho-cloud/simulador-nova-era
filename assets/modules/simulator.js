@@ -146,7 +146,7 @@
 
   function bind(){
     document.querySelectorAll('[data-fsim-tab]').forEach(b=>b.onclick=()=>{
-      if(b.dataset.fsimTab==='receitas'&&!canViewRecipes())return;
+      if(b.dataset.fsimTab==='receitas'&&!canRecipes())return;
       tab=b.dataset.fsimTab;rerender(snap)
     });
     if($('#fsimGoInputs'))$('#fsimGoInputs').onclick=()=>window.FocadoNavigate?.('inputs');
