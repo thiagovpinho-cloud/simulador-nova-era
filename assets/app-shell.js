@@ -18,7 +18,7 @@
 
   function navHtml(){
     return navGroups.map(([label,items])=>{
-      const visible=items.filter(([id])=>!window.FocadoAuth||window.FocadoAuth.can(id==='pendencias'?'cockpit':id));
+      const visible=items.filter(([id])=>!window.FocadoAuth||window.FocadoAuth.can(id));
       if(!visible.length)return '';
       return '<div class="fx-menu-label">'+label+'</div>'+visible.map(([id,icon,text,flag])=>'<button class="fx-nav '+(id==='dashboard'?'active':'')+'" data-fx-nav="'+id+'"><span class="fx-nav-icon">'+icon+'</span><span>'+text+'</span>'+(flag?'<span class="fx-nav-soon">em breve</span>':'')+'</button>').join('');
     }).join('');
@@ -46,6 +46,49 @@
   function orderValue(o){return (o.items||[]).reduce((a,i)=>a+(Number(i.qty)||0)*(Number(i.price)||0),0)}
   function inputAvailable(inv){return Math.max(0,Number(inv.physical||0)-Number(inv.reserved||0)-Number(inv.blocked||0))}
   function reorderPoint(inv){const r=inv.reorder||{};return Math.max(0,(Number(r.avgDaily)||0)*(Number(r.leadTimeDays)||0)+(Number(r.safetyStock)||0))}
+
+  const workflowAreasForRole=role=>({
+    ADMIN:['COMERCIAL','PCP','PRODUCAO','ESTOQUE','COMPRAS','EXPEDICAO','LOGISTICA','FINANCEIRO'],
+    DIRETOR:['COMERCIAL','PCP','PRODUCAO','ESTOQUE','COMPRAS','EXPEDICAO','LOGISTICA','FINANCEIRO'],
+    GESTOR:['COMERCIAL','PCP','PRODUCAO','ESTOQUE','COMPRAS','EXPEDICAO','LOGISTICA','FINANCEIRO'],
+    COMERCIAL:['COMERCIAL'],PCP:['PCP'],PRODUCAO:['PRODUCAO'],ESTOQUE:['ESTOQUE','EXPEDICAO'],
+    COMPRAS:['COMPRAS'],LOGISTICA:['LOGISTICA'],FINANCEIRO:['FINANCEIRO']
+  })[String(role||'').toUpperCase()]||[];
+
+  async function refreshWorkflowCommand(){
+    const box=document.getElementById('fxOperationalCommand');
+    if(!box||!window.FocadoDataStore?.isRemoteReady?.())return;
+    try{
+      const base=String(window.FocadoDataStore.getConfig().apiBaseUrl||'').replace(/\/$/,'');
+      const token=window.FocadoDataStore.getSessionToken();
+      const res=await fetch(base+'/api/workflow',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+      if(!res.ok)return;
+      const data=await res.json();
+      const queue=Array.isArray(data.workQueue)?data.workQueue:[];
+      const role=window.FocadoAuth?.getRole?.()||'';
+      const areas=workflowAreasForRole(role);
+      const mine=areas.length?queue.filter(x=>areas.includes(String(x.area||'').toUpperCase())):queue;
+      const rows=String(role).toUpperCase()==='ADMIN'?queue:mine;
+      const title=box.querySelector('h2'),textEl=box.querySelector('p'),btn=box.querySelector('[data-open]');
+      if(!title||!textEl||!btn)return;
+      if(!rows.length){
+        box.className='fx-command ok';
+        box.querySelector('.fx-command-eyebrow').textContent='OPERAÇÃO SOB CONTROLE';
+        title.textContent='Nenhuma ação pendente para você agora';
+        textEl.textContent='O workflow integrado não identificou nenhuma próxima ação na sua responsabilidade.';
+        btn.dataset.open='pendencias';btn.textContent='Ver Central →';
+        return;
+      }
+      const first=rows[0];
+      box.className='fx-command '+(rows.length>=5?'warn':'info');
+      box.querySelector('.fx-command-eyebrow').textContent='SEU TRABALHO AGORA';
+      title.textContent=rows.length+' ação(ões) aguardando sua atenção';
+      textEl.textContent=(first.number||first.orderId)+' · '+String(first.reason||'Próxima ação operacional identificada.');
+      btn.dataset.open='pendencias';btn.textContent='Resolver na Central →';
+    }catch(err){
+      console.warn('[FocadoShell] resumo do workflow indisponível',err);
+    }
+  }
 
   function dashboard(){
     const ops=loadOps(),orders=ops.orders||[],inputs=ops.inputInventory||{},bases=ops.productionBases||{};
@@ -81,15 +124,15 @@
 
     $('#fxContent').innerHTML=
       '<div class="fx-titlebar fx-titlebar-premium"><div><span class="fx-eyebrow">FOCADO · OPERAÇÃO</span><h1>Bom trabalho. Aqui está o que importa hoje.</h1><p>Decisões, exceções e andamento da operação em uma única visão.</p></div><div class="fx-date">'+date+'</div></div>'+
-      '<div class="fx-command '+priority.tone+'"><div><span class="fx-command-eyebrow">'+priority.eyebrow+'</span><h2>'+priority.title+'</h2><p>'+priority.text+'</p></div><button class="fx-command-action" data-open="'+priority.route+'">'+priority.action+' →</button></div>'+
+      '<div class="fx-command '+priority.tone+'" id="fxOperationalCommand"><div><span class="fx-command-eyebrow">'+priority.eyebrow+'</span><h2>'+priority.title+'</h2><p>'+priority.text+'</p></div><button class="fx-command-action" data-open="'+priority.route+'">'+priority.action+' →</button></div>'+
       '<div class="fx-kpis fx-kpis-premium">'+
         kpi('▤','Pedidos em aberto',open.length,money(totalOpen),'')+
-        kpi('⌘','Em PCP',counts.PCP,'aguardando planejamento','purple')+
+        kpi('⌘','Status macro PCP',counts.PCP,'andamento real no contexto operacional','purple')+
         kpi('▰','Na logística',counts.LOGISTICA,'em programação / entrega','blue')+
         kpi('!','Atrasos',late,late?'atenção imediata':'nenhum vencido','danger')+
       '</div>'+
       '<div class="fx-grid">'+
-        '<div class="fx-panel"><div class="fx-panel-head"><h2>Fluxo de Pedidos</h2><button class="fx-link" data-open="orders">Ver pedidos</button></div><div class="fx-flow">'+flow('Comercial',counts.COMERCIAL)+flow('PCP',counts.PCP)+flow('Logística',counts.LOGISTICA)+flow('Entrega',counts.ENTREGUE)+'</div></div>'+
+        '<div class="fx-panel"><div class="fx-panel-head"><h2>Status macro dos pedidos</h2><button class="fx-link" data-open="orders">Ver pedidos</button></div><div class="fx-flow">'+flow('Comercial',counts.COMERCIAL)+flow('PCP',counts.PCP)+flow('Logística',counts.LOGISTICA)+flow('Entrega',counts.ENTREGUE)+'</div></div>'+
         '<div class="fx-panel"><div class="fx-panel-head"><h2>Produção · Capacidade</h2><button class="fx-link" data-open="production">Ver programação</button></div>'+baseRows+'</div>'+
         '<div class="fx-panel"><div class="fx-panel-head"><h2>Alertas Operacionais</h2></div>'+alertRows.map(a=>'<div class="fx-alert"><div class="fx-alert-icon">'+a[0]+'</div><div><b>'+a[1]+'</b><small>'+a[2]+'</small></div></div>').join('')+'</div>'+
       '</div>'+
@@ -99,6 +142,7 @@
         '<div class="fx-panel"><div class="fx-panel-head"><h2>Resumo da Carteira</h2></div><div class="fx-kpi" style="border:0;padding:6px 0"><span>Pedidos abertos</span><strong>'+money(totalOpen)+'</strong><small>'+open.length+' pedido(s) em andamento</small></div><div class="fx-alert"><div class="fx-alert-icon">✓</div><div><b>'+counts.ENTREGUE+' pedido(s) concluído(s)</b><small>Histórico operacional registrado</small></div></div></div>'+
       '</div><div class="fx-footer"><span>Focado © 2026 · Ambiente operacional</span><span>Arquitetura modular · Product UI 2.0</span></div>';
     bindDashboardLinks();
+    refreshWorkflowCommand().then(bindDashboardLinks);
   }
   function kpi(icon,label,value,sub,cls){return '<div class="fx-kpi '+(cls||'')+'"><div class="fx-kpi-top"><span>'+label+'</span><div class="fx-kpi-icon">'+icon+'</div></div><strong>'+value+'</strong><small>'+sub+'</small></div>'}
   function flow(label,n){return '<div class="fx-flow-step '+(n?'active':'')+'"><b>'+n+'</b><span>'+label+'</span></div>'}
@@ -111,6 +155,62 @@
     return rows.slice(0,5).map(inv=>'<div class="fx-alert"><div class="fx-alert-icon">◇</div><div><b>'+esc(inv.name||inv.code)+'</b><small>Disponível '+inputAvailable(inv).toFixed(2)+' '+esc(inv.unit||'')+' · Ponto '+reorderPoint(inv).toFixed(2)+'</small></div></div>').join('')
   }
   function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+  const operationalContext={
+    pedidos:{label:'Comercial',area:'COMERCIAL',purpose:'Transformar a necessidade do cliente em um pedido completo e liberável.'},
+    pcp:{label:'PCP',area:'PCP',purpose:'Garantir cobertura, data e liberação correta do pedido.'},
+    production:{label:'Produção',area:'PRODUCAO',purpose:'Concluir o que falta produzir para atender pedidos liberados.'},
+    inventory:{label:'Estoque',area:'ESTOQUE',purpose:'Manter saldo físico confiável e disponível para reserva e expedição.'},
+    inputs:{label:'Insumos',area:'ESTOQUE',purpose:'Garantir disponibilidade dos materiais necessários à produção.'},
+    purchases:{label:'Compras',area:'COMPRAS',purpose:'Eliminar faltas de insumo e acompanhar recebimentos vinculados.'},
+    expedicao:{label:'Expedição',area:'EXPEDICAO',purpose:'Separar e liberar fisicamente pedidos já cobertos.'},
+    logistica:{label:'Logística',area:'LOGISTICA',purpose:'Definir transporte, coleta e concluir a entrega.'},
+    entregas:{label:'Entregas',area:'LOGISTICA',purpose:'Acompanhar o compromisso com o cliente até a confirmação final.'},
+    transportadoras:{label:'Transportadoras',area:'LOGISTICA',purpose:'Manter os recursos logísticos prontos para execução.'},
+    financeiro:{label:'Financeiro',area:'FINANCEIRO',purpose:'Fechar o ciclo econômico dos pedidos já entregues.'}
+  };
+
+  async function workflowSnapshot(){
+    if(!window.FocadoDataStore?.isRemoteReady?.())return null;
+    const base=String(window.FocadoDataStore.getConfig().apiBaseUrl||'').replace(/\/$/,'');
+    const token=window.FocadoDataStore.getSessionToken();
+    const res=await fetch(base+'/api/workflow',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+    if(!res.ok)return null;
+    return res.json();
+  }
+
+  async function enhanceOperationalContext(id){
+    const cfg=operationalContext[id];
+    const host=document.getElementById('fxContent');
+    if(!cfg||!host)return;
+    host.querySelector('.fx-journey-context')?.remove();
+
+    let rows=[];
+    try{
+      const data=await workflowSnapshot();
+      rows=(data?.workQueue||[]).filter(x=>String(x.area||'').toUpperCase()===cfg.area);
+    }catch(err){
+      console.warn('[FocadoShell] contexto operacional indisponível',err);
+    }
+
+    const first=rows[0];
+    const context=document.createElement('section');
+    context.className='fx-journey-context '+(rows.length?'attention':'clear');
+    context.setAttribute('aria-label','Contexto operacional da área');
+    context.innerHTML=
+      '<div class="fx-journey-main">'+
+        '<span class="fx-journey-eyebrow">ETAPA ATUAL · '+esc(cfg.label)+'</span>'+
+        '<strong>'+(rows.length?rows.length+' ação(ões) aguardando esta área':'Nenhuma ação crítica aguardando esta área')+'</strong>'+
+        '<p>'+(first?esc((first.number||first.orderId)+' · '+(first.reason||'Próxima ação identificada pelo workflow.')):esc(cfg.purpose))+'</p>'+
+      '</div>'+
+      '<div class="fx-journey-meta">'+
+        '<div><span>Responsável</span><b>'+esc(cfg.label)+'</b></div>'+
+        '<div><span>Próximo passo</span><b>'+(first?esc(String(first.action||'').replace(/_/g,' ')):'Sem pendência crítica')+'</b></div>'+
+        '<button class="fx-journey-action" type="button">Ver Central de Pendências →</button>'+
+      '</div>';
+    context.querySelector('.fx-journey-action').onclick=()=>navigate('pendencias');
+    host.prepend(context);
+  }
 
   function showShell(openDashboard=true){
     if(!sessionStorage.getItem('nova-era-role'))return;
@@ -130,7 +230,7 @@
   function hideShell(){shell.classList.add('hidden')}
   function setActive(id){document.querySelectorAll('[data-fx-nav]').forEach(b=>b.classList.toggle('active',b.dataset.fxNav===id))}
   async function navigate(id){
-    if(window.FocadoAuth && !window.FocadoAuth.can(id==='pendencias'?'cockpit':id)){
+    if(window.FocadoAuth && !window.FocadoAuth.can(id)){
       alert('Seu perfil não possui acesso a esta área.');
       return;
     }
@@ -147,12 +247,14 @@
       if(typeof fn==='function')fn();
       setActive(id);
       document.getElementById('fxSidebar')?.classList.remove('open');
+      queueMicrotask(()=>enhanceOperationalContext(id));
     };
     const refreshInBackground=(domain,rerender)=>{
       Promise.resolve(window.FocadoDataStore?.refreshDomainV2?.(domain))
         .then(result=>{
           if(result?.ok&&typeof rerender==='function'&&document.querySelector('[data-fx-nav="'+id+'"].active')){
             rerender();
+            queueMicrotask(()=>enhanceOperationalContext(id));
           }
         })
         .catch(err=>console.warn('[FocadoDataStore] atualização em segundo plano falhou para '+domain,err));

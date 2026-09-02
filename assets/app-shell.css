@@ -159,3 +159,35 @@
   .fx-avatar{display:none}
   .fx-kpis,.fx-kpis-premium{grid-template-columns:1fr}
 }
+
+
+/* Fase 5B — contexto operacional transversal */
+.fx-journey-context{
+  display:flex;align-items:center;justify-content:space-between;gap:18px;
+  margin:0 0 16px;padding:15px 17px;border:1px solid #e3ebe7;border-radius:16px;
+  background:linear-gradient(135deg,#fff 0%,#f7faf8 100%);
+  box-shadow:0 8px 24px rgba(18,54,41,.045)
+}
+.fx-journey-context.attention{border-color:#eadfca;background:linear-gradient(135deg,#fff 0%,#fffaf4 100%)}
+.fx-journey-main{min-width:0}
+.fx-journey-eyebrow{display:block;margin-bottom:5px;font-size:8.5px;font-weight:850;letter-spacing:1px;color:#0a7a5c}
+.fx-journey-context.attention .fx-journey-eyebrow{color:#9f641a}
+.fx-journey-main strong{display:block;font-size:15px;line-height:1.25;color:#193b30;letter-spacing:-.2px}
+.fx-journey-main p{margin:4px 0 0;color:#6f7d76;font-size:10.5px;line-height:1.45;max-width:760px}
+.fx-journey-meta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end}
+.fx-journey-meta>div{min-width:105px}
+.fx-journey-meta span{display:block;font-size:8px;text-transform:uppercase;letter-spacing:.65px;font-weight:800;color:#87928c;margin-bottom:3px}
+.fx-journey-meta b{display:block;font-size:10px;color:#233c33;max-width:180px}
+.fx-journey-action{
+  border:0;background:#0a7659;color:#fff;border-radius:10px;min-height:38px;padding:8px 12px;
+  font:750 10px system-ui;cursor:pointer;white-space:nowrap
+}
+.fx-journey-action:hover{background:#08694f}
+@media(max-width:820px){
+  .fx-journey-context{align-items:flex-start;flex-direction:column}
+  .fx-journey-meta{justify-content:flex-start;width:100%}
+}
+@media(max-width:520px){
+  .fx-journey-meta{display:grid;grid-template-columns:1fr 1fr}
+  .fx-journey-action{grid-column:1/-1;width:100%}
+}

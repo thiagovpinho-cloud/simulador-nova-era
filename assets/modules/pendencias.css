@@ -97,3 +97,18 @@
 .fp-automation-status.on{background:var(--green-soft)}
 .fp-automation-status.off{opacity:.76}
 @media(max-width:800px){.fp-automation-status{align-items:flex-start;flex-direction:column}.fp-automation-status small{margin-left:0}}
+
+/* Fase 5D — feedback, carregamento e acessibilidade */
+.fp-loading{min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px}
+.fp-loading strong{font-family:var(--disp);font-size:15px;color:var(--ink)}
+.fp-loading small{font-size:10.5px;color:var(--ink-faint)}
+.fp-spinner{width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--brand);border-radius:50%;animation:fp-spin .75s linear infinite}
+@keyframes fp-spin{to{transform:rotate(360deg)}}
+.fp-refresh:focus-visible,.fp-group-head button:focus-visible,.fp-go:focus-visible,.fp-view:focus-visible,.fp-error button:focus-visible,.fp360-next button:focus-visible,.fp360-head button:focus-visible{
+  outline:3px solid rgba(62,156,49,.24);outline-offset:2px
+}
+.fp-refresh:active,.fp-group-head button:active,.fp-go:active,.fp-view:active,.fp-error button:active{transform:translateY(1px)}
+@media(prefers-reduced-motion:reduce){.fp-spinner{animation:none}}
+@media(max-width:520px){
+  .fp-refresh,.fp-group-head button,.fp-go,.fp-view,.fp-error button,.fp360-next button{min-height:44px}
+}

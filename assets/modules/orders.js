@@ -160,14 +160,14 @@
     });
     const open=orders.filter(o=>o.status!=='ENTREGUE');
     content().innerHTML='<div class="fo-page">'+
-      '<div class="fo-head"><div><h1>Pedidos Comerciais</h1><p>Registro oficial do pedido · Comercial → PCP → Logística</p></div><div class="fo-actions">'+(window.FocadoAuth?.getRole?.()==='ADMIN'?'<button class="fo-btn secondary" id="foCorrectionPermissions">Permissão de edição</button>':'')+'<button class="fo-btn secondary" id="foPeriod">Listagem / período</button><button class="fo-btn primary" id="foNew">+ Novo pedido</button></div></div>'+
+      '<div class="fo-head"><div><h1>Pedidos Comerciais</h1><p>Registro oficial do pedido · o status macro é preservado; a barra superior mostra o andamento operacional real</p></div><div class="fo-actions">'+(window.FocadoAuth?.getRole?.()==='ADMIN'?'<button class="fo-btn secondary" id="foCorrectionPermissions">Permissão de edição</button>':'')+'<button class="fo-btn secondary" id="foPeriod">Listagem / período</button><button class="fo-btn primary" id="foNew">+ Novo pedido</button></div></div>'+
       '<div class="fo-summary">'+
         stat('Em preenchimento',orders.filter(o=>o.status==='COMERCIAL').length,'rascunhos do Comercial')+
         stat('Aguardando PCP',orders.filter(o=>o.status==='PCP').length,'enviados pelo Comercial')+
         stat('Pedidos em aberto',open.length,money(open.reduce((s,o)=>s+value(o),0)))+
         stat('Concluídos',orders.filter(o=>o.status==='ENTREGUE').length,'histórico finalizado')+
       '</div>'+
-      '<div class="fo-toolbar"><input class="fo-search" id="foSearch" placeholder="Buscar pedido, cliente, CNPJ, representante ou produto" value="'+esc(currentFilters.q)+'"><select class="fo-select" id="foStage"><option value="TODOS">Todos os status</option>'+[['COMERCIAL','Em preenchimento'],['PCP','Aguardando PCP'],['ESTOQUE_PRODUCAO','Produção / Estoque'],['LOGISTICA','Logística'],['ENTREGUE','Concluído']].map(x=>'<option value="'+x[0]+'" '+(currentFilters.stage===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')+'</select><span class="fo-muted">'+filtered.length+' pedido(s)</span></div>'+
+      '<div class="fo-toolbar"><input class="fo-search" id="foSearch" placeholder="Buscar pedido, cliente, CNPJ, representante ou produto" value="'+esc(currentFilters.q)+'"><select class="fo-select" id="foStage"><option value="TODOS">Todos os status macro</option>'+[['COMERCIAL','Em preenchimento'],['PCP','Aguardando PCP'],['ESTOQUE_PRODUCAO','Produção / Estoque'],['LOGISTICA','Logística'],['ENTREGUE','Concluído']].map(x=>'<option value="'+x[0]+'" '+(currentFilters.stage===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')+'</select><span class="fo-muted">'+filtered.length+' pedido(s)</span></div>'+
       '<div class="fo-table-wrap">'+table(filtered)+'</div></div>';
     document.getElementById('foNew').onclick=()=>openForm();
     document.getElementById('foPeriod').onclick=()=>renderReport(firstDayMonth(),today());
@@ -184,7 +184,7 @@
   function table(rows){
     if(!rows.length)return '<div class="fo-empty">Nenhum pedido encontrado.</div>';
     const allowEdit=canEditExisting();
-    return '<table class="fo-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>CNPJ</th><th>Representante</th><th>Data</th><th>Itens</th><th>Valor</th><th>Status</th><th>Previsão</th><th></th></tr></thead><tbody>'+rows.map(o=>{
+    return '<table class="fo-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>CNPJ</th><th>Representante</th><th>Data</th><th>Itens</th><th>Valor</th><th>Status macro</th><th>Previsão</th><th></th></tr></thead><tbody>'+rows.map(o=>{
       const s=stage(o.status);
       const canDelete=allowEdit&&o.status==='COMERCIAL';
       return '<tr><td><div class="fo-order">'+esc(o.number)+'</div></td><td><div class="fo-client">'+esc(o.client||'—')+'</div><div class="fo-muted">'+esc([o.city,o.uf].filter(Boolean).join('/'))+'</div></td><td>'+esc(formatCnpj(o.cnpj)||'—')+'</td><td>'+esc(o.representative||'—')+'</td><td>'+dbr(o.orderDate)+'</td><td>'+(o.items||[]).length+'</td><td>'+money(value(o))+'</td><td><span class="fo-stage '+s[1]+'">'+s[0]+'</span></td><td>'+dbr(o.pcp?.availableDate||o.requestedDeliveryDate)+'</td><td><div class="fo-actions"><button class="fo-open" data-fo-open="'+esc(o.id)+'">Abrir</button>'+(allowEdit?'<button class="fo-open" data-fo-edit="'+esc(o.id)+'">Editar</button>':'')+(canDelete?'<button class="fo-open fo-delete-order" data-fo-delete="'+esc(o.id)+'">Excluir</button>':'')+'</div></td></tr>';
