@@ -203,3 +203,7 @@
   .fx-journey-meta{position:relative}
   .fx-journey-close{position:absolute;right:0;top:-2px}
 }
+
+.fx-refresh{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:8px 11px;border:1px solid #e0e8e4;border-radius:11px;background:#fff;color:#315047;font:750 10px system-ui;cursor:pointer;white-space:nowrap}
+.fx-refresh:hover{background:#f4f8f6}.fx-refresh.loading{opacity:.7}.fx-refresh:disabled{cursor:wait}
+@media(max-width:760px){.fx-refresh{width:44px;min-width:44px;height:44px;padding:0;justify-content:center;font-size:18px}.fx-refresh span{display:none}}

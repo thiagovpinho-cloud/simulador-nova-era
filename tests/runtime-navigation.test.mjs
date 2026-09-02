@@ -119,5 +119,5 @@ assert.ok(loader.includes("clientes:{css:'customers.css',js:'customers.js'}"),'C
 assert.ok(loader.includes("representantes:{css:'representatives.css',js:'representatives.js'}"),'Representantes deve continuar disponível pelo loader');
 assert.ok(loader.includes("pedidos:{css:'orders.css',js:'orders.js'"),'Pedidos deve continuar disponível pelo loader');
 
-assert.ok(/assets\/app-shell\.js\?v=(?:20260828-edit-actions-v\d+|20260829-mobile-v\d+|20260902-(?:freight-center|ops-ux)-v\d+)/.test(index),'Shell deve publicar proteção contra rerender, navegação e central de frete');
+assert.ok(/assets\/app-shell\.js\?v=(?:20260828-edit-actions-v\d+|20260829-mobile-v\d+|20260902-(?:freight-center|ops-ux|ops-data)-v\d+)/.test(index),'Shell deve publicar proteção contra rerender, navegação e central de frete');
 assert.ok(loader.includes("pedidos:{css:'orders.css',js:'orders.js'"),'Pedidos deve preservar carregamento modular');

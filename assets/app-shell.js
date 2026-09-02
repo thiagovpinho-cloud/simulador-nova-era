@@ -29,7 +29,7 @@
     menu.innerHTML=navHtml();
     bindNav();
   }
-  shell.innerHTML='<div class="fx-mobile-backdrop" id="fxMobileBackdrop" aria-hidden="true"></div><aside class="fx-sidebar" id="fxSidebar"><div class="fx-brand"><img id="fxBrandLogo" src="" alt="Focado"></div><div class="fx-menu">'+navHtml()+'</div><div class="fx-version">Versão 1.0 · Novo Frontend</div></aside><main class="fx-main"><header class="fx-topbar"><button class="fx-menu-toggle" id="fxMenuToggle">☰</button><div class="fx-search"><span>⌕</span><input id="fxSearch" placeholder="Buscar pedidos, clientes, produtos, insumos..."></div><div class="fx-user"><div class="fx-avatar" id="fxAvatar">A</div><div class="fx-user-meta"><b id="fxUserName">Administrador</b><small id="fxUserRole">Administrador</small></div><button class="fx-logout" id="fxLogout">Sair</button></div></header><section class="fx-content" id="fxContent"></section></main>';
+  shell.innerHTML='<div class="fx-mobile-backdrop" id="fxMobileBackdrop" aria-hidden="true"></div><aside class="fx-sidebar" id="fxSidebar"><div class="fx-brand"><img id="fxBrandLogo" src="" alt="Focado"></div><div class="fx-menu">'+navHtml()+'</div><div class="fx-version">Versão 1.0 · Novo Frontend</div></aside><main class="fx-main"><header class="fx-topbar"><button class="fx-menu-toggle" id="fxMenuToggle">☰</button><div class="fx-search"><span>⌕</span><input id="fxSearch" placeholder="Buscar pedidos, clientes, produtos, insumos..."></div><button class="fx-refresh" id="fxRefresh" title="Atualizar dados" aria-label="Atualizar dados">↻ <span>Atualizar</span></button><div class="fx-user"><div class="fx-avatar" id="fxAvatar">A</div><div class="fx-user-meta"><b id="fxUserName">Administrador</b><small id="fxUserRole">Administrador</small></div><button class="fx-logout" id="fxLogout">Sair</button></div></header><section class="fx-content" id="fxContent"></section></main>';
   document.body.appendChild(shell);
 
   function syncBrandLogo(){
@@ -327,8 +327,7 @@
       return
     }
     if(id==='inputs'){
-      open(()=>window.FocadoInventory?.render({tab:'inputs',q:'',filter:'TODOS'}));
-      refreshInBackground('inventory',()=>window.FocadoInventory?.render({tab:'inputs',q:'',filter:'TODOS'}));
+      open(()=>window.FocadoInputs?.render({q:'',brand:'TODAS',group:'TODOS'}));
       return
     }
     if(id==='purchases'){
@@ -360,6 +359,25 @@
     if(!['COMERCIAL','LOGISTICA','ADMIN','DIRETOR','GESTOR'].includes(role))return;
     try{await window.FocadoModules?.ensure?.('freight-requests');window.FocadoFreightRequests?.notify?.()}catch(err){console.warn('[Focado] aviso de frete indisponível',err)}
   }
+  async function notifyPCPDelay(){
+    if(String(window.FocadoAuth?.getRole?.()||'').toUpperCase()!=='COMERCIAL')return;
+    try{await window.FocadoModules?.ensure?.('pcp-commercial-alerts');window.FocadoPCPCommercialAlerts?.notify?.()}catch(err){console.warn('[Focado] alerta PCP indisponível',err)}
+  }
+  async function syncSilent(rerender=false){
+    if(!window.FocadoDataStore?.isRemoteReady?.()||shell.classList.contains('hidden'))return;
+    const btn=$('#fxRefresh');
+    try{
+      if(btn&&rerender){btn.disabled=true;btn.classList.add('loading');btn.querySelector('span').textContent='Atualizando…'}
+      await window.FocadoDataStore.load();
+      const active=document.querySelector('[data-fx-nav].active')?.dataset?.fxNav||'dashboard';
+      if(rerender){if(active==='dashboard')dashboard();else navigate(active)}
+      else if(active==='dashboard')dashboard();
+      await Promise.all([notifyFreight(),notifyPCPDelay()]);
+      if(btn&&rerender)btn.querySelector('span').textContent='Atualizado';
+    }finally{
+      if(btn&&rerender)setTimeout(()=>{btn.disabled=false;btn.classList.remove('loading');btn.querySelector('span').textContent='Atualizar'},900);
+    }
+  }
   function bindNav(){document.querySelectorAll('[data-fx-nav]').forEach(b=>b.onclick=()=>{if(!b.querySelector('.fx-nav-soon'))navigate(b.dataset.fxNav)})}
   bindNav();
   const closeMobileNav=()=>$('#fxSidebar')?.classList.remove('open');
@@ -367,6 +385,7 @@
   $('#fxMobileBackdrop').onclick=closeMobileNav;
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMobileNav()});
   $('#fxLogout').onclick=async()=>{hideShell();try{await window.FocadoAuth?.logout?.()}catch(_){} document.getElementById('hubLogoutBtn')?.click()};
+  $('#fxRefresh').onclick=()=>syncSilent(true);
   $('#fxSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){const q=e.target.value.trim();if(q)navigate('pedidos')}});
 
   window.addEventListener('focado:auth-changed',e=>{
@@ -375,15 +394,16 @@
       showShell(active==='dashboard');
       document.getElementById('loginScreen')?.classList.add('hidden');
       document.getElementById('hubScreen')?.classList.add('hidden');
-      queueMicrotask(notifyFreight);
+      queueMicrotask(()=>{notifyFreight();notifyPCPDelay()});
     }else hideShell();
   });
   window.addEventListener('focado:cache-hydrated',()=>{
     if(shell.classList.contains('hidden'))return;
     const active=document.querySelector('[data-fx-nav].active')?.dataset?.fxNav||'dashboard';
     if(active==='dashboard')dashboard();
-    queueMicrotask(notifyFreight);
+    queueMicrotask(()=>{notifyFreight();notifyPCPDelay()});
   });
+  setInterval(()=>syncSilent(false),60000);
   const observer=new MutationObserver(()=>{
     const hub=$('#hubScreen');
     if(hub&&!hub.classList.contains('hidden')&&sessionStorage.getItem('nova-era-role')){

@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260902-ops-ux-v1';
+  const VERSION='20260902-ops-data-v1';
   const loaded=new Map();
   const defs={
     simulador:{css:'simulator.css',js:'simulator.js'},
@@ -22,7 +22,8 @@
     pcp:{css:'pcp.css',js:'pcp.js',deps:['produtos','production','cockpit']},
     production:{css:'production.css',js:'production.js',deps:['produtos']},
     inventory:{css:'inventory.css',js:'inventory.js'},
-    inputs:{alias:'inventory'},
+    inputs:{css:'inputs.css',js:'inputs.js'},
+    'pcp-commercial-alerts':{css:'pcp-commercial-alerts.css',js:'pcp-commercial-alerts.js'},
     purchases:{css:'purchases.css',js:'purchases.js',deps:['cockpit']},
     expedicao:{css:'expedition.css',js:'expedition.js'},
     logistica:{css:'logistics.css',js:'logistics.js',deps:['cockpit']},
@@ -52,6 +53,8 @@
     pcp:()=>typeof window.FocadoPCP?.render==='function',
     production:()=>typeof window.FocadoProduction?.render==='function',
     inventory:()=>typeof window.FocadoInventory?.render==='function',
+    inputs:()=>typeof window.FocadoInputs?.render==='function',
+    'pcp-commercial-alerts':()=>typeof window.FocadoPCPCommercialAlerts?.notify==='function',
     purchases:()=>typeof window.FocadoPurchases?.render==='function',
     expedicao:()=>typeof window.FocadoExpedition?.render==='function',
     logistica:()=>typeof window.FocadoLogistics?.render==='function',
