@@ -145,12 +145,14 @@ assert.ok(simulatorModule.includes('Venda CX sem IPI/ST'),'Painel deve separar p
 
 const simulatorV3=read('assets/modules/simulator.js');
 const simulatorCssV3=read('assets/modules/simulator.css');
+const inputsModuleV2=read('assets/modules/inputs.js');
+const inputsCssV2=read('assets/modules/inputs.css');
 assert.ok(indexPerf.includes("classList.add('focado-booting')"),'Boot deve ativar splash antes do primeiro frame');
 assert.ok(indexPerf.includes('focado-brand.svg?v=20260828-boot'),'Splash deve usar a logo do Focado');
 assert.ok(shellPerf.includes("classList.remove('focado-booting')"),'Shell moderno deve remover splash quando estiver pronto');
 assert.ok(indexPerf.includes("function showLogin(){\n  document.documentElement.classList.remove('focado-booting');"),'Tela de login deve remover splash ao ficar pronta');
 assert.ok(indexPerf.includes('addInput(input={})'),'Motor deve permitir cadastro de novo insumo');
-assert.ok(simulatorV3.includes('Cadastrar insumo'),'Simulador deve permitir cadastro de novo insumo');
+assert.ok(inputsModuleV2.includes('Cadastrar insumo'),'Módulo de Insumos deve permitir cadastro de novo insumo');
 assert.ok(simulatorV3.includes('Manual por caixa'),'Simulador deve expor frete manual por caixa');
 assert.ok(simulatorV3.includes('data-freight-price'),'Frete manual deve ser editável por produto');
 assert.ok(simulatorV3.includes('data-comp-unit'),'Unidade da composição deve ser editável');
@@ -158,7 +160,7 @@ assert.ok(simulatorV3.includes('data-comp-qty'),'Quantidade da composição deve
 assert.ok(simulatorV3.includes('data-comp-loss'),'Perda da composição deve ser editável');
 assert.ok(indexPerf.includes("if(patch.unit!=null)m.unit="),'Motor deve persistir unidade editada na fórmula');
 assert.ok(indexPerf.includes("if(patch.unit!=null)p.unit="),'Motor deve persistir unidade editada no processo');
-assert.ok(simulatorCssV3.includes('.fsim-modal'),'Cadastro de insumo deve possuir modal estilizado');
+assert.ok(inputsCssV2.includes('.fin-modal'),'Cadastro de insumo deve possuir modal estilizado');
 
 const marginRulesModule=read('assets/modules/margin-rules.js');
 const financeRules=read('assets/modules/finance.js');
