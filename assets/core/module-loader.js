@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260828-edit-actions-v4';
+  const VERSION='20260902-freight-center-v1';
   const loaded=new Map();
   const defs={
     simulador:{css:'simulator.css',js:'simulator.js'},
@@ -14,15 +14,17 @@
     cockpit:{css:'intelligence.css',js:'intelligence.js',deps:['intelligence-core']},
     pendencias:{css:'pendencias.css',js:'pendencias.js'},
     'corpo-auditor':{alias:'cockpit'},
-    'freight-quotes':{js:'freight-quotes.js'},
-    pedidos:{css:'orders.css',js:'orders.js',deps:['produtos','freight-quotes']},
+    'freight-requests':{css:'freight-requests.css',js:'freight-requests.js'},
+    'cotacoes-frete':{alias:'freight-requests'},
+    'cotacoes-frete-logistica':{alias:'freight-requests'},
+    pedidos:{css:'orders.css',js:'orders.js',deps:['produtos']},
     pcp:{css:'pcp.css',js:'pcp.js',deps:['produtos','production','cockpit']},
     production:{css:'production.css',js:'production.js',deps:['produtos']},
     inventory:{css:'inventory.css',js:'inventory.js'},
     inputs:{alias:'inventory'},
     purchases:{css:'purchases.css',js:'purchases.js',deps:['cockpit']},
     expedicao:{css:'expedition.css',js:'expedition.js'},
-    logistica:{css:'logistics.css',js:'logistics.js',deps:['cockpit','freight-quotes']},
+    logistica:{css:'logistics.css',js:'logistics.js',deps:['cockpit']},
     entregas:{alias:'logistica'},
     transportadoras:{alias:'logistica'},
     kanban:{css:'kanban.css',js:'kanban.js',deps:['pedidos']},
@@ -41,7 +43,9 @@
     bases:()=>typeof window.FocadoBases?.render==='function',
     representantes:()=>typeof window.FocadoRepresentatives?.render==='function',
     clientes:()=>typeof window.FocadoCustomers?.render==='function',
-    'freight-quotes':()=>typeof window.FocadoFreightQuotes?.commercialCard==='function'&&typeof window.FocadoFreightQuotes?.logisticsPanel==='function',
+    'freight-requests':()=>typeof window.FocadoFreightRequests?.render==='function'&&typeof window.FocadoFreightRequests?.notify==='function',
+    'cotacoes-frete':()=>typeof window.FocadoFreightRequests?.render==='function',
+    'cotacoes-frete-logistica':()=>typeof window.FocadoFreightRequests?.render==='function',
     pedidos:()=>typeof window.FocadoOrders?.render==='function'&&typeof window.FocadoOrders?.openOrder==='function',
     pcp:()=>typeof window.FocadoPCP?.render==='function',
     production:()=>typeof window.FocadoProduction?.render==='function',

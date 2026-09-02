@@ -12,7 +12,9 @@ export const DOMAIN_PERMISSION=Object.freeze({
   TRANSPORTADORAS:'logistics.write',
   CLIENTES:'commercial.write',
   EXPEDICAO:'inventory.write',
-  BASES:'workspace.write'
+  BASES:'workspace.write',
+  COTACAO_FRETE_COMERCIAL:'orders.write',
+  COTACAO_FRETE_LOGISTICA:'logistics.write'
 });
 
 export const FLOW=Object.freeze({
@@ -645,6 +647,66 @@ function applyProductionRequest(state,body){
   }
 }
 
+
+function freightRequest(state,id){
+  state.freightRequests=Array.isArray(state.freightRequests)?state.freightRequests:[];
+  return state.freightRequests.find(x=>String(x.id)===String(id));
+}
+
+function applyFreightCommercial(state,body){
+  state.freightRequests=Array.isArray(state.freightRequests)?state.freightRequests:[];
+  const c=body.changes||{};
+  if(c.request&&typeof c.request==='object'){
+    const src=structuredClone(c.request);
+    const id=String(src.id||('frq_'+Date.now())).trim();
+    if(state.freightRequests.some(x=>String(x.id)===id))throw Object.assign(new Error('FREIGHT_REQUEST_ALREADY_EXISTS'),{status:409});
+    const at=Number(src.requestedAt||Date.now()),by=String(src.requestedBy||'Comercial');
+    const request={
+      id,status:'SOLICITADA',requestedAt:at,requestedBy:by,
+      client:String(src.client||'').trim(),reference:String(src.reference||'').trim(),
+      origin:String(src.origin||'').trim(),destination:String(src.destination||'').trim(),
+      cargo:String(src.cargo||'').trim(),quantity:String(src.quantity||'').trim(),
+      requestedDate:String(src.requestedDate||'').slice(0,10),notes:String(src.notes||'').trim(),
+      logisticsViewedAt:null,respondedAt:null,respondedBy:'',commercialViewedAt:null,quotes:[],
+      history:[{at,type:'SOLICITADA',by,notes:String(src.notes||'').trim()}]
+    };
+    if(!request.origin||!request.destination)throw Object.assign(new Error('FREIGHT_ROUTE_REQUIRED'),{status:422});
+    state.freightRequests.unshift(request);
+    return;
+  }
+  const r=freightRequest(state,body.requestId||c.requestId);
+  if(!r)throw Object.assign(new Error('FREIGHT_REQUEST_NOT_FOUND'),{status:404});
+  if(c.viewed&&r.status==='RESPONDIDA'&&!r.commercialViewedAt){
+    r.commercialViewedAt=Number(c.viewed.at||Date.now());
+    r.commercialViewedBy=String(c.viewed.by||'Comercial');
+    r.history.unshift({at:r.commercialViewedAt,type:'VISUALIZADA_COMERCIAL',by:r.commercialViewedBy});
+  }
+}
+
+function applyFreightLogistics(state,body){
+  const c=body.changes||{},r=freightRequest(state,body.requestId||c.requestId);
+  if(!r)throw Object.assign(new Error('FREIGHT_REQUEST_NOT_FOUND'),{status:404});
+  if(c.opened&&!r.logisticsViewedAt){
+    r.logisticsViewedAt=Number(c.opened.at||Date.now());
+    r.logisticsViewedBy=String(c.opened.by||'Logística');
+    if(r.status==='SOLICITADA')r.status='EM_COTACAO';
+    r.history.unshift({at:r.logisticsViewedAt,type:'EM_COTACAO',by:r.logisticsViewedBy});
+  }
+  if(c.response&&typeof c.response==='object'){
+    const q=(Array.isArray(c.response.quotes)?c.response.quotes:[]).map((x,i)=>({
+      id:String(x.id||('frqo_'+Date.now()+'_'+i)),
+      provider:String(x.provider||'').trim(),value:Math.max(0,Number(x.value||0)),
+      transitDays:Math.max(0,Number(x.transitDays||0)),pickupEstimate:String(x.pickupEstimate||'').slice(0,10),
+      notes:String(x.notes||'').trim()
+    })).filter(x=>x.provider&&x.value>0);
+    if(!q.length)throw Object.assign(new Error('FREIGHT_QUOTE_OPTION_REQUIRED'),{status:422});
+    const at=Number(c.response.respondedAt||Date.now()),by=String(c.response.respondedBy||'Logística');
+    r.status='RESPONDIDA';r.respondedAt=at;r.respondedBy=by;r.commercialViewedAt=null;
+    r.quotes=q;r.responseNotes=String(c.response.notes||'').trim();
+    r.history.unshift({at,type:'RESPONDIDA',by,count:q.length});
+  }
+}
+
 const DOMAIN_APPLIERS=Object.freeze({
   COMERCIAL:applyCommercial,
   PCP:applyPCP,
@@ -657,7 +719,9 @@ const DOMAIN_APPLIERS=Object.freeze({
   TRANSPORTADORAS:applyCarriers,
   CLIENTES:applyCustomers,
   EXPEDICAO:applyExpedition,
-  BASES:applyBases
+  BASES:applyBases,
+  COTACAO_FRETE_COMERCIAL:applyFreightCommercial,
+  COTACAO_FRETE_LOGISTICA:applyFreightLogistics
 });
 
 export function applyDomain(domain,state,body){
