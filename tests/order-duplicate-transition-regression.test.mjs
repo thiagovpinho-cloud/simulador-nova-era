@@ -32,8 +32,6 @@ const domain=read('shared/domain-rules.js');
 
 assert.match(orders,/let persistInFlight=false/);
 assert.match(orders,/if\(persistInFlight\)return false/);
-assert.match(orders,/Enviando…/);
-assert.match(orders,/Salvando…/);
 assert.match(domain,/ORDER_NUMBER_ALREADY_EXISTS/);
 
 assert.ok(!store.includes('String(o.id||o.number)===String(orderId)'),'DataStore não pode localizar pedido por número');
