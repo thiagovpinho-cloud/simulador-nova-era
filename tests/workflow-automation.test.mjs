@@ -10,6 +10,7 @@ assert.equal(disabled.workflowAutomationLog,undefined);
 
 const state={
   settings:{workflowAutomation:{enabled:true}},
+  productionRequests:[{id:'prod-o2',execution:{status:'CONCLUIDA'}}],
   orders:[
     {id:'o1',status:'PCP'},
     {id:'o2',status:'PCP'},
@@ -30,7 +31,7 @@ const byOrder={
     macroStatus:'PCP',
     nextAction:{action:'RESERVAR_ESTOQUE'},
     purchases:{status:'NAO_APLICAVEL'},
-    production:{status:'CONCLUIDO'},
+    production:{status:'NAO_NECESSARIO',requestIds:['prod-o2']},
     inventory:{status:'INSUFICIENTE',coverage:[{open:5,free:5}]}
   },
   o3:{
