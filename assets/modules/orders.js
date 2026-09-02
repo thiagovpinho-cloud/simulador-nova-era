@@ -102,11 +102,11 @@
   function renderCorrectionPermissions(){
     const ops=load(),selected=new Set(correctionRoles(ops));
     content().innerHTML='<div class="fo-page">'+
-      '<div class="fo-head"><div><button class="fo-back" id="foBackPermissions">← Pedidos</button><h1>Permissão para editar pedidos enviados</h1><p>Defina quais perfis podem visualizar o botão “Editar pedido” depois que o Comercial já enviou o pedido para o fluxo operacional.</p></div></div>'+
+      '<div class="fo-head"><div><button class="fo-back" id="foBackPermissions">← Pedidos</button><h1>Permissão para editar pedidos enviados</h1><p>Defina quem pode editar pedidos após o envio pelo Comercial.</p></div></div>'+
       '<div class="fo-card"><h2>Perfis autorizados</h2><div class="fo-fields">'+
         '<label class="fo-field"><span>Administrador</span><label><input type="checkbox" checked disabled> Sempre autorizado</label></label>'+
         '<label class="fo-field"><span>Comercial</span><label><input type="checkbox" id="foCorrectionCommercial" '+(selected.has('COMERCIAL')?'checked':'')+'> Pode corrigir pedidos já enviados</label></label>'+
-      '</div><div class="fo-cnpj-status warn">A correção mantém o status atual do pedido e não desfaz automaticamente reservas, produção ou logística já realizadas. Toda alteração fica registrada no histórico.</div>'+
+      '</div><div class="fo-cnpj-status warn">A correção mantém a etapa atual e fica registrada no histórico.</div>'+
       '<div class="fo-actions" style="margin-top:16px"><button class="fo-btn primary" id="foSaveCorrectionPermissions">Salvar permissão</button></div></div></div>';
     document.getElementById('foBackPermissions').onclick=()=>render(currentFilters);
     document.getElementById('foSaveCorrectionPermissions').onclick=async()=>{
@@ -195,7 +195,7 @@
     const ops=load(),order=(ops.orders||[]).find(o=>String(o.id)===String(id));
     if(!order){alert('Pedido não encontrado.');return}
     if(!isDraft(order)||!canManageDraft()){alert('Somente rascunhos podem ser excluídos pelo Comercial.');return}
-    const ok=confirm('Excluir o pedido '+String(order.number||'')+'?\n\nEsta ação removerá o rascunho em preenchimento e não poderá ser desfeita.');
+    const ok=confirm('Excluir o pedido '+String(order.number||'')+'?\n\nEsta ação não poderá ser desfeita.');
     if(!ok)return;
     try{
       const result=await window.FocadoDataStore.saveDomain('COMERCIAL',{deleteOrderId:order.id},order.id);
@@ -229,7 +229,7 @@
     content().innerHTML='<div class="fo-page">'+
       '<div class="fo-head"><div><button class="fo-back" id="foBack">← Histórico</button><h1>'+esc(o.number)+'</h1><p>Pedido comercial · <span class="fo-stage '+(isDraft(o)?'draft':s[1])+'">'+(isDraft(o)?'Rascunho':s[0])+'</span></p></div><div class="fo-actions">'+
         (!editable&&canOfferEdit?'<button class="fo-btn primary" id="foEditPast">Editar pedido</button>':'')+
-      '</div></div>'+(correctionMode?'<div class="fo-cnpj-status warn" style="margin-bottom:14px">Modo de correção ativado. O pedido permanecerá na etapa atual. Revise PCP, estoque/produção e logística se a alteração impactar quantidade, produto, preço, frete ou data.</div>':'')+
+      '</div></div>'+(correctionMode?'<div class="fo-cnpj-status warn" style="margin-bottom:14px">Modo de correção: a etapa atual será mantida.</div>':'')+
       '<div class="fo-flowline"><span class="'+(o.status==='COMERCIAL'?'active':'done')+'">1. Comercial</span><i>→</i><span class="'+(o.status==='PCP'?'active':(['ESTOQUE_PRODUCAO','LOGISTICA','ENTREGUE'].includes(o.status)?'done':'') )+'">2. PCP</span><i>→</i><span class="'+(['ESTOQUE_PRODUCAO','LOGISTICA'].includes(o.status)?'active':(o.status==='ENTREGUE'?'done':''))+'">3. Logística</span><i>→</i><span class="'+(o.status==='ENTREGUE'?'done':'')+'">4. Concluído</span></div>'+
       '<form id="foOrderForm" class="fo-form">'+
         '<div class="fo-card"><h2>Dados do pedido</h2><div class="fo-fields">'+
