@@ -78,9 +78,17 @@ function cascadeDeleteOrder(state,target){
   // Solicitações consolidadas compartilhadas permanecem para não afetar outros pedidos.
   const removedProductionIds=new Set();
   state.productionRequests=(state.productionRequests||[]).filter(x=>{
-    const hit=referencesOrder(x,id,number);
-    if(hit)removedProductionIds.add(String(x.id||''));
-    return !hit;
+    const direct=['orderId','order_id','sourceOrderId','source_order_id','salesOrderId']
+      .some(k=>String(x?.[k]||'')===id);
+    const sourceIds=Array.isArray(x?.sourceOrderIds)?x.sourceOrderIds:null;
+    const orderIds=Array.isArray(x?.orderIds)?x.orderIds:null;
+    const inSource=sourceIds?.some(v=>String(v)===id);
+    const inOrders=orderIds?.some(v=>String(v)===id);
+    const exclusive=direct||(inSource&&sourceIds.length===1)||(inOrders&&orderIds.length===1);
+    if(exclusive){removedProductionIds.add(String(x.id||''));return false}
+    if(inSource)x.sourceOrderIds=sourceIds.filter(v=>String(v)!==id);
+    if(inOrders)x.orderIds=orderIds.filter(v=>String(v)!==id);
+    return true;
   });
   state.purchaseRequests=(state.purchaseRequests||[]).filter(x=>{
     if(referencesOrder(x,id,number))return false;
