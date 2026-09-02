@@ -195,21 +195,20 @@
     const ops=load(),order=(ops.orders||[]).find(o=>String(o.id)===String(id));
     if(!order){alert('Pedido não encontrado.');return}
     const draft=isDraft(order);
-    if(draft&&!canManageDraft()){alert('Seu perfil não possui permissão para excluir este rascunho.');return}
-    if(!draft&&!canEditExisting()){alert('Somente Administrador, Diretor ou Gestor podem excluir pedidos já enviados.');return}
+    if(draft&&!canManageDraft()){alert('Sem permissão para excluir este rascunho.');return}
+    if(!draft&&!canEditExisting()){alert('Apenas Admin, Diretor ou Gestor podem excluir pedidos enviados.');return}
     const detail=draft
       ? 'O rascunho será removido definitivamente.'
-      : 'O pedido e os registros diretamente vinculados serão removidos. Reservas ou saídas de estoque geradas por este pedido serão revertidas.';
+      : 'Pedido e vínculos serão removidos; reservas/saídas serão revertidas.';
     const ok=confirm('Excluir o pedido '+String(order.number||'')+'?\n\n'+detail+'\n\nEsta ação não poderá ser desfeita.');
     if(!ok)return;
     try{
       const changes=draft?{deleteOrderId:order.id}:{deleteOrderCascadeId:order.id};
       const result=await window.FocadoDataStore.saveDomain('COMERCIAL',changes,order.id);
-      if(!result?.ok){alert('Não foi possível excluir o pedido. Atualize a tela e tente novamente.');return}
+      if(!result?.ok){alert('Não foi possível excluir o pedido.');return}
       if(result.payload)window.FocadoDataStore.writeLocal(result.payload);
       render(currentFilters);
     }catch(err){
-      console.error('[FocadoOrders] delete',err);
       alert('Não foi possível excluir o pedido.');
     }
   }
