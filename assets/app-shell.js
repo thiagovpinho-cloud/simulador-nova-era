@@ -156,6 +156,62 @@
   }
   function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
+  const operationalContext={
+    pedidos:{label:'Comercial',area:'COMERCIAL',purpose:'Transformar a necessidade do cliente em um pedido completo e liberável.'},
+    pcp:{label:'PCP',area:'PCP',purpose:'Garantir cobertura, data e liberação correta do pedido.'},
+    production:{label:'Produção',area:'PRODUCAO',purpose:'Concluir o que falta produzir para atender pedidos liberados.'},
+    inventory:{label:'Estoque',area:'ESTOQUE',purpose:'Manter saldo físico confiável e disponível para reserva e expedição.'},
+    inputs:{label:'Insumos',area:'ESTOQUE',purpose:'Garantir disponibilidade dos materiais necessários à produção.'},
+    purchases:{label:'Compras',area:'COMPRAS',purpose:'Eliminar faltas de insumo e acompanhar recebimentos vinculados.'},
+    expedicao:{label:'Expedição',area:'EXPEDICAO',purpose:'Separar e liberar fisicamente pedidos já cobertos.'},
+    logistica:{label:'Logística',area:'LOGISTICA',purpose:'Definir transporte, coleta e concluir a entrega.'},
+    entregas:{label:'Entregas',area:'LOGISTICA',purpose:'Acompanhar o compromisso com o cliente até a confirmação final.'},
+    transportadoras:{label:'Transportadoras',area:'LOGISTICA',purpose:'Manter os recursos logísticos prontos para execução.'},
+    financeiro:{label:'Financeiro',area:'FINANCEIRO',purpose:'Fechar o ciclo econômico dos pedidos já entregues.'}
+  };
+
+  async function workflowSnapshot(){
+    if(!window.FocadoDataStore?.isRemoteReady?.())return null;
+    const base=String(window.FocadoDataStore.getConfig().apiBaseUrl||'').replace(/\/$/,'');
+    const token=window.FocadoDataStore.getSessionToken();
+    const res=await fetch(base+'/api/workflow',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+    if(!res.ok)return null;
+    return res.json();
+  }
+
+  async function enhanceOperationalContext(id){
+    const cfg=operationalContext[id];
+    const host=document.getElementById('fxContent');
+    if(!cfg||!host)return;
+    host.querySelector('.fx-journey-context')?.remove();
+
+    let rows=[];
+    try{
+      const data=await workflowSnapshot();
+      rows=(data?.workQueue||[]).filter(x=>String(x.area||'').toUpperCase()===cfg.area);
+    }catch(err){
+      console.warn('[FocadoShell] contexto operacional indisponível',err);
+    }
+
+    const first=rows[0];
+    const context=document.createElement('section');
+    context.className='fx-journey-context '+(rows.length?'attention':'clear');
+    context.setAttribute('aria-label','Contexto operacional da área');
+    context.innerHTML=
+      '<div class="fx-journey-main">'+
+        '<span class="fx-journey-eyebrow">ETAPA ATUAL · '+esc(cfg.label)+'</span>'+
+        '<strong>'+(rows.length?rows.length+' ação(ões) aguardando esta área':'Nenhuma ação crítica aguardando esta área')+'</strong>'+
+        '<p>'+(first?esc((first.number||first.orderId)+' · '+(first.reason||'Próxima ação identificada pelo workflow.')):esc(cfg.purpose))+'</p>'+
+      '</div>'+
+      '<div class="fx-journey-meta">'+
+        '<div><span>Responsável</span><b>'+esc(cfg.label)+'</b></div>'+
+        '<div><span>Próximo passo</span><b>'+(first?esc(String(first.action||'').replace(/_/g,' ')):'Sem pendência crítica')+'</b></div>'+
+        '<button class="fx-journey-action" type="button">Ver Central de Pendências →</button>'+
+      '</div>';
+    context.querySelector('.fx-journey-action').onclick=()=>navigate('pendencias');
+    host.prepend(context);
+  }
+
   function showShell(openDashboard=true){
     if(!sessionStorage.getItem('nova-era-role'))return;
     document.documentElement.classList.remove('focado-booting');
@@ -191,12 +247,14 @@
       if(typeof fn==='function')fn();
       setActive(id);
       document.getElementById('fxSidebar')?.classList.remove('open');
+      queueMicrotask(()=>enhanceOperationalContext(id));
     };
     const refreshInBackground=(domain,rerender)=>{
       Promise.resolve(window.FocadoDataStore?.refreshDomainV2?.(domain))
         .then(result=>{
           if(result?.ok&&typeof rerender==='function'&&document.querySelector('[data-fx-nav="'+id+'"].active')){
             rerender();
+            queueMicrotask(()=>enhanceOperationalContext(id));
           }
         })
         .catch(err=>console.warn('[FocadoDataStore] atualização em segundo plano falhou para '+domain,err));
