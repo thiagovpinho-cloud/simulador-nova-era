@@ -14,6 +14,23 @@
     const api=window.FocadoLegacySimulator;
     if(!api)throw new Error('MOTOR_SIMULADOR_INDISPONIVEL');
     snap=await api.ready();
+    const original=snap.activeBrand,ops=window.FocadoDataStore?.readLocal?.()||{};
+    const persisted=Array.isArray(ops.inputCatalog)?ops.inputCatalog:[];
+    const master=window.FocadoSimulatorMasterData?.inputs||[];
+    const key=x=>String(x.brand||'').toLowerCase()+'::'+String(x.code||'').toLowerCase();
+    const merged=new Map(master.map(x=>[key(x),x]));
+    for(const x of persisted.filter(x=>x.active!==false))merged.set(key(x),{...merged.get(key(x)),...x});
+    try{
+      for(const b of snap.brands||[]){
+        let current=api.setBrand(b.id);
+        for(const item of [...merged.values()].filter(x=>String(x.brand).toLowerCase()===String(b.label).toLowerCase())){
+          try{
+            if((current.insumos||[]).some(x=>String(x.code)===String(item.code)))current=api.setInputPrice(item.code,Number(item.price||0));
+            else current=api.addInput({code:item.code,desc:item.name,unit:item.unit,group:item.group,preco:Number(item.price||0)});
+          }catch(_){}
+        }
+      }
+    }finally{snap=original?api.setBrand(original):api.snapshot()}
     if(!selectedProduct&&snap.products?.[0])selectedProduct=snap.products[0].id;
     return snap;
   }
