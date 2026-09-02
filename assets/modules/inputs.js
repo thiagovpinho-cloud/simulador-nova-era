@@ -10,7 +10,7 @@
   const canEdit=()=>['ADMIN','ESTOQUE'].includes(String(window.FocadoAuth?.getRole?.()||'').toUpperCase());
 
   async function motherCatalog(){
-    const rows=Array.isArray(window.FocadoMasterInputs)?window.FocadoMasterInputs:[];
+    const rows=Array.isArray(window.FocadoSimulatorMasterData?.inputs)?window.FocadoSimulatorMasterData.inputs:[];
     return rows.map(x=>({...x,id:x.id||('mother_'+String(x.brand).replace(/\W+/g,'_')+'_'+x.code)}));
   }
 
@@ -24,13 +24,13 @@
       const prev=byKey.get(keyOf(master));
       if(!prev){seed.push(master);continue}
       if(prev.active===false)continue;
-      if(prev.source==='PLANILHA_MAE_07_07_26'||prev.source==='PLANILHA_MAE_07_07_26'){
+      if(prev.source==='PLANILHA_MAE_07_07_2026'||prev.source==='PLANILHA_MAE_07_07_2026'){
         seed.push({...master,id:prev.id||master.id,price:prev.manualOverride?prev.price:master.price,manualOverride:Boolean(prev.manualOverride)});
       }
     }
     if(seed.length&&canEdit()){
       for(const item of seed){
-        const result=await window.FocadoDataStore.saveDomain('INSUMOS',{item:{...item,source:item.manualOverride?'FOCADO':'PLANILHA_MAE_07_07_26'}});
+        const result=await window.FocadoDataStore.saveDomain('INSUMOS',{item:{...item,source:item.manualOverride?'FOCADO':'PLANILHA_MAE_07_07_2026'}});
         if(result?.payload)window.FocadoDataStore.writeLocal(result.payload);
       }
       ops=load();catalog=ops.inputCatalog||[];
