@@ -46,6 +46,8 @@
     return modern||userRole||'';
   };
   const canEditExisting=()=>['ADMIN','DIRETOR','GESTOR'].includes(currentRole());
+  const canManageDraft=()=>['ADMIN','DIRETOR','GESTOR','COMERCIAL'].includes(currentRole());
+  const isDraft=o=>Boolean(o&&o.status==='COMERCIAL'&&!o.commercial?.completedAt);
   function ensureOrderIds(ops){
     let changed=false;
     const used=new Set((ops.orders||[]).map(o=>String(o.id||'')).filter(Boolean));
@@ -153,22 +155,24 @@
     currentFilters=filters||currentFilters;editingId=null;correctionMode=false;editRequested=false;
     const ops=ensureOrderIds(load());ensureCatalog(ops);
     const orders=(ops.orders||[]).slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-    const filtered=orders.filter(o=>{
-      const q=currentFilters.q.toLowerCase();
-      const matches=!q||[o.number,o.client,o.cnpj,o.representative,o.city,(o.items||[]).map(i=>i.name+' '+i.code).join(' ')].some(v=>String(v||'').toLowerCase().includes(q));
-      return matches&&(currentFilters.stage==='TODOS'||o.status===currentFilters.stage);
-    });
-    const open=orders.filter(o=>o.status!=='ENTREGUE');
+    const qText=currentFilters.q.toLowerCase();
+    const matchesSearch=o=>!qText||[o.number,o.client,o.cnpj,o.representative,o.city,(o.items||[]).map(i=>i.name+' '+i.code).join(' ')].some(v=>String(v||'').toLowerCase().includes(qText));
+    const drafts=orders.filter(isDraft);
+    const official=orders.filter(o=>!isDraft(o));
+    const filtered=official.filter(o=>matchesSearch(o)&&(currentFilters.stage==='TODOS'||o.status===currentFilters.stage));
+    const draftFiltered=drafts.filter(matchesSearch);
+    const open=official.filter(o=>o.status!=='ENTREGUE');
     content().innerHTML='<div class="fo-page">'+
       '<div class="fo-head"><div><h1>Pedidos Comerciais</h1><p>Registro oficial do pedido · o status macro é preservado; a barra superior mostra o andamento operacional real</p></div><div class="fo-actions">'+(window.FocadoAuth?.getRole?.()==='ADMIN'?'<button class="fo-btn secondary" id="foCorrectionPermissions">Permissão de edição</button>':'')+'<button class="fo-btn secondary" id="foPeriod">Listagem / período</button><button class="fo-btn primary" id="foNew">+ Novo pedido</button></div></div>'+
       '<div class="fo-summary">'+
-        stat('Em preenchimento',orders.filter(o=>o.status==='COMERCIAL').length,'rascunhos do Comercial')+
-        stat('Aguardando PCP',orders.filter(o=>o.status==='PCP').length,'enviados pelo Comercial')+
+        stat('Rascunhos',drafts.length,'salvos e ainda não enviados')+
+        stat('Aguardando PCP',official.filter(o=>o.status==='PCP').length,'enviados pelo Comercial')+
         stat('Pedidos em aberto',open.length,money(open.reduce((s,o)=>s+value(o),0)))+
-        stat('Concluídos',orders.filter(o=>o.status==='ENTREGUE').length,'histórico finalizado')+
+        stat('Concluídos',official.filter(o=>o.status==='ENTREGUE').length,'histórico finalizado')+
       '</div>'+
-      '<div class="fo-toolbar"><input class="fo-search" id="foSearch" placeholder="Buscar pedido, cliente, CNPJ, representante ou produto" value="'+esc(currentFilters.q)+'"><select class="fo-select" id="foStage"><option value="TODOS">Todos os status macro</option>'+[['COMERCIAL','Em preenchimento'],['PCP','Aguardando PCP'],['ESTOQUE_PRODUCAO','Produção / Estoque'],['LOGISTICA','Logística'],['ENTREGUE','Concluído']].map(x=>'<option value="'+x[0]+'" '+(currentFilters.stage===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')+'</select><span class="fo-muted">'+filtered.length+' pedido(s)</span></div>'+
-      '<div class="fo-table-wrap">'+table(filtered)+'</div></div>';
+      '<div class="fo-toolbar"><input class="fo-search" id="foSearch" placeholder="Buscar pedido, cliente, CNPJ, representante ou produto" value="'+esc(currentFilters.q)+'"><select class="fo-select" id="foStage"><option value="TODOS">Todos os status macro</option>'+[['PCP','Aguardando PCP'],['ESTOQUE_PRODUCAO','Produção / Estoque'],['LOGISTICA','Logística'],['ENTREGUE','Concluído']].map(x=>'<option value="'+x[0]+'" '+(currentFilters.stage===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')+'</select><span class="fo-muted">'+filtered.length+' pedido(s)</span></div>'+
+      '<div class="fo-table-wrap">'+table(filtered)+'</div>'+
+      '<section class="fo-drafts" id="foDrafts"><div class="fo-drafts-head"><div><span>RASCUNHOS</span><h2>Pedidos ainda não enviados</h2><p>Use Editar para continuar o preenchimento ou Excluir para remover um rascunho.</p></div><strong>'+draftFiltered.length+'</strong></div>'+draftTable(draftFiltered)+'</section></div>';
     document.getElementById('foNew').onclick=()=>openForm();
     document.getElementById('foPeriod').onclick=()=>renderReport(firstDayMonth(),today());
     const correctionPermissions=document.getElementById('foCorrectionPermissions');
@@ -181,6 +185,10 @@
     document.querySelectorAll('[data-fo-delete]').forEach(b=>b.onclick=()=>deleteOrder(b.dataset.foDelete));
   }
   function stat(label,n,sub){return '<div class="fo-stat"><span>'+label+'</span><strong>'+n+'</strong><small>'+sub+'</small></div>'}
+  function draftTable(rows){
+    if(!rows.length)return '<div class="fo-empty compact">Nenhum rascunho salvo.</div>';
+    return '<div class="fo-draft-list">'+rows.map(o=>'<div class="fo-draft-row"><div><span class="fo-stage draft">Rascunho</span><b>'+esc(o.number)+'</b><small>'+esc(o.client||'Cliente ainda não informado')+' · '+dbr(o.orderDate)+'</small></div><div class="fo-draft-value"><span>'+((o.items||[]).length)+' item(ns)</span><strong>'+money(value(o))+'</strong></div><div class="fo-actions"><button class="fo-open" data-fo-edit="'+esc(o.id)+'">Editar</button><button class="fo-open fo-delete-order" data-fo-delete="'+esc(o.id)+'">Excluir</button></div></div>').join('')+'</div>';
+  }
   function table(rows){
     if(!rows.length)return '<div class="fo-empty">Nenhum pedido encontrado.</div>';
     const allowEdit=canEditExisting();
@@ -192,10 +200,9 @@
   }
 
   async function deleteOrder(id){
-    if(!canEditExisting()){alert('Seu perfil não possui permissão para excluir pedidos.');return}
     const ops=load(),order=(ops.orders||[]).find(o=>String(o.id)===String(id));
     if(!order){alert('Pedido não encontrado.');return}
-    if(order.status!=='COMERCIAL'){alert('Este pedido já avançou no fluxo e não pode ser excluído. Use Editar para corrigir os dados.');return}
+    if(!isDraft(order)||!canManageDraft()){alert('Somente rascunhos podem ser excluídos pelo Comercial.');return}
     const ok=confirm('Excluir o pedido '+String(order.number||'')+'?\n\nEsta ação removerá o rascunho em preenchimento e não poderá ser desfeita.');
     if(!ok)return;
     try{
@@ -210,10 +217,11 @@
   }
 
   function openForm(id,requestEdit=false){
-    if(id&&requestEdit&&!canEditExisting()){alert('Seu perfil não possui permissão para editar pedidos.');return}
     const ops=load();ensureCatalog(ops);correctionMode=false;
     let order=id?(ops.orders||[]).find(o=>o.id===id):null;
-    if(!order){order=createBlank(ops);editingId=null;editRequested=true}
+    if(id&&requestEdit&&order&&!isDraft(order)&&!canEditExisting()){alert('Seu perfil não possui permissão para editar pedidos enviados.');return}
+    if(id&&requestEdit&&order&&isDraft(order)&&!canManageDraft()){alert('Seu perfil não possui permissão para editar este rascunho.');return}
+    if(!order){order=createBlank(ops);editingId=order.id;editRequested=true}
     else {
       editingId=order.id;editRequested=Boolean(requestEdit);correctionMode=Boolean(requestEdit&&order.status!=='COMERCIAL');
       order=syncPaymentTermsFromCustomer(structuredClone(order),ops);
@@ -221,14 +229,14 @@
     renderForm(order,ops);
   }
   function renderForm(o,ops){
-    const regularEditable=canEdit(o)&&(editingId===null||(editRequested&&canEditExisting())),correctionAllowed=canCorrectPast(o,ops);
-    const canOfferEdit=editingId!==null&&canEditExisting();
+    const regularEditable=canEdit(o)&&(editRequested&&(isDraft(o)?canManageDraft():canEditExisting())),correctionAllowed=canCorrectPast(o,ops);
+    const canOfferEdit=editingId!==null&&(canEditExisting()||(isDraft(o)&&canManageDraft()));
     const editable=regularEditable||(correctionMode&&correctionAllowed),readonly=editable?'':'disabled';formEditable=editable;
     const items=(o.items&&o.items.length?o.items:[{code:'',name:'',qty:'',price:''}]);
     const s=stage(o.status),cat=catalog(ops);
     content().innerHTML='<div class="fo-page">'+
-      '<div class="fo-head"><div><button class="fo-back" id="foBack">← Histórico</button><h1>'+esc(o.number)+'</h1><p>Pedido comercial · <span class="fo-stage '+s[1]+'">'+s[0]+'</span></p></div><div class="fo-actions">'+
-        (editable?(correctionMode?'<button class="fo-btn secondary" id="foCancelCorrection">Cancelar correção</button><button class="fo-btn primary" id="foSave">Salvar correção</button>':'<button class="fo-btn secondary" id="foSave">Salvar rascunho</button><button class="fo-btn primary" id="foFinalize">Finalizar Comercial → PCP</button>'):(canOfferEdit?'<button class="fo-btn primary" id="foEditPast">Editar pedido</button>':''))+
+      '<div class="fo-head"><div><button class="fo-back" id="foBack">← Histórico</button><h1>'+esc(o.number)+'</h1><p>Pedido comercial · <span class="fo-stage '+(isDraft(o)?'draft':s[1])+'">'+(isDraft(o)?'Rascunho':s[0])+'</span></p></div><div class="fo-actions">'+
+        (!editable&&canOfferEdit?'<button class="fo-btn primary" id="foEditPast">Editar pedido</button>':'')+
       '</div></div>'+(correctionMode?'<div class="fo-cnpj-status warn" style="margin-bottom:14px">Modo de correção ativado. O pedido permanecerá na etapa atual. Revise PCP, estoque/produção e logística se a alteração impactar quantidade, produto, preço, frete ou data.</div>':'')+
       '<div class="fo-flowline"><span class="'+(o.status==='COMERCIAL'?'active':'done')+'">1. Comercial</span><i>→</i><span class="'+(o.status==='PCP'?'active':(['ESTOQUE_PRODUCAO','LOGISTICA','ENTREGUE'].includes(o.status)?'done':'') )+'">2. PCP</span><i>→</i><span class="'+(['ESTOQUE_PRODUCAO','LOGISTICA'].includes(o.status)?'active':(o.status==='ENTREGUE'?'done':''))+'">3. Logística</span><i>→</i><span class="'+(o.status==='ENTREGUE'?'done':'')+'">4. Concluído</span></div>'+
       '<form id="foOrderForm" class="fo-form">'+
@@ -259,6 +267,7 @@
           '<div class="fo-items-wrap"><table class="fo-items" id="foItems"><thead><tr><th>Código</th><th>Produto</th><th>Quantidade</th><th>Preço da mercadoria s/ IPI/ST</th><th>Margem estimada</th><th>Total</th><th></th></tr></thead><tbody>'+items.map((i,n)=>itemRow(i,n,editable)).join('')+'</tbody></table></div><div class="fo-order-profit"><div id="foProfitSummary"><span>Margem estimada do pedido</span><strong>—</strong><small>Preencha produto, quantidade, preço e UF</small></div><div class="fo-total"><span>Total do pedido</span><strong id="foGrandTotal">'+money(value(o))+'</strong></div></div></div>'+
 
         '<div class="fo-card"><h2>Observações comerciais</h2><textarea name="notes" '+readonly+' placeholder="Observações do pedido, particularidades do cliente, entrega ou negociação">'+esc(o.notes||'')+'</textarea></div>'+
+        (editable?'<div class="fo-form-finish"><div><span>'+(correctionMode?'CORREÇÃO':'FINAL DO PREENCHIMENTO')+'</span><h2>'+(correctionMode?'Revise e salve a correção':'O que deseja fazer com este pedido?')+'</h2><p>'+(correctionMode?'A etapa atual será mantida e a alteração ficará no histórico.':'Salvar rascunho guarda o preenchimento sem enviar ao PCP. Finalizar envia o pedido para o PCP.')+'</p></div><div class="fo-form-finish-actions">'+(correctionMode?'<button class="fo-btn secondary" type="button" id="foCancelCorrection">Cancelar correção</button><button class="fo-btn primary" type="button" id="foSave">Salvar correção</button>':'<button class="fo-btn secondary" type="button" id="foSave">Salvar como rascunho</button><button class="fo-btn primary" type="button" id="foFinalize">Finalizar e enviar ao PCP</button>')+'</div></div>':'')+
       '</form>'+history(o)+'</div>';
     document.getElementById('foBack').onclick=()=>render(currentFilters);
     const editPast=document.getElementById('foEditPast');
@@ -518,7 +527,8 @@
     const o=existing?structuredClone(existing):createBlank(ops);
 
     if(isNew){
-      o.id='op_'+Date.now();o.createdAt=Date.now();
+      o.id=editingId||o.id||('op_'+Date.now());
+      o.createdAt=o.createdAt||Date.now();
       editingId=o.id;
     }
 
@@ -588,7 +598,11 @@
     window.dispatchEvent(new CustomEvent('focado:ops-updated',{detail:{key:KEY}}));
     if(!silentNavigate){
       if(finalize)render({q:'',stage:'PCP'});
-      else{if(isCorrection)correctionMode=false;renderForm((load().orders||[]).find(x=>x.id===o.id)||o,load())}
+      else if(isCorrection){correctionMode=false;renderForm((load().orders||[]).find(x=>x.id===o.id)||o,load())}
+      else{
+        render({q:'',stage:'TODOS'});
+        requestAnimationFrame(()=>document.getElementById('foDrafts')?.scrollIntoView({behavior:'smooth',block:'start'}));
+      }
     }
     return true;
     }finally{persistInFlight=false}
