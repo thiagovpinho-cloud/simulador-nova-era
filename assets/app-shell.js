@@ -201,11 +201,14 @@
     return res.json();
   }
 
+  let operationalContextSeq=0;
   async function enhanceOperationalContext(id){
+    const seq=++operationalContextSeq;
     const cfg=operationalContext[id];
     const host=document.getElementById('fxContent');
     if(!cfg||!host)return;
-    host.querySelector('.fx-journey-context')?.remove();
+    host.querySelectorAll('.fx-journey-context').forEach(x=>x.remove());
+    if(sessionStorage.getItem('focado-context-hidden:'+id)==='1')return;
 
     let rows=[];
     try{
@@ -214,6 +217,8 @@
     }catch(err){
       console.warn('[FocadoShell] contexto operacional indisponível',err);
     }
+    if(seq!==operationalContextSeq||host!==document.getElementById('fxContent'))return;
+    host.querySelectorAll('.fx-journey-context').forEach(x=>x.remove());
 
     const first=rows[0];
     const context=document.createElement('section');
@@ -229,8 +234,13 @@
         '<div><span>Responsável</span><b>'+esc(cfg.label)+'</b></div>'+
         '<div><span>Próximo passo</span><b>'+(first?esc(String(first.action||'').replace(/_/g,' ')):'Sem pendência crítica')+'</b></div>'+
         '<button class="fx-journey-action" type="button">Ver Central de Pendências →</button>'+
+        '<button class="fx-journey-close" type="button" aria-label="Fechar orientação operacional" title="Fechar">×</button>'+
       '</div>';
     context.querySelector('.fx-journey-action').onclick=()=>navigate('pendencias');
+    context.querySelector('.fx-journey-close').onclick=()=>{
+      sessionStorage.setItem('focado-context-hidden:'+id,'1');
+      context.remove();
+    };
     host.prepend(context);
   }
 

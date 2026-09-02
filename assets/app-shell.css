@@ -191,3 +191,15 @@
   .fx-journey-meta{display:grid;grid-template-columns:1fr 1fr}
   .fx-journey-action{grid-column:1/-1;width:100%}
 }
+
+
+/* Contexto operacional — controle de fechamento */
+.fx-journey-close{
+  width:36px;height:36px;min-width:36px;border:1px solid #dfe8e3;border-radius:10px;
+  background:#fff;color:#60736b;font-size:18px;line-height:1;cursor:pointer
+}
+.fx-journey-close:hover{background:#f4f8f6;color:#183b30}
+@media(max-width:760px){
+  .fx-journey-meta{position:relative}
+  .fx-journey-close{position:absolute;right:0;top:-2px}
+}
