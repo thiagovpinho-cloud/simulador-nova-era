@@ -18,7 +18,7 @@
 
   function navHtml(){
     return navGroups.map(([label,items])=>{
-      const visible=items.filter(([id])=>!window.FocadoAuth||window.FocadoAuth.can(id==='pendencias'?'cockpit':id));
+      const visible=items.filter(([id])=>!window.FocadoAuth||window.FocadoAuth.can(id));
       if(!visible.length)return '';
       return '<div class="fx-menu-label">'+label+'</div>'+visible.map(([id,icon,text,flag])=>'<button class="fx-nav '+(id==='dashboard'?'active':'')+'" data-fx-nav="'+id+'"><span class="fx-nav-icon">'+icon+'</span><span>'+text+'</span>'+(flag?'<span class="fx-nav-soon">em breve</span>':'')+'</button>').join('');
     }).join('');
@@ -230,7 +230,7 @@
   function hideShell(){shell.classList.add('hidden')}
   function setActive(id){document.querySelectorAll('[data-fx-nav]').forEach(b=>b.classList.toggle('active',b.dataset.fxNav===id))}
   async function navigate(id){
-    if(window.FocadoAuth && !window.FocadoAuth.can(id==='pendencias'?'cockpit':id)){
+    if(window.FocadoAuth && !window.FocadoAuth.can(id)){
       alert('Seu perfil não possui acesso a esta área.');
       return;
     }
