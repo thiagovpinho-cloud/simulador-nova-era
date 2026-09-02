@@ -9,7 +9,7 @@
   const parseMoney=v=>{
     const s=String(v??'').trim();
     if(!s)return 0;
-    if(s.includes(','))return Number(s.replace(/[^0-9,-]/g,'').replace(/./g,'').replace(',','.'))||0;
+    if(s.includes(','))return Number(s.replace(/[^0-9,-]/g,'').replace(/\./g,'').replace(',','.'))||0;
     return Number(s.replace(/[^0-9.-]/g,''))||0;
   };
   const moneyInput=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
