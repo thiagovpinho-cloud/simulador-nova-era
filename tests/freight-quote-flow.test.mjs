@@ -1,82 +1,95 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {applyDomain} from '../shared/domain-rules.js';
+import {applyDomain,DOMAIN_PERMISSION} from '../shared/domain-rules.js';
 
-const state={orders:[],carriers:[
-  {id:'car1',name:'Transportadora A',active:true},
-  {id:'car2',name:'Transportadora B',active:true}
-]};
+// Regra central: cotação existe sem pedido.
+const state={orders:[],freightRequests:[]};
 
-applyDomain('COMERCIAL',state,{changes:{createOrder:{
-  id:'o-fq-1',number:'PED-FQ-001',client:'Cliente Frete',city:'Mococa',uf:'SP',
-  orderDate:'2026-09-02',requestedDeliveryDate:'2026-09-05',freightType:'CIF',
-  logisticsBudget:900,items:[{id:'i1',code:'SKU1',name:'Produto',qty:10,price:50}]
+applyDomain('COTACAO_FRETE_COMERCIAL',state,{changes:{request:{
+  id:'frq-1',requestedAt:1000,requestedBy:'Comercial Teste',
+  client:'Cliente X',reference:'ORC-77',origin:'Mococa/SP',destination:'São Paulo/SP',
+  cargo:'Álcool 70%',quantity:'120 caixas',requestedDate:'2026-09-05',notes:'Entrega urgente'
 }}});
 
-const order=state.orders[0];
-assert.equal(order.status,'COMERCIAL');
-assert.equal(order.freightQuote,null);
+assert.equal(state.orders.length,0,'Cotação não pode criar ou exigir pedido');
+assert.equal(state.freightRequests.length,1);
+const req=state.freightRequests[0];
+assert.equal(req.status,'SOLICITADA');
+assert.equal(req.origin,'Mococa/SP');
+assert.equal(req.destination,'São Paulo/SP');
+assert.equal(req.history[0].type,'SOLICITADA');
 
-applyDomain('COMERCIAL',state,{orderId:order.id,changes:{freightQuoteRequest:{
-  id:'fq-1',notes:'Entrega urgente',requestedAt:1000,requestedBy:'Comercial Teste'
-}}});
+applyDomain('COTACAO_FRETE_LOGISTICA',state,{changes:{
+  requestId:'frq-1',opened:{at:1100,by:'Logística Teste'}
+}});
+assert.equal(req.status,'EM_COTACAO');
+assert.equal(req.logisticsViewedAt,1100);
 
-assert.equal(order.freightQuote.status,'SOLICITADA');
-assert.equal(order.freightQuote.notes,'Entrega urgente');
-assert.equal(order.freightQuote.quotes.length,0);
-assert.equal(order.freightQuote.commercialViewedAt,null);
+applyDomain('COTACAO_FRETE_LOGISTICA',state,{changes:{
+  requestId:'frq-1',
+  response:{respondedAt:1200,respondedBy:'Logística Teste',notes:'Opções validadas',quotes:[
+    {provider:'Transportadora B',value:780,transitDays:2,pickupEstimate:'2026-09-03'},
+    {provider:'Transportadora A',value:720,transitDays:3,pickupEstimate:'2026-09-03'}
+  ]}
+}});
+assert.equal(req.status,'RESPONDIDA');
+assert.equal(req.quotes.length,2);
+assert.equal(req.commercialViewedAt,null);
+assert.equal(req.history[0].type,'RESPONDIDA');
 
-applyDomain('LOGISTICA',state,{orderId:order.id,changes:{freightQuoteStart:{at:1100,by:'Logística Teste'}}});
-assert.equal(order.freightQuote.status,'EM_COTACAO');
+applyDomain('COTACAO_FRETE_COMERCIAL',state,{changes:{
+  requestId:'frq-1',viewed:{at:1300,by:'Comercial Teste'}
+}});
+assert.equal(req.commercialViewedAt,1300);
+assert.equal(req.history[0].type,'VISUALIZADA_COMERCIAL');
 
-applyDomain('LOGISTICA',state,{orderId:order.id,changes:{freightQuoteResponse:{
-  respondedAt:1200,respondedBy:'Logística Teste',notes:'Duas opções disponíveis',
-  quotes:[
-    {provider:'Transportadora B',value:780,transitDays:2,pickupEstimate:'2026-09-03',notes:'Pedágio incluso'},
-    {provider:'Transportadora A',value:720,transitDays:3,pickupEstimate:'2026-09-03',notes:'Melhor preço'}
-  ]
-}}});
+assert.throws(()=>applyDomain('COTACAO_FRETE_COMERCIAL',{orders:[],freightRequests:[]},{changes:{request:{
+  id:'bad',origin:'',destination:'São Paulo/SP'
+}}}),/FREIGHT_ROUTE_REQUIRED/);
 
-assert.equal(order.freightQuote.status,'RESPONDIDA');
-assert.equal(order.freightQuote.respondedBy,'Logística Teste');
-assert.equal(order.freightQuote.quotes.length,2);
-assert.equal(order.freightQuote.commercialViewedAt,null);
-assert.equal(order.freightQuote.quotes[0].provider,'Transportadora B');
-assert.throws(
-  ()=>applyDomain('LOGISTICA',state,{orderId:order.id,changes:{freightQuoteResponse:{quotes:[{provider:'Sem valor',value:0}]}}}),
-  /FREIGHT_QUOTE_OPTION_REQUIRED/
-);
+assert.throws(()=>applyDomain('COTACAO_FRETE_LOGISTICA',state,{changes:{
+  requestId:'frq-1',response:{quotes:[{provider:'Sem valor',value:0}]}
+}}),/FREIGHT_QUOTE_OPTION_REQUIRED/);
 
-applyDomain('COMERCIAL',state,{orderId:order.id,changes:{freightQuoteViewed:{at:1300,by:'Comercial Teste'}}});
-assert.equal(order.freightQuote.commercialViewedAt,1300);
-assert.equal(order.freightQuote.commercialViewedBy,'Comercial Teste');
+assert.equal(DOMAIN_PERMISSION.COTACAO_FRETE_COMERCIAL,'orders.write');
+assert.equal(DOMAIN_PERMISSION.COTACAO_FRETE_LOGISTICA,'logistics.write');
 
 const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const orders=read('assets/modules/orders.js');
 const logistics=read('assets/modules/logistics.js');
-const freight=read('assets/modules/freight-quotes.js');
+const freight=read('assets/modules/freight-requests.js');
 const loader=read('assets/core/module-loader.js');
+const auth=read('assets/core/auth-client.js');
 const shell=read('assets/app-shell.js');
-const ordersCss=read('assets/modules/orders.css');
-const logisticsCss=read('assets/modules/logistics.css');
+const index=read('index.html');
 
-assert.match(orders,/FocadoFreightQuotes/);
-assert.match(logistics,/Cotações pendentes/);
-assert.match(logistics,/FocadoFreightQuotes/);
-assert.match(freight,/Solicitar cotação à Logística/);
-assert.match(freight,/Retorno da Logística/);
-assert.match(freight,/MENOR COTAÇÃO/);
-assert.match(freight,/Enviar cotações ao Comercial/);
-assert.match(freight,/Prestador \/ transportadora/);
-assert.match(freight,/replace\(\/\\\.\/g,''\)/);
-assert.match(loader,/freight-quotes/);
-assert.match(loader,/deps:\['produtos','freight-quotes'\]/);
-assert.match(loader,/deps:\['cockpit','freight-quotes'\]/);
-assert.match(shell,/NOVA SOLICITAÇÃO DO COMERCIAL/);
-assert.match(shell,/COTAÇÃO DE FRETE RECEBIDA/);
-assert.match(shell,/Fazer cotação/);
-assert.match(shell,/Ver cotações/);
-assert.match(ordersCss,/\.fo-freight-card/);
-assert.match(logisticsCss,/\.fl-quote-panel/);
+assert.ok(!orders.includes('FocadoFreightQuotes'),'Cotação não pode permanecer embutida em Pedidos');
+assert.ok(!logistics.includes('FocadoFreightQuotes'),'Cotação não pode permanecer embutida na Logística operacional');
+
+assert.match(freight,/Solicitar cotação de frete/);
+assert.match(freight,/Esta mensagem será enviada formalmente para a Logística/);
+assert.match(freight,/Cotações recebidas/);
+assert.match(freight,/Devolver ao Comercial/);
+assert.match(freight,/Histórico de comportamento de frete/);
+assert.match(freight,/popupFor/);
+assert.match(freight,/FocadoFreightRequests/);
+
+assert.match(loader,/freight-requests/);
+assert.match(loader,/cotacoes-frete/);
+assert.match(loader,/cotacoes-frete-logistica/);
+assert.ok(!loader.includes("deps:['produtos','freight-quotes']"));
+assert.ok(!loader.includes("deps:['cockpit','freight-quotes']"));
+
+assert.match(auth,/cotacoes-frete/);
+assert.match(auth,/cotacoes-frete-logistica/);
+assert.match(shell,/Cotação de frete/);
+assert.match(shell,/Cotações recebidas/);
+assert.match(shell,/notifyFreight/);
+assert.match(shell,/FocadoNavigate/);
+assert.match(shell,/freightRequests/);
+
+assert.match(index,/module-loader\.js\?v=20260902-freight-center-v1/);
+assert.match(index,/auth-client\.js\?v=20260902-freight-center-v1/);
+assert.match(index,/app-shell\.js\?v=20260902-freight-center-v1/);
 
 console.log('freight-quote-flow: ok');
