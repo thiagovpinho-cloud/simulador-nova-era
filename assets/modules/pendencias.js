@@ -12,6 +12,21 @@
   })[String(area||'').toUpperCase()]||String(area||'Sem área');
   const actionLabel=action=>String(action||'').toLowerCase().replace(/_/g,' ').replace(/(^|\s)\S/g,m=>m.toUpperCase());
   const localOps=()=>window.FocadoDataStore?.readLocal?.()||{};
+  const roleAreas=role=>({
+    COMERCIAL:['COMERCIAL'],
+    PCP:['PCP'],
+    PRODUCAO:['PRODUCAO'],
+    ESTOQUE:['ESTOQUE','EXPEDICAO'],
+    COMPRAS:['COMPRAS'],
+    LOGISTICA:['LOGISTICA'],
+    FINANCEIRO:['FINANCEIRO']
+  })[String(role||'').toUpperCase()]||null;
+  function visibleQueue(rows){
+    const role=String(window.FocadoAuth?.getRole?.()||'').toUpperCase();
+    if(['ADMIN','DIRETOR','GESTOR'].includes(role))return rows||[];
+    const areas=roleAreas(role);
+    return areas?(rows||[]).filter(x=>areas.includes(String(x.area||'').toUpperCase())):[];
+  }
   let lastWorkflow=null;
 
   async function loadWorkflow(){
@@ -132,7 +147,7 @@
     try{
       const data=await loadWorkflow();
       lastWorkflow=data;
-      const rows=enrich(data.workQueue||[]);
+      const rows=enrich(visibleQueue(data.workQueue||[]));
       const groups=groupQueue(rows);
       el.innerHTML='<div class="fp-page">'+
         '<div class="fp-head"><div><span class="fp-eyebrow">FOCADO POR EXCEÇÃO</span><h1>Central de Pendências</h1><p>Prioriza o que ameaça prazo, fluxo e fechamento — e mostra exatamente quem precisa agir.</p></div><button id="fpRefresh" class="fp-refresh">Atualizar</button></div>'+
