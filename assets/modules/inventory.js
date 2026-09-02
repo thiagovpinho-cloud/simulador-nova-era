@@ -13,7 +13,8 @@
     const found=Object.keys(ops.productionBases||{});
     return [...new Set(['SENIR','GREENTECH','TOPLAND',...found])];
   }
-  function productKey(p){return String(p.id||p.code||p.name)}
+  const normKey=v=>String(v||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  function productKey(p){return normKey(p.brand||'sem-marca')+'::'+normKey(p.code||p.id||p.name)}
   function ensureFinished(ops,p,unit='CX'){
     ops.inventory=ops.inventory||{};
     const exact=ops.inventory[productKey(p)];
@@ -103,7 +104,9 @@
     const movements=[];
     for(const row of rows){
       const key=productKey(row.product);
-      const current=(load().inventory||{})[key]||Object.values(load().inventory||{}).find(v=>String(v?.code||'')===String(row.product.code||''))||{physical:0,reserved:0,blocked:0};
+      const current=(load().inventory||{})[key]||Object.values(load().inventory||{}).find(v=>
+        String(v?.code||'')===String(row.product.code||'')&&String(v?.brand||'').trim().toLowerCase()===String(row.product.brand||'').trim().toLowerCase()
+      )||{physical:0,reserved:0,blocked:0};
       if(row.breakQty>Number(current.physical||0)+row.qty){
         alert('A quebra de '+row.product.name+' é maior que o saldo disponível após o inventário.');
         return;
@@ -186,7 +189,10 @@
 
   function openItem(key){
     const ops=load(),inv=(ops.inventory||{})[key];if(!inv){alert('Item não encontrado.');return}
-    const movements=(ops.stockMovements||[]).filter(m=>String(m.key)===String(key)||String(m.code)===String(inv.code)).slice().sort((a,b)=>(b.at||0)-(a.at||0));
+    const movements=(ops.stockMovements||[]).filter(m=>
+      String(m.key)===String(key)||
+      (String(m.code)===String(inv.code)&&String(m.brand||'').trim().toLowerCase()===String(inv.brand||'').trim().toLowerCase())
+    ).slice().sort((a,b)=>(b.at||0)-(a.at||0));
     const policy=(ops.inventoryPolicy||{})[String(inv.code||key)]||(ops.inventoryPolicy||{})[key]||{};
     content().innerHTML='<div class="fi-page"><div class="fi-head"><div>'+back()+'<h1 style="margin-top:12px">'+esc(inv.name||key)+'</h1><p>'+esc(inv.code||'')+(inv.brand?' · '+esc(inv.brand):'')+'</p></div></div>'+
       '<div class="fi-kpis"><div class="fi-kpi"><span>Físico</span><strong>'+fmt(inv.physical)+'</strong></div><div class="fi-kpi"><span>Reservado</span><strong>'+fmt(inv.reserved)+'</strong></div><div class="fi-kpi"><span>Bloqueado</span><strong>'+fmt(inv.blocked)+'</strong></div><div class="fi-kpi"><span>Disponível</span><strong>'+fmt(avail(inv))+'</strong></div></div>'+
