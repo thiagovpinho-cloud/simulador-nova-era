@@ -257,9 +257,14 @@
           '<datalist id="foProductCodes">'+cat.map(p=>'<option value="'+esc(p.code)+'">'+esc(p.name)+' · '+esc(p.brand)+'</option>').join('')+'</datalist>'+
           '<datalist id="foProductNames">'+cat.map(p=>'<option value="'+esc(p.name)+'">'+esc(p.code)+' · '+esc(p.brand)+'</option>').join('')+'</datalist>'+
           '<div class="fo-items-wrap"><table class="fo-items" id="foItems"><thead><tr><th>Código</th><th>Produto</th><th>Quantidade</th><th>Preço da mercadoria s/ IPI/ST</th><th>Margem estimada</th><th>Total</th><th></th></tr></thead><tbody>'+items.map((i,n)=>itemRow(i,n,editable)).join('')+'</tbody></table></div><div class="fo-order-profit"><div id="foProfitSummary"><span>Margem estimada do pedido</span><strong>—</strong><small>Preencha produto, quantidade, preço e UF</small></div><div class="fo-total"><span>Total do pedido</span><strong id="foGrandTotal">'+money(value(o))+'</strong></div></div></div>'+
+        (window.FocadoFreightQuotes?.commercialCard?.(o,{editingId,currentRole:currentRole()})||'')+
         '<div class="fo-card"><h2>Observações comerciais</h2><textarea name="notes" '+readonly+' placeholder="Observações do pedido, particularidades do cliente, entrega ou negociação">'+esc(o.notes||'')+'</textarea></div>'+
       '</form>'+history(o)+'</div>';
     document.getElementById('foBack').onclick=()=>render(currentFilters);
+    window.FocadoFreightQuotes?.bindCommercial?.(o,{
+      editingId,formEditable,persist,currentRole:currentRole(),
+      onUpdated:(fresh,payload)=>renderForm(fresh,payload)
+    });
     const editPast=document.getElementById('foEditPast');
     if(editPast)editPast.onclick=()=>{
       if(!confirm('Editar este pedido já enviado?\n\nA etapa atual será mantida e a correção ficará registrada no histórico.'))return;

@@ -58,6 +58,7 @@ function applyCommercial(state,body){
       commercial:{completedAt:null,completedBy:null},
       pcp:{deliveryBase:'',productionDate:'',availableDate:'',separated:false,scheduledQty:0,autoScheduled:false},
       logistics:{freightValue:'',pickupDate:'',deliveryDate:'',carrier:''},
+      freightQuote:src.freightQuote&&typeof src.freightQuote==='object'?structuredClone(src.freightQuote):null,
       items:(src.items||[]).map(i=>({
         id:String(i.id||i.code||i.productId||i.name||('item_'+Math.random().toString(36).slice(2,8))),
         productId:String(i.productId||''),code:String(i.code||''),name:String(i.name||''),
@@ -98,6 +99,29 @@ function applyCommercial(state,body){
     o.commercial={...(o.commercial||{}),...pick(changes.commercial,['completedAt','completedBy'])};
   }
   if(changes.lastCorrection&&typeof changes.lastCorrection==='object')o.lastCorrection=structuredClone(changes.lastCorrection);
+  if(changes.freightQuoteRequest&&typeof changes.freightQuoteRequest==='object'){
+    const q=changes.freightQuoteRequest;
+    const notes=String(q.notes||'').trim();
+    o.freightQuote={
+      id:String(q.id||o.freightQuote?.id||('fq_'+Date.now())),
+      status:'SOLICITADA',
+      requestedAt:Number(q.requestedAt||Date.now()),
+      requestedBy:String(q.requestedBy||'Comercial'),
+      notes,
+      commercialViewedAt:null,
+      respondedAt:null,
+      respondedBy:'',
+      quotes:[],
+      history:[
+        {at:Number(q.requestedAt||Date.now()),type:'SOLICITADA',by:String(q.requestedBy||'Comercial'),notes},
+        ...((o.freightQuote?.history||[]).slice(0,49))
+      ]
+    };
+  }
+  if(changes.freightQuoteViewed&&o.freightQuote?.status==='RESPONDIDA'){
+    o.freightQuote.commercialViewedAt=Number(changes.freightQuoteViewed.at||Date.now());
+    o.freightQuote.commercialViewedBy=String(changes.freightQuoteViewed.by||'Comercial');
+  }
   if(changes.event&&typeof changes.event==='object'){
     o.events=Array.isArray(o.events)?o.events:[];
     o.events.unshift(structuredClone(changes.event));
@@ -207,6 +231,43 @@ function applyLogistics(state,body){
     'freightValue','pickupDate','deliveryDate','carrier','carrierId','trackingCode','vehicle','driver','notes',
     'deliveryConfirmed','deliveredOnTime','actualDeliveryDate','deliveryDelayReason','deliveryConfirmedAt','deliveryConfirmedBy'
   ]));
+
+  if(body.changes?.freightQuoteStart&&o.freightQuote?.status==='SOLICITADA'){
+    o.freightQuote.status='EM_COTACAO';
+    o.freightQuote.startedAt=Number(body.changes.freightQuoteStart.at||Date.now());
+    o.freightQuote.startedBy=String(body.changes.freightQuoteStart.by||'Logística');
+    o.freightQuote.history=[
+      {at:o.freightQuote.startedAt,type:'EM_COTACAO',by:o.freightQuote.startedBy},
+      ...((o.freightQuote.history||[]).slice(0,49))
+    ];
+  }
+
+  if(body.changes?.freightQuoteResponse&&typeof body.changes.freightQuoteResponse==='object'){
+    if(!o.freightQuote||!['SOLICITADA','EM_COTACAO','RESPONDIDA'].includes(o.freightQuote.status)){
+      throw Object.assign(new Error('FREIGHT_QUOTE_REQUEST_REQUIRED'),{status:422});
+    }
+    const response=body.changes.freightQuoteResponse;
+    const quotes=(Array.isArray(response.quotes)?response.quotes:[]).map((q,index)=>({
+      id:String(q.id||('fqopt_'+Date.now()+'_'+index)),
+      provider:String(q.provider||'').trim(),
+      value:Number(q.value||0),
+      transitDays:Math.max(0,Number(q.transitDays||0)),
+      pickupEstimate:String(q.pickupEstimate||''),
+      notes:String(q.notes||'').trim()
+    })).filter(q=>q.provider&&q.value>0);
+    if(!quotes.length)throw Object.assign(new Error('FREIGHT_QUOTE_OPTION_REQUIRED'),{status:422});
+    const at=Number(response.respondedAt||Date.now()),by=String(response.respondedBy||'Logística');
+    o.freightQuote.status='RESPONDIDA';
+    o.freightQuote.respondedAt=at;
+    o.freightQuote.respondedBy=by;
+    o.freightQuote.commercialViewedAt=null;
+    o.freightQuote.quotes=quotes;
+    o.freightQuote.responseNotes=String(response.notes||'').trim();
+    o.freightQuote.history=[
+      {at,type:'RESPONDIDA',by,count:quotes.length},
+      ...((o.freightQuote.history||[]).slice(0,49))
+    ];
+  }
 }
 
 function applyInventory(state,body){

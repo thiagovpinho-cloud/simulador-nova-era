@@ -9,7 +9,7 @@
   const parseMoney=v=>{
     const s=String(v??'').trim();
     if(!s)return 0;
-    if(s.includes(','))return Number(s.replace(/[^0-9,-]/g,'').replace(/./g,'').replace(',','.'))||0;
+    if(s.includes(','))return Number(s.replace(/[^0-9,-]/g,'').replace(/\./g,'').replace(',','.'))||0;
     return Number(s.replace(/[^0-9.-]/g,''))||0;
   };
   const moneyInput=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -28,6 +28,9 @@
   }
   function status(o){
     const today=new Date().toISOString().slice(0,10);
+    if(o.freightQuote?.status==='SOLICITADA')return ['Cotação solicitada','warn'];
+    if(o.freightQuote?.status==='EM_COTACAO')return ['Cotação em andamento','wait'];
+    if(o.freightQuote?.status==='RESPONDIDA'&&!o.freightQuote?.commercialViewedAt)return ['Cotação respondida · Comercial não visualizou','ready'];
     if(o.status==='ENTREGUE')return ['Entregue','ready'];
     if(o.status==='PCP'&&o.pcp?.logisticsPreRelease)return ['Pré-liberação logística','warn'];
     if(o.status==='PCP')return ['Em PCP · frete pode ser adiantado','warn'];
@@ -39,20 +42,21 @@
 
   function render(state){
     listState=state||listState;
-    const ops=load(),all=(ops.orders||[]).filter(o=>['PCP','LOGISTICA','ENTREGUE','ESTOQUE_PRODUCAO'].includes(o.status));
+    const ops=load(),all=(ops.orders||[]).filter(o=>['PCP','LOGISTICA','ENTREGUE','ESTOQUE_PRODUCAO'].includes(o.status)||['SOLICITADA','EM_COTACAO','RESPONDIDA'].includes(o.freightQuote?.status));
     const rows=all.filter(o=>{
       const q=String(listState.q||'').toLowerCase(),st=status(o)[0];
       return (!q||[o.number,o.client,o.city,o.logistics?.carrier,(o.items||[]).map(i=>i.code+' '+i.name).join(' ')].some(v=>String(v||'').toLowerCase().includes(q)))&&(listState.status==='TODOS'||st===listState.status);
     });
     const pcp=all.filter(o=>o.status==='PCP').length,log=all.filter(o=>o.status==='LOGISTICA').length,del=all.filter(o=>o.status==='ENTREGUE').length;
+    const quotePending=all.filter(o=>['SOLICITADA','EM_COTACAO'].includes(o.freightQuote?.status)).length;
     const noCarrier=all.filter(o=>['PCP','LOGISTICA'].includes(o.status)&&!o.logistics?.carrierId).length;
     const overdue=all.filter(o=>status(o)[1]==='bad').length;
     const freight=all.reduce((s,o)=>s+Number(o.logistics?.freightValue||0),0),budget=all.reduce((s,o)=>s+Number(o.logisticsBudget||0),0);
     content().innerHTML='<div class="fl-page">'+
       '<div class="fl-head"><div><h1>Logística</h1><p>Cotação, contratação, coleta, transporte e prazo de entrega</p></div><div class="fl-actions"><button class="fl-btn primary" id="flScore">Performance transportadoras</button><button class="fl-btn primary" id="flRefresh">Atualizar</button></div></div>'+
-      '<div class="fl-kpis">'+kpi('Pedidos ainda no PCP',pcp,'frete pode ser adiantado')+kpi('Na logística',log,'pedidos liberados')+kpi('Entregues',del,'histórico concluído')+kpi('Sem transportadora',noCarrier,'precisam de contratação')+kpi('Prazo vencido',overdue,'entrega prevista vencida')+kpi('Frete contratado',money(freight),'valor acumulado')+kpi('Orçamento comercial',money(budget),'limite previsto')+'</div>'+
+      '<div class="fl-kpis">'+kpi('Cotações pendentes',quotePending,'solicitações do Comercial')+kpi('Pedidos ainda no PCP',pcp,'frete pode ser adiantado')+kpi('Na logística',log,'pedidos liberados')+kpi('Entregues',del,'histórico concluído')+kpi('Sem transportadora',noCarrier,'precisam de contratação')+kpi('Prazo vencido',overdue,'entrega prevista vencida')+kpi('Frete contratado',money(freight),'valor acumulado')+'</div>'+
       '<div class="fl-grid"><div class="fl-panel"><h2>Pontos de atenção</h2>'+alerts(all)+'</div><div class="fl-panel"><h2>Indicadores</h2>'+leadSummary(all)+'</div></div>'+
-      '<div class="fl-toolbar"><input class="fl-search" id="flSearch" placeholder="Buscar pedido, cliente, cidade ou transportadora" value="'+esc(listState.q)+'"><select class="fl-select" id="flStatus"><option value="TODOS">Todos os status</option>'+['Em PCP · frete pode ser adiantado','Pré-liberação logística','Sem transportadora','Aguardando coleta','Em planejamento','Prazo vencido','Entregue'].map(x=>'<option '+(listState.status===x?'selected':'')+'>'+x+'</option>').join('')+'</select><span class="fl-muted">'+rows.length+' pedido(s)</span></div>'+
+      '<div class="fl-toolbar"><input class="fl-search" id="flSearch" placeholder="Buscar pedido, cliente, cidade ou transportadora" value="'+esc(listState.q)+'"><select class="fl-select" id="flStatus"><option value="TODOS">Todos os status</option>'+['Cotação solicitada','Cotação em andamento','Cotação respondida · Comercial não visualizou','Em PCP · frete pode ser adiantado','Pré-liberação logística','Sem transportadora','Aguardando coleta','Em planejamento','Prazo vencido','Entregue'].map(x=>'<option '+(listState.status===x?'selected':'')+'>'+x+'</option>').join('')+'</select><span class="fl-muted">'+rows.length+' pedido(s)</span></div>'+
       '<div class="fl-table-wrap">'+table(rows)+'</div></div>';
     document.getElementById('flScore').onclick=()=>window.FocadoIntelligenceUI?.renderCarriers();
     document.getElementById('flRefresh').onclick=()=>render(listState);
@@ -90,12 +94,15 @@
   function openOrder(id){
     const ops=load(),o=(ops.orders||[]).find(x=>String(x.id)===String(id));if(o)renderDetail(o,ops);
   }
+
   function renderDetail(o,ops){
     const pre=o.status==='PCP',availableDate=requiredAvailability(o),cs=carriers(ops),budget=Number(o.logisticsBudget||0),freight=Number(o.logistics?.freightValue||0);
+    const macroLabel=o.status==='COMERCIAL'?'Status macro: Comercial':pre?'Status macro: PCP':o.status==='ENTREGUE'?'Status macro: Entregue':'Status macro: Logística';
     const pickups=(o.items||[]).map(i=>'<div class="fl-pickup-card"><b>'+esc(i.code||'')+' · '+esc(i.name||'')+'</b><small>'+Number(i.qty||0)+' cx · Base '+esc(i.deliveryBase||o.pcp?.deliveryBase||'não definida')+(i.pcpAvailabilityDate?' · disponível '+dbr(i.pcpAvailabilityDate):'')+'</small></div>').join('');
     const carrierOptions='<option value="">Selecione uma transportadora</option>'+cs.map(c=>'<option value="'+esc(c.id)+'" '+(String(c.id)===String(o.logistics?.carrierId||'')?'selected':'')+'>'+esc(c.name)+(c.city?' · '+esc(c.city):'')+'</option>').join('');
     content().innerHTML='<div class="fl-page">'+
-      '<div class="fl-head"><div><button class="fl-btn primary" id="flBack">← Logística</button><h1>Logística · '+esc(o.number)+'</h1><p>'+esc(o.client||'')+'</p></div><span class="fl-chip '+(pre?'warn':'ready')+'">'+(pre?'Status macro: PCP':'Status macro: Logística')+'</span></div>'+
+      '<div class="fl-head"><div><button class="fl-btn primary" id="flBack">← Logística</button><h1>Logística · '+esc(o.number)+'</h1><p>'+esc(o.client||'')+'</p></div><span class="fl-chip '+(pre||o.status==='COMERCIAL'?'warn':'ready')+'">'+macroLabel+'</span></div>'+
+      (window.FocadoFreightQuotes?.logisticsPanel?.(o,ops)||'')+
       (pre?'<div class="fl-callout warn"><b>Planejamento antecipado</b><span>A Logística pode contratar o frete agora. A coleta somente poderá ocorrer após a disponibilidade definida pelo PCP.</span></div>':'')+
       '<div class="fl-budget-row"><div><span>Orçamento previsto pelo Comercial</span><strong>'+money(budget)+'</strong></div><div><span>Frete planejado</span><strong id="flFreightSummary">'+money(freight)+'</strong></div><div id="flBudgetStatus" class="fl-budget-status"></div></div>'+
       '<div class="fl-detail-grid"><div class="fl-panel"><div class="fl-panel-title"><div><span class="fl-eyebrow">RETIRADA</span><h2>Itens e bases</h2></div></div><div class="fl-pickup-list">'+pickups+'</div>'+(availableDate?'<div class="fl-callout info"><b>Disponibilidade mínima para coleta</b><span>'+dbr(availableDate)+'</span></div>':'')+'</div>'+
@@ -109,6 +116,7 @@
         '<label class="fl-field fl-span-2"><span>Observações</span><textarea id="flNotes" placeholder="Negociação, janela de coleta, restrições...">'+esc(o.logistics?.notes||'')+'</textarea></label>'+
       '</div><div class="fl-actions fl-form-actions"><button class="fl-btn primary" id="flSavePlan">Salvar planejamento de frete</button></div></div></div></div>';
     document.getElementById('flBack').onclick=()=>render(listState);
+    window.FocadoFreightQuotes?.bindLogistics?.(o,ops,{onUpdated:()=>render(listState)});
     const fre=document.getElementById('flFreight');
     const updateBudget=()=>{
       const v=parseMoney(fre.value),status=document.getElementById('flBudgetStatus');
