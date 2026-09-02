@@ -92,3 +92,26 @@
   .fo-table tr{grid-template-columns:1fr}
   .fo-table td:last-child{grid-column:auto}
 }
+
+
+/* Cotação de frete — Comercial ↔ Logística */
+.fo-freight-card{border-color:#dfe9e4;background:linear-gradient(180deg,#fff,#fbfdfc)}
+.fo-freight-chip{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;background:#f0f3f1;color:#607068;font-size:9px;font-weight:800;white-space:nowrap}
+.fo-freight-chip.solicitada{background:#fff3e4;color:#a25f12}
+.fo-freight-chip.em_cotacao{background:#eaf2ff;color:#2d66c8}
+.fo-freight-chip.respondida{background:#e8f6ef;color:#08785b}
+.fo-freight-meta{display:flex;gap:14px;flex-wrap:wrap;margin:8px 0 12px;color:var(--fx-muted);font-size:9.5px}
+.fo-freight-response{border:1px solid #dbe9e2;background:#f6fbf8;border-radius:13px;padding:13px;margin:10px 0 14px}
+.fo-freight-response>b{display:block;font-size:11px;color:#0b6f53}
+.fo-freight-response>span{display:block;margin-top:3px;font-size:9.5px;color:var(--fx-muted)}
+.fo-freight-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:9px;margin-top:12px}
+.fo-freight-option{border:1px solid var(--fx-border);background:#fff;border-radius:12px;padding:11px}
+.fo-freight-option.best{border-color:#b9dfcf;background:#f3fbf7}
+.fo-freight-option span{display:block;font-size:8px;font-weight:900;letter-spacing:.6px;color:var(--fx-muted)}
+.fo-freight-option b{display:block;font-size:10px;margin-top:3px}
+.fo-freight-option strong{display:block;font-size:18px;margin-top:8px;color:#163c30}
+.fo-freight-option small{display:block;margin-top:4px;color:var(--fx-muted);font-size:8.5px;line-height:1.4}
+@media(max-width:700px){
+  .fo-freight-options{grid-template-columns:1fr}
+  .fo-freight-chip{white-space:normal}
+}
