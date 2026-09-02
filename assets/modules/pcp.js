@@ -136,6 +136,10 @@
     filters=state||filters;
     const ops=ensureOrderIds(load());
     const all=(ops.orders||[]).filter(o=>o.status==='PCP');
+    const historyRows=(ops.orders||[])
+      .filter(o=>o.status!=='PCP'&&o.status!=='COMERCIAL'&&o.commercial?.completedAt)
+      .sort((a,b)=>pcpHistoryAt(b)-pcpHistoryAt(a))
+      .slice(0,10);
     const knownBases=['SENIR','GREENTECH','TOPLAND'];
     const rows=all.filter(o=>{
       const q=filters.q.toLowerCase();
@@ -160,7 +164,9 @@
       '</div>'+
       '<div class="fpcp-guide"><b>Como operar:</b><span>1. Abra o pedido</span><span>2. Confira o saldo atual</span><span>3. Reserve total ou parcialmente</span><span>4. Informe previsão do saldo ou corte</span><span>5. Defina a base por item e libere</span></div>'+
       '<div class="fpcp-toolbar"><input class="fpcp-search" id="fpSearch" placeholder="Buscar pedido, cliente, CNPJ, representante ou produto" value="'+esc(filters.q)+'"><select class="fpcp-select" id="fpBase"><option value="TODAS">Todas as bases</option>'+knownBases.map(b=>'<option value="'+b+'" '+(filters.base===b?'selected':'')+'>'+b+'</option>').join('')+'</select><span class="fpcp-muted">'+rows.length+' pedido(s)</span></div>'+
-      '<div class="fpcp-table-wrap">'+table(rows)+'</div></div>';
+      '<div class="fpcp-table-wrap">'+table(rows)+'</div>'+
+      '<section class="fpcp-recent-history"><div class="fpcp-history-head"><div><span>HISTÓRICO PCP</span><h2>Últimos 10 pedidos processados</h2><p>Pedidos que já saíram da fila ativa continuam disponíveis para consulta.</p></div><strong>'+historyRows.length+'</strong></div>'+
+      '<div class="fpcp-table-wrap">'+historyTable(historyRows)+'</div></section></div>';
     document.getElementById('fpMRP').onclick=()=>window.FocadoIntelligenceUI?.renderMRP();
     document.getElementById('fpConsolidated').onclick=()=>renderConsolidated();
     const q=document.getElementById('fpSearch'),base=document.getElementById('fpBase');let t;
@@ -172,6 +178,10 @@
     });
     document.querySelectorAll('[data-fpcp-open]').forEach(b=>b.onclick=()=>openOrder(b.dataset.fpcpOpen||b.dataset.fpcpNumber));
   }
+  function pcpHistoryAt(o){
+    const event=(o.events||[]).find(e=>/pcp liberado|pcp conclu|logística pré-liberada/i.test(String(e.text||e.type||'')));
+    return Number(event?.at||o.expedition?.releaseDate&&Date.parse(o.expedition.releaseDate)||o.logistics?.deliveryConfirmedAt||o.commercial?.completedAt||o.createdAt||0);
+  }
   function kpi(a,b,c){return '<div class="fpcp-kpi"><span>'+a+'</span><strong>'+b+'</strong><small>'+c+'</small></div>'}
   function kpiFilter(a,b,c,stage){return '<button class="fpcp-kpi fpcp-kpi-filter '+(filters.stage===stage?'selected':'')+'" data-pcp-stage="'+stage+'"><span>'+a+'</span><strong>'+b+'</strong><small>'+c+'</small></button>'}
   function table(rows){
@@ -179,6 +189,14 @@
     return '<table class="fpcp-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Data</th><th>Itens</th><th>Valor</th><th>Base(s)</th><th>Status PCP</th><th></th></tr></thead><tbody>'+rows.map(o=>{
       const st=planningStatus(o);
       return '<tr><td><div class="fpcp-order">'+esc(o.number)+'</div></td><td><div class="fpcp-client">'+esc(o.client||'—')+'</div><div class="fpcp-muted">'+esc([o.city,o.uf].filter(Boolean).join('/'))+'</div></td><td>'+dbr(o.orderDate)+'</td><td>'+((o.items||[]).length)+'<div class="fpcp-muted">'+totalQty(o)+' cx</div></td><td>'+money(orderValue(o))+'</td><td>'+esc(basesOf(o).join(', ')||'—')+'</td><td><span class="fpcp-status '+st[1]+'">'+st[0]+'</span></td><td><button class="fpcp-open" data-fpcp-open="'+esc(o.id||o.number)+'" data-fpcp-number="'+esc(o.number||'')+'">'+(o.status==='PCP'?'Planejar':'Consultar')+'</button></td></tr>';
+    }).join('')+'</tbody></table>';
+  }
+
+  function historyTable(rows){
+    if(!rows.length)return '<div class="fpcp-empty small">Nenhum pedido processado pelo PCP ainda.</div>';
+    return '<table class="fpcp-table fpcp-history-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Data pedido</th><th>Itens</th><th>Valor</th><th>Base(s)</th><th>Status atual</th><th></th></tr></thead><tbody>'+rows.map(o=>{
+      const current=({ESTOQUE_PRODUCAO:'Produção / Estoque',LOGISTICA:'Logística',ENTREGUE:'Concluído'})[o.status]||o.status||'—';
+      return '<tr><td><div class="fpcp-order">'+esc(o.number||'')+'</div></td><td><div class="fpcp-client">'+esc(o.client||'—')+'</div></td><td>'+dbr(o.orderDate)+'</td><td>'+((o.items||[]).length)+'<div class="fpcp-muted">'+totalQty(o)+' cx</div></td><td>'+money(orderValue(o))+'</td><td>'+esc(basesOf(o).join(', ')||'—')+'</td><td><span class="fpcp-status done">'+esc(current)+'</span></td><td><button class="fpcp-open" data-fpcp-open="'+esc(o.id)+'">Consultar</button></td></tr>';
     }).join('')+'</tbody></table>';
   }
 
