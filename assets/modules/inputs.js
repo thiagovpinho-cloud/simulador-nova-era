@@ -10,7 +10,7 @@
   const canEdit=()=>['ADMIN','ESTOQUE'].includes(String(window.FocadoAuth?.getRole?.()||'').toUpperCase());
 
   async function motherCatalog(){
-    const rows=window.FocadoSimulatorMasterData?.inputs||[];
+    const rows=Array.isArray(window.FocadoMasterInputs)?window.FocadoMasterInputs:[];
     return rows.map(x=>({...x,id:x.id||('mother_'+String(x.brand).replace(/\W+/g,'_')+'_'+x.code)}));
   }
 
@@ -24,13 +24,13 @@
       const prev=byKey.get(keyOf(master));
       if(!prev){seed.push(master);continue}
       if(prev.active===false)continue;
-      if(prev.source==='SIMULADOR_MAE'||prev.source==='PLANILHA_MAE_07_07_2026'){
+      if(prev.source==='PLANILHA_MAE_07_07_26'||prev.source==='PLANILHA_MAE_07_07_26'){
         seed.push({...master,id:prev.id||master.id,price:prev.manualOverride?prev.price:master.price,manualOverride:Boolean(prev.manualOverride)});
       }
     }
     if(seed.length&&canEdit()){
       for(const item of seed){
-        const result=await window.FocadoDataStore.saveDomain('INSUMOS',{item:{...item,source:item.manualOverride?'FOCADO':'PLANILHA_MAE_07_07_2026'}});
+        const result=await window.FocadoDataStore.saveDomain('INSUMOS',{item:{...item,source:item.manualOverride?'FOCADO':'PLANILHA_MAE_07_07_26'}});
         if(result?.payload)window.FocadoDataStore.writeLocal(result.payload);
       }
       ops=load();catalog=ops.inputCatalog||[];
@@ -65,7 +65,7 @@
     el.innerHTML='<div class="fin-page">'+
       '<div class="fin-head"><div><span>ESTOQUE DE INSUMOS</span><h1>Insumos</h1><p>Cadastro, preço e saldo físico independentes do estoque de produtos acabados.</p></div>'+(canEdit()?'<button class="fin-btn primary" id="finNew">+ Cadastrar insumo</button>':'<span class="fin-readonly">Consulta</span>')+'</div>'+
       '<div class="fin-kpis"><div><span>Base cadastrada</span><strong>'+catalog.length+'</strong><small>itens ativos</small></div><div><span>Com saldo físico</span><strong>'+Object.values(stock).filter(x=>Number(x.physical||0)>0).length+'</strong><small>itens em estoque</small></div><div><span>Saldo físico total</span><strong>'+fmt(physicalTotal,0)+'</strong><small>unidades de medida somadas apenas como referência</small></div></div>'+
-      '<div class="fin-note"><b>Base-mãe do Simulador conectada.</b><span>Nova Era e New Green mantêm seus preços por marca. O saldo físico de matéria-prima permanece separado do estoque de produtos acabados.</span></div>'+
+      '<div class="fin-note"><b>Base de Insumos oficial carregada.</b><span>Itens extraídos das planilhas “Precificação Nova Era - 07.07.26” e “Precificação Newgreen - 07.07.26”. Preços permanecem independentes por marca; o estoque físico de insumos é separado de produtos acabados.</span></div>'+
       '<div class="fin-toolbar"><input id="finSearch" placeholder="Buscar código, insumo, grupo ou marca" value="'+esc(filters.q)+'"><select id="finBrand"><option value="TODAS">Todas as marcas</option>'+brands.map(b=>'<option '+(filters.brand===b?'selected':'')+'>'+esc(b)+'</option>').join('')+'</select><select id="finGroup"><option value="TODOS">Todos os grupos</option>'+groups.map(g=>'<option '+(filters.group===g?'selected':'')+'>'+esc(g)+'</option>').join('')+'</select><span>'+rows.length+' item(ns)</span></div>'+
       '<div class="fin-table-wrap">'+table(rows,stock)+'</div></div>';
     if(document.getElementById('finNew'))document.getElementById('finNew').onclick=()=>openEditor(null);
