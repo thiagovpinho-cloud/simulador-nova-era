@@ -7,9 +7,9 @@
 
   const navGroups=[
     ['Principal',[['dashboard','⌂','Dashboard'],['pendencias','⚡','Central de Pendências'],['cockpit','◉','Cockpit Executivo'],['kanban','▦','Kanban Operacional']]],
-    ['Comercial',[['clientes','♙','Clientes'],['representantes','♣','Representantes'],['pedidos','▤','Pedidos Comerciais'],['simulador','∑','Simulador']]],
+    ['Comercial',[['clientes','♙','Clientes'],['representantes','♣','Representantes'],['pedidos','▤','Pedidos Comerciais'],['cotacoes-frete','⇄','Cotação de frete'],['simulador','∑','Simulador']]],
     ['Operações',[['pcp','⌘','PCP'],['production','⚙','Produção'],['inventory','▣','Estoque'],['inputs','◇','Insumos'],['purchases','↻','Compras'],['expedicao','⇱','Expedição']]],
-    ['Logística',[['logistica','▰','Logística'],['entregas','✓','Entregas'],['transportadoras','⌁','Transportadoras']]],
+    ['Logística',[['cotacoes-frete-logistica','⇄','Cotações recebidas'],['logistica','▰','Logística'],['entregas','✓','Entregas'],['transportadoras','⌁','Transportadoras']]],
     ['Cadastros',[['produtos','◫','Produtos'],['fichas','▧','Fichas Técnicas'],['bases','▦','Bases Produtivas']]],
     ['Financeiro',[['financeiro','₿','Faturamento e Margem']]],
     ['Relatórios',[['relatorios','▥','Relatórios','soon'],['indicadores','◉','Indicadores'],['bi-config','⚙','Parâmetros BI']]],
@@ -68,26 +68,26 @@
       const role=window.FocadoAuth?.getRole?.()||'';
       const title=box.querySelector('h2'),textEl=box.querySelector('p'),btn=box.querySelector('[data-open]');
       if(!title||!textEl||!btn)return;
-      const ops=loadOps(),orders=ops.orders||[];
-      const quoteRequested=orders.filter(o=>['SOLICITADA','EM_COTACAO'].includes(o.freightQuote?.status));
-      const quoteAnswered=orders.filter(o=>o.freightQuote?.status==='RESPONDIDA'&&!o.freightQuote?.commercialViewedAt);
+      const ops=loadOps(),freightRequests=Array.isArray(ops.freightRequests)?ops.freightRequests:[];
       const roleKey=String(role).toUpperCase();
+      const quoteRequested=freightRequests.filter(x=>['SOLICITADA','EM_COTACAO'].includes(x.status));
+      const quoteAnswered=freightRequests.filter(x=>x.status==='RESPONDIDA'&&!x.commercialViewedAt);
       if(roleKey==='LOGISTICA'&&quoteRequested.length){
         box.className='fx-command warn';
         box.querySelector('.fx-command-eyebrow').textContent='NOVA SOLICITAÇÃO DO COMERCIAL';
         title.textContent=quoteRequested.length+' cotação(ões) de frete aguardando Logística';
         const q=quoteRequested[0];
-        textEl.textContent=(q.number||q.id)+' · '+(q.client||'Cliente')+' · '+(q.city||'destino a confirmar');
-        btn.dataset.open='logistica';btn.textContent='Fazer cotação →';
+        textEl.textContent=(q.origin||'Origem')+' → '+(q.destination||'Destino')+(q.client?' · '+q.client:'');
+        btn.dataset.open='cotacoes-frete-logistica';btn.textContent='Executar cotação →';
         return;
       }
       if(roleKey==='COMERCIAL'&&quoteAnswered.length){
         box.className='fx-command info';
         box.querySelector('.fx-command-eyebrow').textContent='COTAÇÃO DE FRETE RECEBIDA';
         title.textContent=quoteAnswered.length+' cotação(ões) respondida(s) pela Logística';
-        const q=quoteAnswered[0],best=(q.freightQuote?.quotes||[]).slice().sort((a,b)=>Number(a.value||0)-Number(b.value||0))[0];
-        textEl.textContent=(q.number||q.id)+' · '+(best?best.provider+' · '+money(best.value):'Valores disponíveis para consulta');
-        btn.dataset.open='pedidos';btn.textContent='Ver cotações →';
+        const q=quoteAnswered[0],best=(q.quotes||[]).slice().sort((a,b)=>Number(a.value||0)-Number(b.value||0))[0];
+        textEl.textContent=(q.origin||'Origem')+' → '+(q.destination||'Destino')+(best?' · '+best.provider+' · '+money(best.value):'');
+        btn.dataset.open='cotacoes-frete';btn.textContent='Ver retorno →';
         return;
       }
       const areas=workflowAreasForRole(role);
@@ -292,6 +292,8 @@
     if(id==='representantes'){open(()=>window.FocadoRepresentatives?.render());return}
     if(id==='simulador'){open(()=>window.FocadoSimulator?.render());return}
     if(id==='regras-margem'){open(()=>window.FocadoMarginRules?.render());return}
+    if(id==='cotacoes-frete'){open(()=>window.FocadoFreightRequests?.render('commercial'));return}
+    if(id==='cotacoes-frete-logistica'){open(()=>window.FocadoFreightRequests?.render('logistics'));return}
     if(id==='pedidos'){
       open(()=>window.FocadoOrders?.render());
       refreshInBackground('orders',()=>{
@@ -342,6 +344,12 @@
     }
   }
   function bindDashboardLinks(){document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>navigate(b.dataset.open))}
+  window.FocadoNavigate=navigate;
+  async function notifyFreight(){
+    const role=String(window.FocadoAuth?.getRole?.()||'').toUpperCase();
+    if(!['COMERCIAL','LOGISTICA','ADMIN','DIRETOR','GESTOR'].includes(role))return;
+    try{await window.FocadoModules?.ensure?.('freight-requests');window.FocadoFreightRequests?.notify?.()}catch(err){console.warn('[Focado] aviso de frete indisponível',err)}
+  }
   function bindNav(){document.querySelectorAll('[data-fx-nav]').forEach(b=>b.onclick=()=>{if(!b.querySelector('.fx-nav-soon'))navigate(b.dataset.fxNav)})}
   bindNav();
   const closeMobileNav=()=>$('#fxSidebar')?.classList.remove('open');
@@ -357,12 +365,14 @@
       showShell(active==='dashboard');
       document.getElementById('loginScreen')?.classList.add('hidden');
       document.getElementById('hubScreen')?.classList.add('hidden');
+      queueMicrotask(notifyFreight);
     }else hideShell();
   });
   window.addEventListener('focado:cache-hydrated',()=>{
     if(shell.classList.contains('hidden'))return;
     const active=document.querySelector('[data-fx-nav].active')?.dataset?.fxNav||'dashboard';
     if(active==='dashboard')dashboard();
+    queueMicrotask(notifyFreight);
   });
   const observer=new MutationObserver(()=>{
     const hub=$('#hubScreen');
