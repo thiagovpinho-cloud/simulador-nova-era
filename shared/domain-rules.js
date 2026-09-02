@@ -1,4 +1,4 @@
-export const RULES_VERSION='2026.08.28.6';
+export const RULES_VERSION='2026.09.02.1';
 
 export const DOMAIN_PERMISSION=Object.freeze({
   COMERCIAL:'orders.write',
@@ -14,7 +14,8 @@ export const DOMAIN_PERMISSION=Object.freeze({
   EXPEDICAO:'inventory.write',
   BASES:'workspace.write',
   COTACAO_FRETE_COMERCIAL:'orders.write',
-  COTACAO_FRETE_LOGISTICA:'logistics.write'
+  COTACAO_FRETE_LOGISTICA:'logistics.write',
+  INSUMOS:'inventory.write'
 });
 
 export const FLOW=Object.freeze({
@@ -32,6 +33,59 @@ function pick(source,keys){
 export function getOrder(state,id){
   const orders=Array.isArray(state?.orders)?state.orders:[];
   return orders.find(o=>String(o.id)===String(id));
+}
+
+function normKey(v){return String(v||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
+export function finishedInventoryKey(item,brandOverride=''){
+  const brand=normKey(brandOverride||item?.brand||'sem-marca');
+  const sku=normKey(item?.code||item?.productId||item?.id||item?.name||'sem-sku');
+  return brand+'::'+sku;
+}
+function findFinishedInventory(state,item,brandOverride=''){
+  state.inventory=state.inventory||{};
+  const brand=String(brandOverride||item?.brand||'').trim();
+  const key=finishedInventoryKey(item,brand);
+  if(state.inventory[key])return [key,state.inventory[key]];
+  const found=Object.entries(state.inventory).find(([,v])=>
+    String(v?.code||'')===String(item?.code||'')&&
+    String(v?.brand||'').trim().toLowerCase()===brand.toLowerCase()
+  );
+  if(found)return found;
+  const inv={code:item?.code||'',name:item?.name||'',brand,unit:item?.unit||'CX',physical:0,reserved:0,blocked:0,bases:{}};
+  state.inventory[key]=inv;
+  return [key,inv];
+}
+function reconcileFinishedCodeByBrand(state,code){
+  code=String(code||'');if(!code)return false;
+  const entries=Object.entries(state.inventory||{}).filter(([,v])=>String(v?.code||'')===code);
+  if(!entries.length)return false;
+  const brands=[...new Set((state.stockMovements||[])
+    .filter(m=>String(m.kind||'finished')==='finished'&&String(m.code||'')===code&&String(m.brand||'').trim())
+    .map(m=>String(m.brand).trim()))];
+  if(brands.length<2)return false;
+  const sums=new Map(brands.map(b=>[b,{physical:0,reserved:0,blocked:0,name:'',unit:'CX'}]));
+  for(const m of state.stockMovements||[]){
+    if(String(m.kind||'finished')!=='finished'||String(m.code||'')!==code||!String(m.brand||'').trim())continue;
+    const s=sums.get(String(m.brand).trim());if(!s)continue;
+    s.physical+=Number(m.deltaPhysical??(Number(m.after?.physical||0)-Number(m.before?.physical||0))||0);
+    s.reserved+=Number(m.deltaReserved??(Number(m.after?.reserved||0)-Number(m.before?.reserved||0))||0);
+    s.blocked+=Number(m.deltaBlocked??(Number(m.after?.blocked||0)-Number(m.before?.blocked||0))||0);
+    s.name=s.name||String(m.name||'');s.unit=s.unit||String(m.unit||'CX');
+  }
+  const current=entries.reduce((a,[,v])=>({
+    physical:a.physical+Number(v.physical||0),reserved:a.reserved+Number(v.reserved||0),blocked:a.blocked+Number(v.blocked||0)
+  }),{physical:0,reserved:0,blocked:0});
+  const rebuilt=[...sums.values()].reduce((a,v)=>({
+    physical:a.physical+v.physical,reserved:a.reserved+v.reserved,blocked:a.blocked+v.blocked
+  }),{physical:0,reserved:0,blocked:0});
+  const same=(a,b)=>Math.abs(a-b)<1e-9;
+  if(!same(current.physical,rebuilt.physical)||!same(current.reserved,rebuilt.reserved)||!same(current.blocked,rebuilt.blocked))return false;
+  for(const [k] of entries)delete state.inventory[k];
+  for(const [brand,s] of sums){
+    const key=finishedInventoryKey({code},brand);
+    state.inventory[key]={code,name:s.name||code,brand,unit:s.unit||'CX',physical:s.physical,reserved:s.reserved,blocked:s.blocked,bases:{}};
+  }
+  return true;
 }
 
 function orderInventoryEntry(state,item){
@@ -203,6 +257,14 @@ function applyCommercial(state,body){
     o.freightQuote.commercialViewedAt=Number(changes.freightQuoteViewed.at||Date.now());
     o.freightQuote.commercialViewedBy=String(changes.freightQuoteViewed.by||'Comercial');
   }
+  if(changes.pcpDeliveryAlertAcknowledged&&o.pcp?.deliveryRescheduleAlert){
+    const a=o.pcp.deliveryRescheduleAlert,ack=changes.pcpDeliveryAlertAcknowledged;
+    if(!ack.id||String(ack.id)===String(a.id)){
+      a.status='LIDO';a.acknowledgedAt=Number(ack.at||Date.now());a.acknowledgedBy=String(ack.by||'Comercial');
+      o.events=Array.isArray(o.events)?o.events:[];
+      o.events.unshift({at:a.acknowledgedAt,text:'Comercial confirmou ciência do reagendamento de entrega para '+String(a.newAvailabilityDate||''),user:a.acknowledgedBy});
+    }
+  }
   if(changes.event&&typeof changes.event==='object'){
     o.events=Array.isArray(o.events)?o.events:[];
     o.events.unshift(structuredClone(changes.event));
@@ -221,14 +283,8 @@ function applyPCP(state,body){
   state.stockMovements=Array.isArray(state.stockMovements)?state.stockMovements:[];
   const map=new Map((o.items||[]).map(i=>[String(i.id||i.code||i.productId),i]));
   const findInventory=item=>{
-    const keys=[item.code,item.productId,item.name].map(v=>String(v||'')).filter(Boolean);
-    for(const key of keys)if(state.inventory[key])return [key,state.inventory[key]];
-    const found=Object.entries(state.inventory).find(([,v])=>String(v?.code||'')===String(item.code||''));
-    if(found)return found;
-    const key=String(item.code||item.productId||item.name||'');
-    const inv={code:item.code||'',name:item.name||'',unit:'CX',physical:0,reserved:0,blocked:0};
-    state.inventory[key]=inv;
-    return [key,inv];
+    reconcileFinishedCodeByBrand(state,item?.code);
+    return findFinishedInventory(state,item,item?.brand||o.brand);
   };
 
   for(const incoming of body.changes?.items||[]){
@@ -245,7 +301,7 @@ function applyPCP(state,body){
     if(desired!==oldReserved){
       state.stockMovements.unshift({
         id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
-        at:Date.now(),kind:'finished',key:invKey,code:item.code||'',name:item.name||'',unit:'CX',
+        at:Date.now(),kind:'finished',key:invKey,code:item.code||'',name:item.name||'',brand:item.brand||o.brand||'',unit:'CX',
         type:desired>oldReserved?'RESERVA':'LIBERACAO_RESERVA',
         qty:Math.abs(desired-oldReserved),reason:'PCP · pedido '+o.number,user:'Sistema',
         before:{physical:Number(inv.physical||0),reserved:beforeReserved,blocked:Number(inv.blocked||0)},
@@ -259,6 +315,23 @@ function applyPCP(state,body){
 
   const bases=[...new Set((o.items||[]).map(i=>i.deliveryBase).filter(Boolean))];
   o.pcp.deliveryBase=bases.length===1?bases[0]:(bases.length?'MÚLTIPLAS':'');
+  const lateDates=(o.items||[]).filter(i=>{
+    const missing=Math.max(0,Number(i.qty||0)-Number(i.reservedQty||0)-Number(i.cutQty||0));
+    return missing>0&&i.pcpBalanceDecision==='AGUARDAR'&&i.pcpAvailabilityDate&&o.requestedDeliveryDate&&i.pcpAvailabilityDate>o.requestedDeliveryDate;
+  }).map(i=>i.pcpAvailabilityDate).sort();
+  if(lateDates.length){
+    const newDate=lateDates[lateDates.length-1],prev=o.pcp.deliveryRescheduleAlert;
+    if(!prev||prev.newAvailabilityDate!==newDate||prev.requestedDeliveryDate!==o.requestedDeliveryDate){
+      const at=Date.now();
+      o.pcp.deliveryRescheduleAlert={id:'pcp_alert_'+o.id+'_'+at,status:'PENDENTE',createdAt:at,createdBy:'PCP',
+        requestedDeliveryDate:o.requestedDeliveryDate,newAvailabilityDate:newDate,acknowledgedAt:null,acknowledgedBy:''};
+      o.events=Array.isArray(o.events)?o.events:[];
+      o.events.unshift({at,text:'PCP identificou indisponibilidade até '+newDate+'; Comercial deve reagendar entrega com o cliente.',user:'PCP'});
+    }
+  }else if(o.pcp.deliveryRescheduleAlert?.status==='PENDENTE'){
+    o.pcp.deliveryRescheduleAlert.status='RESOLVIDO';
+    o.pcp.deliveryRescheduleAlert.resolvedAt=Date.now();
+  }
   if(body.changes?.pcp?.logisticsPreRelease){
     o.events=Array.isArray(o.events)?o.events:[];
     o.events.unshift({
@@ -362,9 +435,11 @@ function applyInventory(state,body){
     const m=structuredClone(m0||{});
     const kind=String(m.kind||'finished').toLowerCase()==='input'?'input':'finished';
     const collection=kind==='input'?state.inputInventory:state.inventory;
-    const key=String(m.key||m.code||'').trim();
+    const key=kind==='finished'?finishedInventoryKey(m,m.brand):String(m.key||m.code||'').trim();
     if(!key)throw Object.assign(new Error('INVENTORY_ITEM_REQUIRED'),{status:422});
-    let target=collection[key]||Object.values(collection).find(x=>String(x?.code||'')===String(m.code||''))||null;
+    let target=collection[key]||(kind==='input'
+      ?Object.values(collection).find(x=>String(x?.code||'')===String(m.code||''))||null
+      :Object.values(collection).find(x=>String(x?.code||'')===String(m.code||'')&&String(x?.brand||'').trim().toLowerCase()===String(m.brand||'').trim().toLowerCase())||null);
     if(!target){
       target={code:String(m.code||key),name:String(m.name||m.code||key),unit:String(m.unit||''),physical:0,reserved:0,blocked:0};
       collection[key]=target;
@@ -388,8 +463,10 @@ function applyInventory(state,body){
       unit:String(m.unit||target.unit||''),type:String(m.type||'AJUSTE'),qty:Math.abs(Number(m.qty??(deltaPhysical||deltaReserved||deltaBlocked))),
       base:String(m.base||''),warehouse:String(m.warehouse||m.base||''),lot:String(m.lot||''),condition:String(m.condition||''),
       palletized:Boolean(m.palletized),boxesPerPallet:Number(m.boxesPerPallet||0),pallets:Number(m.pallets||0),chapatex:Boolean(m.chapatex),
-      reason:String(m.reason||''),note:String(m.note||''),user:String(m.user||'Sistema'),before,after
+      reason:String(m.reason||''),note:String(m.note||''),user:String(m.user||'Sistema'),
+      deltaPhysical,deltaReserved,deltaBlocked,before,after
     });
+    if(kind==='finished'&&m.brand)reconcileFinishedCodeByBrand(state,m.code);
   };
 
   const movements=Array.isArray(c.movements)?c.movements:(c.movement?[c.movement]:[]);
@@ -782,6 +859,41 @@ function applyFreightLogistics(state,body){
   }
 }
 
+function applyInputs(state,body){
+  const c=body.changes||{};
+  state.inputCatalog=Array.isArray(state.inputCatalog)?state.inputCatalog:[];
+  const keyOf=x=>String(x.brand||'GERAL').trim().toUpperCase()+'::'+String(x.code||'').trim().toUpperCase();
+  if(Array.isArray(c.seed)){
+    for(const raw of c.seed){
+      const incoming=structuredClone(raw),key=keyOf(incoming);
+      if(!incoming.code)continue;
+      if(!state.inputCatalog.some(x=>keyOf(x)===key)){
+        state.inputCatalog.push({
+          id:String(incoming.id||('inp_'+normKey(incoming.brand)+'_'+normKey(incoming.code))),
+          code:String(incoming.code),name:String(incoming.name||incoming.desc||incoming.code),unit:String(incoming.unit||''),
+          group:String(incoming.group||'Outros'),brand:String(incoming.brand||'Geral'),price:Math.max(0,Number(incoming.price??incoming.preco??0)),
+          source:String(incoming.source||'SIMULADOR_MAE'),active:incoming.active!==false,createdAt:Date.now(),updatedAt:Date.now()
+        });
+      }
+    }
+  }
+  if(c.item&&typeof c.item==='object'){
+    const incoming=structuredClone(c.item);
+    incoming.code=String(incoming.code||'').trim();incoming.brand=String(incoming.brand||'Geral').trim();
+    if(!incoming.code||!String(incoming.name||incoming.desc||'').trim())throw Object.assign(new Error('INPUT_FIELDS_REQUIRED'),{status:422});
+    incoming.name=String(incoming.name||incoming.desc).trim();incoming.unit=String(incoming.unit||'').trim().toUpperCase();
+    incoming.group=String(incoming.group||'Outros').trim();incoming.price=Math.max(0,Number(incoming.price||0));
+    incoming.updatedAt=Date.now();incoming.active=incoming.active!==false;
+    const key=keyOf(incoming),idx=state.inputCatalog.findIndex(x=>keyOf(x)===key);
+    if(idx>=0)state.inputCatalog[idx]={...state.inputCatalog[idx],...incoming};
+    else state.inputCatalog.unshift({id:String(incoming.id||('inp_'+Date.now())),source:'FOCADO',createdAt:Date.now(),...incoming});
+  }
+  if(c.deleteId){
+    const idx=state.inputCatalog.findIndex(x=>String(x.id)===String(c.deleteId));
+    if(idx>=0)state.inputCatalog[idx]={...state.inputCatalog[idx],active:false,updatedAt:Date.now()};
+  }
+}
+
 const DOMAIN_APPLIERS=Object.freeze({
   COMERCIAL:applyCommercial,
   PCP:applyPCP,
@@ -796,7 +908,8 @@ const DOMAIN_APPLIERS=Object.freeze({
   EXPEDICAO:applyExpedition,
   BASES:applyBases,
   COTACAO_FRETE_COMERCIAL:applyFreightCommercial,
-  COTACAO_FRETE_LOGISTICA:applyFreightLogistics
+  COTACAO_FRETE_LOGISTICA:applyFreightLogistics,
+  INSUMOS:applyInputs
 });
 
 export function applyDomain(domain,state,body){
