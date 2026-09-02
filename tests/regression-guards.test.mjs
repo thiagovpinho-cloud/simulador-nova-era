@@ -165,7 +165,7 @@ assert.ok(inputsCssV2.includes('.fin-modal'),'Cadastro de insumo deve possuir mo
 const marginRulesModule=read('assets/modules/margin-rules.js');
 const financeRules=read('assets/modules/finance.js');
 const biRules=read('shared/bi-analytics.js');
-assert.ok(simulatorV3.includes("(document.getElementById('focadoShell')||document.body).appendChild(modal)"),'Modal de cadastrar insumo deve abrir dentro do shell moderno');
+assert.ok(inputsModuleV2.includes("(document.getElementById('focadoShell')||document.body).appendChild(ov)"),'Modal de cadastrar insumo deve abrir dentro do shell moderno');
 assert.ok(marginRulesModule.includes("saveDomain?.('FINANCEIRO',{marginRules:readForm()})"),'Regras de Margem devem persistir pelo domínio Financeiro');
 for(const label of ['Custo do Produto','ICMS','PIS','COFINS','IPI','ST','Frete','Comissão','Contrato']){
   assert.ok(marginRulesModule.includes(label),'Regra de margem ausente: '+label);
