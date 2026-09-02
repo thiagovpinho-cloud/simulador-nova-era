@@ -90,7 +90,7 @@
   function modal(html){
     document.getElementById('finOverlay')?.remove();
     const ov=document.createElement('div');ov.id='finOverlay';ov.className='fin-overlay';
-    ov.innerHTML='<div class="fin-modal">'+html+'</div>';document.body.appendChild(ov);return ov;
+    ov.innerHTML='<div class="fin-modal">'+html+'</div>';(document.getElementById('focadoShell')||document.body).appendChild(ov);return ov;
   }
   function close(){document.getElementById('finOverlay')?.remove()}
   async function openEditor(item){
