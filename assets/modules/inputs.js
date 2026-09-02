@@ -23,6 +23,7 @@
     for(const master of mother){
       const prev=byKey.get(keyOf(master));
       if(!prev){seed.push(master);continue}
+      if(prev.active===false)continue;
       if(prev.source==='SIMULADOR_MAE'||prev.source==='PLANILHA_MAE_07_07_2026'){
         seed.push({...master,id:prev.id||master.id,price:prev.manualOverride?prev.price:master.price,manualOverride:Boolean(prev.manualOverride)});
       }
