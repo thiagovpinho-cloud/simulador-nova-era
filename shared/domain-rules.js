@@ -67,9 +67,9 @@ function reconcileFinishedCodeByBrand(state,code){
   for(const m of state.stockMovements||[]){
     if(String(m.kind||'finished')!=='finished'||String(m.code||'')!==code||!String(m.brand||'').trim())continue;
     const s=sums.get(String(m.brand).trim());if(!s)continue;
-    s.physical+=Number(m.deltaPhysical??(Number(m.after?.physical||0)-Number(m.before?.physical||0))||0);
-    s.reserved+=Number(m.deltaReserved??(Number(m.after?.reserved||0)-Number(m.before?.reserved||0))||0);
-    s.blocked+=Number(m.deltaBlocked??(Number(m.after?.blocked||0)-Number(m.before?.blocked||0))||0);
+    s.physical+=Number((m.deltaPhysical??(Number(m.after?.physical||0)-Number(m.before?.physical||0)))||0);
+    s.reserved+=Number((m.deltaReserved??(Number(m.after?.reserved||0)-Number(m.before?.reserved||0)))||0);
+    s.blocked+=Number((m.deltaBlocked??(Number(m.after?.blocked||0)-Number(m.before?.blocked||0)))||0);
     s.name=s.name||String(m.name||'');s.unit=s.unit||String(m.unit||'CX');
   }
   const current=entries.reduce((a,[,v])=>({
