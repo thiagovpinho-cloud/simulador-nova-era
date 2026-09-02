@@ -95,6 +95,8 @@ jobs:
           curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/pendencias.js" -o /tmp/pendencias.js
           curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/pendencias.css" -o /tmp/pendencias.css
           curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/simulator.js" -o /tmp/simulator.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/inputs.js" -o /tmp/inputs.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/simulator-master-data.js" -o /tmp/simulator-master-data.js
           curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/margin-rules.js" -o /tmp/margin-rules.js
           curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/orders.js" -o /tmp/orders.js
           curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/customers.js" -o /tmp/customers.js
@@ -112,10 +114,14 @@ jobs:
           grep -q "ESTOQUE:'inventory'" /tmp/pendencias.js
           grep -q "function friendlyError" /tmp/pendencias.js
 
-          # 3) Preservar smoke das funções de negócio legadas essenciais.
-          grep -q "window.FocadoSimulator={render}" /tmp/simulator.js
-          grep -q "Cadastrar insumo" /tmp/simulator.js
+          # 3) Preservar smoke das funções de negócio essenciais e da arquitetura oficial do Simulador.
+          grep -q "window.FocadoSimulator" /tmp/simulator.js
+          grep -q "Painel de formação de preço" /tmp/simulator.js
+          grep -q "Receitas de Produção" /tmp/simulator.js
           grep -q "Manual por caixa" /tmp/simulator.js
+          grep -q "Cadastrar insumo" /tmp/inputs.js
+          grep -q "data-fin-delete" /tmp/inputs.js
+          grep -q "window.FocadoSimulatorMasterData" /tmp/simulator-master-data.js
           grep -q "window.FocadoMarginRules={render}" /tmp/margin-rules.js
           grep -q "Custo do Produto" /tmp/margin-rules.js
           grep -q "updateProfitability" /tmp/orders.js
