@@ -139,9 +139,9 @@ const simulatorModule=read('assets/modules/simulator.js');
 assert.ok(indexPerf.includes('window.FocadoLegacySimulator'),'Motor do simulador deve continuar centralizado no adaptador legado durante a migração');
 assert.ok(simulatorModule.includes('window.FocadoLegacySimulator'),'Módulo moderno deve consumir o motor original, não duplicar fórmulas');
 assert.ok(!simulatorModule.includes('function computeCore'),'Módulo moderno não pode duplicar o cálculo tributário');
-assert.ok(simulatorModule.includes('Base de Insumos'),'Simulador moderno deve expor Base de Insumos');
-assert.ok(simulatorModule.includes('Composição de Custo'),'Simulador moderno deve expor composição de custo');
-assert.ok(simulatorModule.includes('Preço base/CX'),'Simulador deve separar preço base de impostos');
+assert.ok(simulatorModule.includes('Base de Insumos →'),'Simulador deve encaminhar para a Base de Insumos independente');
+assert.ok(simulatorModule.includes('Receitas de Produção'),'Simulador moderno deve expor receitas somente no contexto autorizado');
+assert.ok(simulatorModule.includes('Venda CX sem IPI/ST'),'Painel deve separar preço base de impostos como a planilha oficial');
 
 const simulatorV3=read('assets/modules/simulator.js');
 const simulatorCssV3=read('assets/modules/simulator.css');
