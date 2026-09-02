@@ -203,6 +203,7 @@
     background:#f5f7f6;
   }
   .fx-main{
+    position:relative;
     height:100dvh;
     min-height:0;
     background:#f5f7f6;
