@@ -183,14 +183,14 @@
         kpi('!','Atrasos',late,late?'atenção imediata':'nenhum vencido','danger')+
       '</div>'+
       '<div class="fx-grid">'+
-        '<div class="fx-panel"><div class="fx-panel-head"><h2>Status macro dos pedidos</h2><button class="fx-link" data-open="orders">Ver pedidos</button></div><div class="fx-flow">'+flow('Comercial',counts.COMERCIAL)+flow('PCP',counts.PCP)+flow('Logística',counts.LOGISTICA)+flow('Entrega',counts.ENTREGUE)+'</div></div>'+
-        '<div class="fx-panel"><div class="fx-panel-head"><h2>Produção · Capacidade</h2><button class="fx-link" data-open="production">Ver programação</button></div>'+baseRows+'</div>'+
+        '<div class="fx-panel fx-mobile-secondary"><div class="fx-panel-head"><h2>Status macro dos pedidos</h2><button class="fx-link" data-open="orders">Ver pedidos</button></div><div class="fx-flow">'+flow('Comercial',counts.COMERCIAL)+flow('PCP',counts.PCP)+flow('Logística',counts.LOGISTICA)+flow('Entrega',counts.ENTREGUE)+'</div></div>'+
+        '<div class="fx-panel fx-mobile-secondary"><div class="fx-panel-head"><h2>Produção · Capacidade</h2><button class="fx-link" data-open="production">Ver programação</button></div>'+baseRows+'</div>'+
         '<div class="fx-panel"><div class="fx-panel-head"><h2>Alertas Operacionais</h2></div>'+alertRows.map(a=>'<div class="fx-alert"><div class="fx-alert-icon">'+a[0]+'</div><div><b>'+a[1]+'</b><small>'+a[2]+'</small></div></div>').join('')+'</div>'+
       '</div>'+
       '<div class="fx-grid">'+
         '<div class="fx-panel"><div class="fx-panel-head"><h2>Pedidos Recentes</h2><button class="fx-link" data-open="orders">Ver todos</button></div>'+recentTable(recent)+'</div>'+
-        '<div class="fx-panel"><div class="fx-panel-head"><h2>Estoque Crítico</h2><button class="fx-link" data-open="purchases">Ver reposição</button></div>'+criticalStock(alerts)+'</div>'+
-        '<div class="fx-panel"><div class="fx-panel-head"><h2>Resumo da Carteira</h2></div><div class="fx-kpi" style="border:0;padding:6px 0"><span>Pedidos abertos</span><strong>'+money(totalOpen)+'</strong><small>'+open.length+' pedido(s) em andamento</small></div><div class="fx-alert"><div class="fx-alert-icon">✓</div><div><b>'+counts.ENTREGUE+' pedido(s) concluído(s)</b><small>Histórico operacional registrado</small></div></div></div>'+
+        '<div class="fx-panel fx-mobile-secondary"><div class="fx-panel-head"><h2>Estoque Crítico</h2><button class="fx-link" data-open="purchases">Ver reposição</button></div>'+criticalStock(alerts)+'</div>'+
+        '<div class="fx-panel fx-mobile-secondary"><div class="fx-panel-head"><h2>Resumo da Carteira</h2></div><div class="fx-kpi" style="border:0;padding:6px 0"><span>Pedidos abertos</span><strong>'+money(totalOpen)+'</strong><small>'+open.length+' pedido(s) em andamento</small></div><div class="fx-alert"><div class="fx-alert-icon">✓</div><div><b>'+counts.ENTREGUE+' pedido(s) concluído(s)</b><small>Histórico operacional registrado</small></div></div></div>'+
       '</div><div class="fx-footer"><span>Focado © 2026 · Ambiente operacional</span><span>Arquitetura modular · Product UI 2.0</span></div>';
     bindDashboardLinks();
     refreshWorkflowCommand().then(bindDashboardLinks);
