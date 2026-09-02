@@ -67,8 +67,16 @@ export function applySafeWorkflowAutomations(state,{at=Date.now(),byOrder={}}={}
       );
     }
 
+    const completedProductionIds=new Set(
+      (state?.productionRequests||[])
+        .filter(r=>r?.execution?.status==='CONCLUIDA')
+        .map(r=>String(r.id||''))
+    );
+    const hasCompletedLinkedProduction=(wf.production?.requestIds||[])
+      .some(id=>completedProductionIds.has(String(id)));
+
     if(flags.pcpRecheck &&
-       wf.production?.status==='CONCLUIDO' &&
+       hasCompletedLinkedProduction &&
        wf.inventory?.coverage?.some(x=>Number(x?.open||0)>0&&Number(x?.free||0)>0)){
       add(
         'PCP_RECHECK_AVAILABLE_STOCK',
