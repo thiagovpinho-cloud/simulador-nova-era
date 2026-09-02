@@ -40,10 +40,14 @@ function applyCommercial(state,body){
     const src=structuredClone(changes.createOrder);
     const id=String(src.id||src.number||'').trim();
     if(!id)throw Object.assign(new Error('ORDER_ID_REQUIRED'),{status:422});
-    if(state.orders.some(o=>String(o.id||o.number)===id))throw Object.assign(new Error('ORDER_ALREADY_EXISTS'),{status:409});
+    if(state.orders.some(o=>String(o.id)===id))throw Object.assign(new Error('ORDER_ALREADY_EXISTS'),{status:409});
+    const number=String(src.number||id).trim();
+    if(state.orders.some(o=>String(o.number||'').trim().toUpperCase()===number.toUpperCase())){
+      throw Object.assign(new Error('ORDER_NUMBER_ALREADY_EXISTS'),{status:409,number});
+    }
     const order={
       id,
-      number:String(src.number||id),
+      number,
       status:'COMERCIAL',
       createdAt:Number(src.createdAt||Date.now()),
       brand:String(src.brand||'Nova Era'),
