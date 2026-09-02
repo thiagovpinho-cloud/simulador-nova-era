@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260828-edit-actions-v4';
+  const VERSION='20260902-mobile-redesign-v1';
   const loaded=new Map();
   const defs={
     simulador:{css:'simulator.css',js:'simulator.js'},
