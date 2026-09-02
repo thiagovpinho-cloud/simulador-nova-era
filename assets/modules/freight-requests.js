@@ -3,6 +3,7 @@
   const $=s=>document.querySelector(s);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const moneyField=v=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const dateTime=v=>v?new Date(Number(v)).toLocaleString('pt-BR'):'—';
   const role=()=>String(window.FocadoAuth?.getRole?.()||'').toUpperCase();
   const user=()=>window.FocadoAuth?.getUser?.()?.name||window.FocadoAuth?.roleLabel?.()||'Usuário';
@@ -107,6 +108,21 @@
   function bindRemove(){
     document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{const rows=document.querySelectorAll('[data-quote-row]');if(rows.length>1)b.closest('[data-quote-row]').remove()});
   }
+  function bindMoneyFields(root=document){
+    root.querySelectorAll('[data-q="value"]').forEach(input=>{
+      if(input.dataset.moneyBound==='1')return;
+      input.dataset.moneyBound='1';
+      input.addEventListener('focus',()=>{
+        const n=parseMoney(input.value);
+        input.value=n?moneyField(n):'';
+        requestAnimationFrame(()=>input.select());
+      });
+      input.addEventListener('blur',()=>{
+        const n=parseMoney(input.value);
+        input.value=n?money(n):'';
+      });
+    });
+  }
 
   async function openLogisticsResponse(r){
     if(!r.logisticsViewedAt){
@@ -119,8 +135,8 @@
       '<div class="fr-response-form"><h3>Executar cotação</h3><div id="frQuoteRows">'+quoteRow(0)+'</div><button class="fr-btn secondary" id="frAdd">+ Adicionar prestador</button><label class="fr-note"><span>Observação geral da Logística</span><textarea id="frResponseNotes" placeholder="Condições gerais, recomendação, restrições..."></textarea></label></div>'+
       '<div class="fr-modal-actions"><button class="fr-btn secondary" id="frCancel">Cancelar</button><button class="fr-btn primary" id="frRespond">Devolver ao Comercial</button></div>');
     el.querySelector('#frClose').onclick=closeModal;el.querySelector('#frCancel').onclick=closeModal;
-    el.querySelector('#frAdd').onclick=()=>{const box=$('#frQuoteRows'),n=box.querySelectorAll('[data-quote-row]').length;if(n>=6)return;box.insertAdjacentHTML('beforeend',quoteRow(n));bindRemove()};
-    bindRemove();el.querySelector('#frRespond').onclick=()=>sendResponse(r.id);
+    el.querySelector('#frAdd').onclick=()=>{const box=$('#frQuoteRows'),n=box.querySelectorAll('[data-quote-row]').length;if(n>=6)return;box.insertAdjacentHTML('beforeend',quoteRow(n));bindRemove();bindMoneyFields(box)};
+    bindRemove();bindMoneyFields(el);el.querySelector('#frRespond').onclick=()=>sendResponse(r.id);
   }
 
   function parseMoney(v){const s=String(v||'').trim();if(!s)return 0;return s.includes(',')?Number(s.replace(/[^0-9,.-]/g,'').replace(/\./g,'').replace(',','.'))||0:Number(s.replace(/[^0-9.-]/g,''))||0}

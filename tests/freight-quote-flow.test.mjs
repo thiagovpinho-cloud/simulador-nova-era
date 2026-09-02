@@ -73,6 +73,10 @@ assert.match(freight,/Devolver ao Comercial/);
 assert.match(freight,/Histórico de comportamento de frete/);
 assert.match(freight,/popupFor/);
 assert.match(freight,/FocadoFreightRequests/);
+assert.match(freight,/bindMoneyFields/);
+assert.match(freight,/toLocaleString\('pt-BR',\{style:'currency',currency:'BRL'\}\)/);
+assert.match(freight,/input\.addEventListener\('blur'/);
+assert.match(freight,/money\(n\)/);
 
 assert.match(loader,/freight-requests/);
 assert.match(loader,/cotacoes-frete/);
@@ -88,7 +92,7 @@ assert.match(shell,/notifyFreight/);
 assert.match(shell,/FocadoNavigate/);
 assert.match(shell,/freightRequests/);
 
-assert.match(index,/module-loader\.js\?v=20260902-(?:freight-center|draft-ux)-v1/);
+assert.match(index,/module-loader\.js\?v=20260902-(?:freight-center|draft-ux|freight-money)-v1/);
 assert.match(index,/auth-client\.js\?v=20260902-freight-center-v1/);
 assert.match(index,/app-shell\.js\?v=20260902-freight-center-v1/);
 
