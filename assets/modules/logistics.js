@@ -42,7 +42,11 @@
 
   function render(state){
     listState=state||listState;
-    const ops=load(),all=(ops.orders||[]).filter(o=>['PCP','LOGISTICA','ENTREGUE','ESTOQUE_PRODUCAO'].includes(o.status)||['SOLICITADA','EM_COTACAO','RESPONDIDA'].includes(o.freightQuote?.status));
+    const ops=load(),all=(ops.orders||[]).filter(o=>
+      ['LOGISTICA','ENTREGUE','ESTOQUE_PRODUCAO'].includes(o.status)||
+      Boolean(o.pcp?.logisticsPreRelease)||
+      ['SOLICITADA','EM_COTACAO','RESPONDIDA'].includes(o.freightQuote?.status)
+    );
     const rows=all.filter(o=>{
       const q=String(listState.q||'').toLowerCase(),st=status(o)[0];
       return (!q||[o.number,o.client,o.city,o.logistics?.carrier,(o.items||[]).map(i=>i.code+' '+i.name).join(' ')].some(v=>String(v||'').toLowerCase().includes(q)))&&(listState.status==='TODOS'||st===listState.status);
@@ -103,7 +107,7 @@
     content().innerHTML='<div class="fl-page">'+
       '<div class="fl-head"><div><button class="fl-btn primary" id="flBack">← Logística</button><h1>Logística · '+esc(o.number)+'</h1><p>'+esc(o.client||'')+'</p></div><span class="fl-chip '+(pre||o.status==='COMERCIAL'?'warn':'ready')+'">'+macroLabel+'</span></div>'+
       (window.FocadoFreightQuotes?.logisticsPanel?.(o,ops)||'')+
-      (pre?'<div class="fl-callout warn"><b>Planejamento antecipado</b><span>A Logística pode contratar o frete agora. A coleta somente poderá ocorrer após a disponibilidade definida pelo PCP.</span></div>':'')+
+      (pre?'<div class="fl-callout warn"><b>Visível para planejamento antecipado · ainda no PCP</b><span>Este pedido NÃO foi liberado pelo PCP. A Logística pode apenas adiantar a contratação do frete; a coleta continua bloqueada até a liberação operacional.</span></div>':'')+
       '<div class="fl-budget-row"><div><span>Orçamento previsto pelo Comercial</span><strong>'+money(budget)+'</strong></div><div><span>Frete planejado</span><strong id="flFreightSummary">'+money(freight)+'</strong></div><div id="flBudgetStatus" class="fl-budget-status"></div></div>'+
       '<div class="fl-detail-grid"><div class="fl-panel"><div class="fl-panel-title"><div><span class="fl-eyebrow">RETIRADA</span><h2>Itens e bases</h2></div></div><div class="fl-pickup-list">'+pickups+'</div>'+(availableDate?'<div class="fl-callout info"><b>Disponibilidade mínima para coleta</b><span>'+dbr(availableDate)+'</span></div>':'')+'</div>'+
       '<div class="fl-panel"><div class="fl-panel-title"><div><span class="fl-eyebrow">PLANEJAMENTO</span><h2>Frete e entrega prevista</h2></div></div><div class="fl-form-grid">'+
