@@ -88,11 +88,9 @@ function reconcileFinishedCodeByBrand(state,code){
   return true;
 }
 
-function orderInventoryEntry(state,item){
-  state.inventory=state.inventory||{};
-  const keys=[item?.code,item?.productId,item?.name].map(v=>String(v||'')).filter(Boolean);
-  for(const key of keys)if(state.inventory[key])return state.inventory[key];
-  return Object.values(state.inventory).find(v=>String(v?.code||'')===String(item?.code||''))||null;
+function orderInventoryEntry(state,item,brand=''){
+  const found=findFinishedInventory(state,item,item?.brand||brand);
+  return found?.[1]||null;
 }
 
 function referencesOrder(record,id,number){
@@ -109,7 +107,7 @@ function cascadeDeleteOrder(state,target){
 
   // Reverte o efeito físico/reservado do pedido antes de remover seus registros.
   for(const item of target.items||[]){
-    const inv=orderInventoryEntry(state,item);if(!inv)continue;
+    const inv=orderInventoryEntry(state,item,target.brand);if(!inv)continue;
     if(target.expedition?.stockReleasedAt){
       const shipped=Math.max(0,Number(item.dispatchedQty??item.qty??0));
       inv.physical=Math.max(0,Number(inv.physical||0)+shipped);
@@ -555,10 +553,8 @@ function applyExpedition(state,body){
       const reserved=Math.max(0,Number(item.reservedQty||0));
       const shipped=Math.max(0,Number(item.qty||0));
       if(shipped===0)continue;
-      const keys=[item.code,item.productId,item.name].map(v=>String(v||'')).filter(Boolean);
-      let found=null;
-      for(const key of keys)if(state.inventory[key]){found=[key,state.inventory[key]];break}
-      if(!found)found=Object.entries(state.inventory).find(([,v])=>String(v?.code||'')===String(item.code||''));
+      reconcileFinishedCodeByBrand(state,item.code);
+      const found=findFinishedInventory(state,item,item.brand||o.brand);
       if(!found)throw Object.assign(new Error('EXPEDITION_STOCK_NOT_FOUND'),{status:422,item:item.code||item.name});
       const [key,inv]=found;
       const physical=Number(inv.physical||0),invReserved=Number(inv.reserved||0);
@@ -569,7 +565,7 @@ function applyExpedition(state,body){
       item.dispatchedQty=shipped;
       state.stockMovements.unshift({
         id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
-        at:Date.now(),kind:'finished',key,code:item.code||'',name:item.name||'',unit:'CX',
+        at:Date.now(),kind:'finished',key,code:item.code||'',name:item.name||'',brand:item.brand||o.brand||'',unit:'CX',
         type:'SAIDA_PEDIDO',qty:shipped,reason:'Expedição · pedido '+String(o.number||o.id),
         user:changes.releasedBy||'Expedição',
         before:{physical,reserved:invReserved,blocked:Number(inv.blocked||0)},
@@ -764,9 +760,7 @@ function applyProductionRequest(state,body){
     }
     for(const item of actualItems){
       const qty=Math.max(0,Number(item.qty||0)); if(!(qty>0))continue;
-      const key=String(item.code||item.name||'');
-      const inv=state.inventory[key]||{code:item.code||'',name:item.name||'',brand:item.brand||'',unit:item.unit||'CX',physical:0,reserved:0,blocked:0};
-      if(!state.inventory[key])state.inventory[key]=inv;
+      const [key,inv]=findFinishedInventory(state,item,item.brand||snap.brand||req.brand||'');
       const before=Number(inv.physical||0); inv.physical=before+qty;
       state.stockMovements.unshift({
         id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),at:Number(done.at||Date.now()),kind:'finished',key,
