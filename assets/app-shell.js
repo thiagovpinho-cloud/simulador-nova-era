@@ -47,6 +47,49 @@
   function inputAvailable(inv){return Math.max(0,Number(inv.physical||0)-Number(inv.reserved||0)-Number(inv.blocked||0))}
   function reorderPoint(inv){const r=inv.reorder||{};return Math.max(0,(Number(r.avgDaily)||0)*(Number(r.leadTimeDays)||0)+(Number(r.safetyStock)||0))}
 
+  const workflowAreasForRole=role=>({
+    ADMIN:['COMERCIAL','PCP','PRODUCAO','ESTOQUE','COMPRAS','EXPEDICAO','LOGISTICA','FINANCEIRO'],
+    DIRETOR:['COMERCIAL','PCP','PRODUCAO','ESTOQUE','COMPRAS','EXPEDICAO','LOGISTICA','FINANCEIRO'],
+    GESTOR:['COMERCIAL','PCP','PRODUCAO','ESTOQUE','COMPRAS','EXPEDICAO','LOGISTICA','FINANCEIRO'],
+    COMERCIAL:['COMERCIAL'],PCP:['PCP'],PRODUCAO:['PRODUCAO'],ESTOQUE:['ESTOQUE','EXPEDICAO'],
+    COMPRAS:['COMPRAS'],LOGISTICA:['LOGISTICA'],FINANCEIRO:['FINANCEIRO']
+  })[String(role||'').toUpperCase()]||[];
+
+  async function refreshWorkflowCommand(){
+    const box=document.getElementById('fxOperationalCommand');
+    if(!box||!window.FocadoDataStore?.isRemoteReady?.())return;
+    try{
+      const base=String(window.FocadoDataStore.getConfig().apiBaseUrl||'').replace(/\/$/,'');
+      const token=window.FocadoDataStore.getSessionToken();
+      const res=await fetch(base+'/api/workflow',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+      if(!res.ok)return;
+      const data=await res.json();
+      const queue=Array.isArray(data.workQueue)?data.workQueue:[];
+      const role=window.FocadoAuth?.getRole?.()||'';
+      const areas=workflowAreasForRole(role);
+      const mine=areas.length?queue.filter(x=>areas.includes(String(x.area||'').toUpperCase())):queue;
+      const rows=String(role).toUpperCase()==='ADMIN'?queue:mine;
+      const title=box.querySelector('h2'),textEl=box.querySelector('p'),btn=box.querySelector('[data-open]');
+      if(!title||!textEl||!btn)return;
+      if(!rows.length){
+        box.className='fx-command ok';
+        box.querySelector('.fx-command-eyebrow').textContent='OPERAÇÃO SOB CONTROLE';
+        title.textContent='Nenhuma ação pendente para você agora';
+        textEl.textContent='O workflow integrado não identificou nenhuma próxima ação na sua responsabilidade.';
+        btn.dataset.open='pendencias';btn.textContent='Ver Central →';
+        return;
+      }
+      const first=rows[0];
+      box.className='fx-command '+(rows.length>=5?'warn':'info');
+      box.querySelector('.fx-command-eyebrow').textContent='SEU TRABALHO AGORA';
+      title.textContent=rows.length+' ação(ões) aguardando sua atenção';
+      textEl.textContent=(first.number||first.orderId)+' · '+String(first.reason||'Próxima ação operacional identificada.');
+      btn.dataset.open='pendencias';btn.textContent='Resolver na Central →';
+    }catch(err){
+      console.warn('[FocadoShell] resumo do workflow indisponível',err);
+    }
+  }
+
   function dashboard(){
     const ops=loadOps(),orders=ops.orders||[],inputs=ops.inputInventory||{},bases=ops.productionBases||{};
     const counts={COMERCIAL:0,PCP:0,LOGISTICA:0,ENTREGUE:0}; orders.forEach(o=>{if(counts[o.status]!==undefined)counts[o.status]++});
@@ -81,7 +124,7 @@
 
     $('#fxContent').innerHTML=
       '<div class="fx-titlebar fx-titlebar-premium"><div><span class="fx-eyebrow">FOCADO · OPERAÇÃO</span><h1>Bom trabalho. Aqui está o que importa hoje.</h1><p>Decisões, exceções e andamento da operação em uma única visão.</p></div><div class="fx-date">'+date+'</div></div>'+
-      '<div class="fx-command '+priority.tone+'"><div><span class="fx-command-eyebrow">'+priority.eyebrow+'</span><h2>'+priority.title+'</h2><p>'+priority.text+'</p></div><button class="fx-command-action" data-open="'+priority.route+'">'+priority.action+' →</button></div>'+
+      '<div class="fx-command '+priority.tone+'" id="fxOperationalCommand"><div><span class="fx-command-eyebrow">'+priority.eyebrow+'</span><h2>'+priority.title+'</h2><p>'+priority.text+'</p></div><button class="fx-command-action" data-open="'+priority.route+'">'+priority.action+' →</button></div>'+
       '<div class="fx-kpis fx-kpis-premium">'+
         kpi('▤','Pedidos em aberto',open.length,money(totalOpen),'')+
         kpi('⌘','Em PCP',counts.PCP,'aguardando planejamento','purple')+
@@ -99,6 +142,7 @@
         '<div class="fx-panel"><div class="fx-panel-head"><h2>Resumo da Carteira</h2></div><div class="fx-kpi" style="border:0;padding:6px 0"><span>Pedidos abertos</span><strong>'+money(totalOpen)+'</strong><small>'+open.length+' pedido(s) em andamento</small></div><div class="fx-alert"><div class="fx-alert-icon">✓</div><div><b>'+counts.ENTREGUE+' pedido(s) concluído(s)</b><small>Histórico operacional registrado</small></div></div></div>'+
       '</div><div class="fx-footer"><span>Focado © 2026 · Ambiente operacional</span><span>Arquitetura modular · Product UI 2.0</span></div>';
     bindDashboardLinks();
+    refreshWorkflowCommand().then(bindDashboardLinks);
   }
   function kpi(icon,label,value,sub,cls){return '<div class="fx-kpi '+(cls||'')+'"><div class="fx-kpi-top"><span>'+label+'</span><div class="fx-kpi-icon">'+icon+'</div></div><strong>'+value+'</strong><small>'+sub+'</small></div>'}
   function flow(label,n){return '<div class="fx-flow-step '+(n?'active':'')+'"><b>'+n+'</b><span>'+label+'</span></div>'}
