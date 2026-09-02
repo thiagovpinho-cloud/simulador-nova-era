@@ -71,3 +71,18 @@
   .fpcp-table tr{grid-template-columns:1fr}
   .fpcp-table td:last-child{grid-column:auto}
 }
+
+
+/* Histórico recente do PCP */
+.fpcp-recent-history{margin-top:14px}
+.fpcp-history-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:10px}
+.fpcp-history-head span{display:block;font-size:8px;font-weight:900;letter-spacing:.8px;color:#08785b;margin-bottom:4px}
+.fpcp-history-head h2{margin:0;font-size:14px;color:#183b30}
+.fpcp-history-head p{margin:4px 0 0;font-size:9px;color:var(--fx-muted)}
+.fpcp-history-head>strong{display:grid;place-items:center;min-width:34px;height:34px;border-radius:11px;background:#e8f6ef;color:#08785b;font-size:14px}
+.fpcp-history-table{min-width:980px}
+@media(max-width:700px){
+  .fpcp-recent-history{margin-top:10px}
+  .fpcp-history-head{flex-direction:column}
+  .fpcp-history-table{min-width:780px}
+}
