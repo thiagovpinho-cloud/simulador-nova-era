@@ -4,11 +4,11 @@
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const routeForArea=area=>({
     COMERCIAL:'pedidos',PCP:'pcp',COMPRAS:'purchases',PRODUCAO:'production',
-    EXPEDICAO:'expedicao',LOGISTICA:'logistica',FINANCEIRO:'financeiro'
+    ESTOQUE:'inventory',EXPEDICAO:'expedicao',LOGISTICA:'logistica',FINANCEIRO:'financeiro'
   })[String(area||'').toUpperCase()]||'cockpit';
   const areaLabel=area=>({
     COMERCIAL:'Comercial',PCP:'PCP',COMPRAS:'Compras',PRODUCAO:'Produção',
-    EXPEDICAO:'Expedição',LOGISTICA:'Logística',FINANCEIRO:'Financeiro'
+    ESTOQUE:'Estoque',EXPEDICAO:'Expedição',LOGISTICA:'Logística',FINANCEIRO:'Financeiro'
   })[String(area||'').toUpperCase()]||String(area||'Sem área');
   const actionLabel=action=>String(action||'').toLowerCase().replace(/_/g,' ').replace(/(^|\s)\S/g,m=>m.toUpperCase());
   const localOps=()=>window.FocadoDataStore?.readLocal?.()||{};
