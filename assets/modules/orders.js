@@ -513,10 +513,6 @@
   async function persist(finalize,silentNavigate=false){
     if(persistInFlight)return false;
     persistInFlight=true;
-    const actionButtons=['foSave','foFinalize'].map(id=>document.getElementById(id)).filter(Boolean);
-    actionButtons.forEach(b=>{b.disabled=true;b.dataset.originalText=b.textContent});
-    const target=finalize?document.getElementById('foFinalize'):document.getElementById('foSave');
-    if(target)target.textContent=finalize?'Enviando…':'Salvando…';
     try{
     const ops=load();ensureCatalog(ops);ops.orders=ops.orders||[];
     const data=collect();
@@ -580,7 +576,6 @@
 
     if(!result?.ok){
       if(result?.mode==='conflict')alert('O pedido mudou em outro acesso. Os dados foram protegidos; atualize a tela e tente novamente.');
-      else if(String(result?.error||'').includes('ORDER_NUMBER_ALREADY_EXISTS'))alert('Este número de pedido já existe. Atualize a lista antes de criar ou enviar novamente.');
       else alert('Não foi possível confirmar a gravação no servidor. Nenhuma alteração foi considerada concluída.');
       return false;
     }
@@ -600,10 +595,7 @@
       else{if(isCorrection)correctionMode=false;renderForm((load().orders||[]).find(x=>x.id===o.id)||o,load())}
     }
     return true;
-    }finally{
-      persistInFlight=false;
-      actionButtons.forEach(b=>{b.disabled=false;if(b.dataset.originalText)b.textContent=b.dataset.originalText});
-    }
+    }finally{persistInFlight=false}
   }
 
   function history(o){
