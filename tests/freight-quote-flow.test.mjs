@@ -92,7 +92,7 @@ assert.match(shell,/notifyFreight/);
 assert.match(shell,/FocadoNavigate/);
 assert.match(shell,/freightRequests/);
 
-assert.match(index,/module-loader\.js\?v=20260902-(?:freight-center|draft-ux|freight-money)-v1/);
+assert.match(index,/module-loader\.js\?v=20260902-(?:freight-center|draft-ux|freight-money|ops-ux)-v1/);
 assert.match(index,/auth-client\.js\?v=20260902-freight-center-v1/);
 assert.match(index,/app-shell\.js\?v=20260902-freight-center-v1/);
 
