@@ -195,7 +195,7 @@
   function historyTable(rows){
     if(!rows.length)return '<div class="fpcp-empty small">Nenhum pedido processado pelo PCP ainda.</div>';
     return '<table class="fpcp-table fpcp-history-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Data pedido</th><th>Itens</th><th>Valor</th><th>Base(s)</th><th>Status atual</th><th></th></tr></thead><tbody>'+rows.map(o=>{
-      const current=({ESTOQUE_PRODUCAO:'Produção / Estoque',LOGISTICA:'Logística',ENTREGUE:'Concluído'})[o.status]||o.status||'—';
+      const current=({ESTOQUE_PRODUCAO:'Operação em andamento',LOGISTICA:'Logística',ENTREGUE:'Concluído'})[o.status]||o.status||'—';
       return '<tr><td><div class="fpcp-order">'+esc(o.number||'')+'</div></td><td><div class="fpcp-client">'+esc(o.client||'—')+'</div></td><td>'+dbr(o.orderDate)+'</td><td>'+((o.items||[]).length)+'<div class="fpcp-muted">'+totalQty(o)+' cx</div></td><td>'+money(orderValue(o))+'</td><td>'+esc(basesOf(o).join(', ')||'—')+'</td><td><span class="fpcp-status done">'+esc(current)+'</span></td><td><button class="fpcp-open" data-fpcp-open="'+esc(o.id)+'">Consultar</button></td></tr>';
     }).join('')+'</tbody></table>';
   }
