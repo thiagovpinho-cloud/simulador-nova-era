@@ -35,6 +35,9 @@ export default async function handler(req,res){
       revision:row?.revision||0,
       updatedAt:snapshot.updatedAt,
       workQueue:snapshot.workQueue,
+      reactions:snapshot.reactions||[],
+      automation:snapshot.automation||null,
+      automationState:state.workflowAutomationState||null,
       byOrder:snapshot.byOrder
     });
   }catch(err){
