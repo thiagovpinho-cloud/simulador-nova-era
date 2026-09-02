@@ -1,9 +1,10 @@
 (function(){
   'use strict';
-  const VERSION='20260902-ops-data-v1';
+  const VERSION='20260902-simulator-architecture-v2';
   const loaded=new Map();
   const defs={
-    simulador:{css:'simulator.css',js:'simulator.js'},
+    'simulator-master-data':{js:'simulator-master-data.js'},
+    simulador:{css:'simulator.css',js:'simulator.js',deps:['simulator-master-data']},
     'regras-margem':{css:'margin-rules.css',js:'margin-rules.js'},
     produtos:{css:'products.css',js:'products.js'},
     fichas:{css:'technical-sheets.css',js:'technical-sheets.js'},
@@ -22,7 +23,7 @@
     pcp:{css:'pcp.css',js:'pcp.js',deps:['produtos','production','cockpit']},
     production:{css:'production.css',js:'production.js',deps:['produtos']},
     inventory:{css:'inventory.css',js:'inventory.js'},
-    inputs:{css:'inputs.css',js:'inputs.js'},
+    inputs:{css:'inputs.css',js:'inputs.js',deps:['simulator-master-data']},
     'pcp-commercial-alerts':{css:'pcp-commercial-alerts.css',js:'pcp-commercial-alerts.js'},
     purchases:{css:'purchases.css',js:'purchases.js',deps:['cockpit']},
     expedicao:{css:'expedition.css',js:'expedition.js'},
@@ -38,6 +39,7 @@
     financeiro:{css:'finance.css',js:'finance.js'}
   };
   const contracts={
+    'simulator-master-data':()=>Array.isArray(window.FocadoSimulatorMasterData?.inputs),
     simulador:()=>typeof window.FocadoSimulator?.render==='function',
     'regras-margem':()=>typeof window.FocadoMarginRules?.render==='function',
     produtos:()=>typeof window.FocadoProducts?.render==='function',
