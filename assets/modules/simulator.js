@@ -145,7 +145,10 @@
   }
 
   function bind(){
-    document.querySelectorAll('[data-fsim-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.fsimTab;rerender(snap)});
+    document.querySelectorAll('[data-fsim-tab]').forEach(b=>b.onclick=()=>{
+      if(b.dataset.fsimTab==='receitas'&&!canViewRecipes())return;
+      tab=b.dataset.fsimTab;rerender(snap)
+    });
     if($('#fsimGoInputs'))$('#fsimGoInputs').onclick=()=>window.FocadoNavigate?.('inputs');
     $('#fsimBrand').onchange=e=>{selectedProduct='';rerender(window.FocadoLegacySimulator.setBrand(e.target.value))};
     $('#fsimUf').onchange=e=>rerender(window.FocadoLegacySimulator.setGlobal({estado:e.target.value}));
