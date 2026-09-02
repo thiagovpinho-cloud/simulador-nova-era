@@ -6,6 +6,7 @@ const shell=read('assets/app-shell.js');
 const shellCss=read('assets/app-shell.css');
 const ds=read('assets/design-system.css');
 const index=read('index.html');
+const loader=read('assets/core/module-loader.js');
 
 const personas=[
   {age:15,criteria:['resposta imediata','navegação simples','sem caminho legado']},
@@ -28,8 +29,10 @@ assert.ok(ds.includes('min-height:44px'),'Mobile deve ampliar alvos de toque');
 assert.ok(ds.includes('focus-visible'),'Foco de teclado deve ser visível');
 assert.ok(shellCss.includes('.fx-nav{font-size:12px!important'),'Menu deve manter leitura confortável');
 assert.ok(ds.includes('.fds-input'),'Campos devem seguir padrão de leitura');
-assert.ok(index.includes('assets/modules/technical-sheets.js?v=20260827-static-v1'),'Fichas deve ser módulo nativo');
-assert.ok(index.includes('assets/modules/bases.js?v='),'Bases deve ser módulo nativo');
+assert.ok(loader.includes("fichas:{css:'technical-sheets.css',js:'technical-sheets.js'}"),'Fichas deve ser módulo nativo');
+assert.ok(loader.includes("bases:{css:'bases.css',js:'bases.js'}"),'Bases deve ser módulo nativo');
+assert.ok(!index.includes('assets/modules/technical-sheets.js?v='),'Fichas não deve bloquear o boot');
+assert.ok(!index.includes('assets/modules/bases.js?v='),'Bases não deve bloquear o boot');
 
 for(const p of personas){
   assert.equal(p.criteria.length,3,'Persona '+p.age+' deve possuir critérios objetivos');
