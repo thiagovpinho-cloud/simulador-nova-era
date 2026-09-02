@@ -17,11 +17,15 @@
     const brand=getBrand(product.brand);if(!brand)return [];
     const def=(brand.products||[]).find(p=>p.id===product.simulatorId||(brand.orderForm?.productCodes?.[p.id]!==undefined&&String(brand.orderForm.productCodes[p.id])===String(product.code)));
     if(!def)return [];
-    return (def.materials||[]).map(m=>{
+    const current=window.FocadoLegacySimulator?.recipeFor?.(product.brand,product.simulatorId||product.code)||[];
+    const rows=current.length?current:(def.materials||[]).map(m=>{
       const ins=brand.insumosByCode?.[m.insumo]||{};
+      return {code:String(m.insumo),name:ins.desc||String(m.insumo),unit:ins.unit||'',qty:Number(m.qty)||0,perda:Number(m.perda)||0};
+    });
+    return rows.map(m=>{
       const required=(Number(m.qty)||0)*(1+(Number(m.perda)||0))*Number(def.unitsPerCaixa||1)*Number(qty||0);
-      return {code:String(m.insumo),name:ins.desc||String(m.insumo),unit:ins.unit||'',required};
-    }).filter(x=>x.required>0);
+      return {code:String(m.code||''),name:m.name||String(m.code||''),unit:m.unit||'',required};
+    }).filter(x=>x.code&&x.required>0);
   }
   function inputInventory(ops,code){
     const inv=ops.inputInventory||{};
