@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260902-draft-ux-v1';
+  const VERSION='20260902-freight-money-v1';
   const loaded=new Map();
   const defs={
     simulador:{css:'simulator.css',js:'simulator.js'},
