@@ -180,7 +180,7 @@ const result={
   lateDeliveryHandled:true,
   financeStillHumanControlled:true,
   automationIdempotent:true,
-  negativeBalance:false,
+  noNegativeBalance:true,
   workflowReactions:state.workflowReactions.length,
   automationSignals:state.workflowAutomationSignals.length
 };
