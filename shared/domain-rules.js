@@ -51,6 +51,8 @@ function findFinishedInventory(state,item,brandOverride=''){
     String(v?.brand||'').trim().toLowerCase()===brand.toLowerCase()
   );
   if(found)return found;
+  const legacy=Object.entries(state.inventory).filter(([,v])=>String(v?.code||'')===String(item?.code||''));
+  if(legacy.length===1&&!String(legacy[0][1]?.brand||'').trim())return legacy[0];
   const inv={code:item?.code||'',name:item?.name||'',brand,unit:item?.unit||'CX',physical:0,reserved:0,blocked:0,bases:{}};
   state.inventory[key]=inv;
   return [key,inv];
