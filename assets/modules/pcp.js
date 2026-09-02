@@ -31,15 +31,17 @@
     return ops;
   }
 
-  function inventoryEntry(ops,item){
-    const inv=ops.inventory||{};
-    const keys=[item.code,item.productId,item.name].map(v=>String(v||'')).filter(Boolean);
-    for(const k of keys){if(inv[k])return {key:k,inv:inv[k]}}
-    const byCode=Object.entries(inv).find(([,v])=>String(v?.code||'')===String(item.code||''));
+  function inventoryEntry(ops,item,brand=''){
+    const inv=ops.inventory||{},targetBrand=String(item?.brand||brand||'').trim().toLowerCase();
+    const keys=[item.productId,item.code,item.name].map(v=>String(v||'')).filter(Boolean);
+    for(const k of keys){
+      if(inv[k]&&(!targetBrand||!String(inv[k]?.brand||'').trim()||String(inv[k]?.brand||'').trim().toLowerCase()===targetBrand))return {key:k,inv:inv[k]};
+    }
+    const byCode=Object.entries(inv).find(([,v])=>String(v?.code||'')===String(item.code||'')&&(!targetBrand||String(v?.brand||'').trim().toLowerCase()===targetBrand));
     return byCode?{key:byCode[0],inv:byCode[1]}:null;
   }
-  function stockView(ops,item){
-    const found=inventoryEntry(ops,item);
+  function stockView(ops,item,brand=''){
+    const found=inventoryEntry(ops,item,brand);
     if(!found)return {physical:0,reserved:0,blocked:0,available:0,key:String(item.code||item.productId||item.name||'')};
     const x=found.inv,physical=Number(x.physical||0),reserved=Number(x.reserved||0),blocked=Number(x.blocked||0);
     return {physical,reserved,blocked,available:Math.max(0,physical-reserved-blocked),key:found.key};
@@ -96,7 +98,7 @@
     for(const o of active){
       for(const i of o.items||[]){
         const key=productIdentity(i);if(!key)continue;
-        const sv=stockView(ops,i);
+        const sv=stockView(ops,i,o.brand);
         if(!agg[key])agg[key]={
           key,code:i.code||'',name:i.name||'',productId:i.productId||'',
           demand:0,reserved:0,cut:0,orders:new Set(),bases:new Set(),dates:[],
@@ -137,7 +139,7 @@
     const ops=ensureOrderIds(load());
     const all=(ops.orders||[]).filter(o=>o.status==='PCP');
     const historyRows=(ops.orders||[])
-      .filter(o=>o.status!=='PCP'&&o.status!=='COMERCIAL'&&o.commercial?.completedAt)
+      .filter(o=>['LOGISTICA','ENTREGUE'].includes(String(o.status||'')))
       .sort((a,b)=>pcpHistoryAt(b)-pcpHistoryAt(a))
       .slice(0,10);
     const knownBases=['SENIR','GREENTECH','TOPLAND'];
@@ -297,7 +299,7 @@
       '<div class="fpcp-commercial-readonly"><h2>Dados recebidos do Comercial</h2><div class="fpcp-read-grid">'+read('Cliente',o.client)+read('CNPJ',o.cnpj)+read('E-mail',o.email)+read('Representante',o.representative)+read('Data do pedido',dbr(o.orderDate))+read('Entrega solicitada',dbr(o.requestedDeliveryDate))+read('Frete',o.freightType)+read('Condição de pagamento',o.paymentTerms)+read('Local de entrega',o.deliveryAddress)+'</div></div>'+
       '<div class="fpcp-panel"><div class="fpcp-panel-head"><div><h2>Atendimento PCP dos itens</h2><p>O saldo disponível vem do estoque central do código: físico − reservado − bloqueado. Não é editável nesta tela.</p></div><div><span class="fpcp-status '+st[1]+'">'+st[0]+'</span>'+(o.pcp?.logisticsPreRelease?'<div class="fpcp-muted" style="margin-top:6px">Logística avisada com ressalva</div>':'')+'</div></div>'+
       '<div class="fpcp-item-table-wrap"><table class="fpcp-item-table"><thead><tr><th>Código</th><th>Produto</th><th>Pedido</th><th>Disponível agora</th><th>Reservar</th><th>Saldo faltante</th><th>Decisão</th><th>Previsão do saldo</th><th>Base retirada</th></tr></thead><tbody>'+
-      (o.items||[]).map((i,n)=>itemRow(i,n,stockView(ops,i),editable)).join('')+
+      (o.items||[]).map((i,n)=>itemRow(i,n,stockView(ops,i,o.brand),editable)).join('')+
       '</tbody></table></div>'+
       '<div class="fpcp-help">Reserva total: informe toda a quantidade. Reserva parcial: informe somente o que existe agora e mantenha “Aguardar saldo” para o restante. Para liberar com corte, selecione “Liberar com corte”; o saldo não reservado será retirado deste pedido. A Base fica gravada por item para a Logística saber onde coletar.</div></div>'+
       '<div class="fpcp-panel"><h2>Observações do PCP</h2><textarea id="fpNotes" '+(editable?'':'disabled')+' placeholder="Observações gerais do planejamento">'+esc(o.pcp?.notes||'')+'</textarea></div>'+
@@ -429,7 +431,7 @@
       ops.inventory=ops.inventory||{};ops.stockMovements=ops.stockMovements||[];
       changes.items.forEach(incoming=>{
         const item=(current.items||[]).find(i=>String(i.id||i.code||i.productId||'')===String(incoming.id));if(!item)return;
-        const found=inventoryEntry(ops,item),key=found?.key||String(item.code||item.productId||item.name),inv=found?.inv||(ops.inventory[key]={code:item.code||'',name:item.name||'',unit:'CX',physical:0,reserved:0,blocked:0});
+        const found=inventoryEntry(ops,item,o.brand),key=found?.key||String(item.code||item.productId||item.name),inv=found?.inv||(ops.inventory[key]={code:item.code||'',name:item.name||'',unit:'CX',physical:0,reserved:0,blocked:0});
         const old=Number(item.reservedQty||0),desired=Number(incoming.reservedQty||0),free=Math.max(0,Number(inv.physical||0)-Number(inv.reserved||0)-Number(inv.blocked||0));
         if(desired>old+free){alert('O saldo de '+(item.name||item.code)+' mudou. Atualize o PCP e tente novamente.');return}
         const before=Number(inv.reserved||0);inv.reserved=Math.max(0,before-old+desired);

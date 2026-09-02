@@ -139,18 +139,20 @@ const simulatorModule=read('assets/modules/simulator.js');
 assert.ok(indexPerf.includes('window.FocadoLegacySimulator'),'Motor do simulador deve continuar centralizado no adaptador legado durante a migração');
 assert.ok(simulatorModule.includes('window.FocadoLegacySimulator'),'Módulo moderno deve consumir o motor original, não duplicar fórmulas');
 assert.ok(!simulatorModule.includes('function computeCore'),'Módulo moderno não pode duplicar o cálculo tributário');
-assert.ok(simulatorModule.includes('Base de Insumos'),'Simulador moderno deve expor Base de Insumos');
-assert.ok(simulatorModule.includes('Composição de Custo'),'Simulador moderno deve expor composição de custo');
-assert.ok(simulatorModule.includes('Preço base/CX'),'Simulador deve separar preço base de impostos');
+assert.ok(simulatorModule.includes('Base de Insumos →'),'Simulador deve encaminhar para a Base de Insumos independente');
+assert.ok(simulatorModule.includes('Receitas de Produção'),'Simulador moderno deve expor receitas somente no contexto autorizado');
+assert.ok(simulatorModule.includes('Venda CX sem IPI/ST'),'Painel deve separar preço base de impostos como a planilha oficial');
 
 const simulatorV3=read('assets/modules/simulator.js');
 const simulatorCssV3=read('assets/modules/simulator.css');
+const inputsModuleV2=read('assets/modules/inputs.js');
+const inputsCssV2=read('assets/modules/inputs.css');
 assert.ok(indexPerf.includes("classList.add('focado-booting')"),'Boot deve ativar splash antes do primeiro frame');
 assert.ok(indexPerf.includes('focado-brand.svg?v=20260828-boot'),'Splash deve usar a logo do Focado');
 assert.ok(shellPerf.includes("classList.remove('focado-booting')"),'Shell moderno deve remover splash quando estiver pronto');
 assert.ok(indexPerf.includes("function showLogin(){\n  document.documentElement.classList.remove('focado-booting');"),'Tela de login deve remover splash ao ficar pronta');
 assert.ok(indexPerf.includes('addInput(input={})'),'Motor deve permitir cadastro de novo insumo');
-assert.ok(simulatorV3.includes('Cadastrar insumo'),'Simulador deve permitir cadastro de novo insumo');
+assert.ok(inputsModuleV2.includes('Cadastrar insumo'),'Módulo de Insumos deve permitir cadastro de novo insumo');
 assert.ok(simulatorV3.includes('Manual por caixa'),'Simulador deve expor frete manual por caixa');
 assert.ok(simulatorV3.includes('data-freight-price'),'Frete manual deve ser editável por produto');
 assert.ok(simulatorV3.includes('data-comp-unit'),'Unidade da composição deve ser editável');
@@ -158,12 +160,12 @@ assert.ok(simulatorV3.includes('data-comp-qty'),'Quantidade da composição deve
 assert.ok(simulatorV3.includes('data-comp-loss'),'Perda da composição deve ser editável');
 assert.ok(indexPerf.includes("if(patch.unit!=null)m.unit="),'Motor deve persistir unidade editada na fórmula');
 assert.ok(indexPerf.includes("if(patch.unit!=null)p.unit="),'Motor deve persistir unidade editada no processo');
-assert.ok(simulatorCssV3.includes('.fsim-modal'),'Cadastro de insumo deve possuir modal estilizado');
+assert.ok(inputsCssV2.includes('.fin-modal'),'Cadastro de insumo deve possuir modal estilizado');
 
 const marginRulesModule=read('assets/modules/margin-rules.js');
 const financeRules=read('assets/modules/finance.js');
 const biRules=read('shared/bi-analytics.js');
-assert.ok(simulatorV3.includes("(document.getElementById('focadoShell')||document.body).appendChild(modal)"),'Modal de cadastrar insumo deve abrir dentro do shell moderno');
+assert.ok(inputsModuleV2.includes("(document.getElementById('focadoShell')||document.body).appendChild(ov)"),'Modal de cadastrar insumo deve abrir dentro do shell moderno');
 assert.ok(marginRulesModule.includes("saveDomain?.('FINANCEIRO',{marginRules:readForm()})"),'Regras de Margem devem persistir pelo domínio Financeiro');
 for(const label of ['Custo do Produto','ICMS','PIS','COFINS','IPI','ST','Frete','Comissão','Contrato']){
   assert.ok(marginRulesModule.includes(label),'Regra de margem ausente: '+label);
@@ -265,13 +267,13 @@ const simulatorInline=read('index.html');
 assert.ok(simulatorInline.includes('item.basePrice!=null?Number(item.basePrice):null'),'Simulador deve aceitar preço base do pedido sem converter IPI/ST');
 assert.ok(simulatorInline.includes('Number(x.basePrice??x.finalPrice)>0'),'Simulador deve validar preço base ou legado');
 
-const simulatorInputs=read('assets/modules/simulator.js');
-assert.ok(simulatorInputs.includes('Editar valores'),'Base de Insumos deve ter botão Editar valores');
-assert.ok(simulatorInputs.includes('Salvar alterações'),'Base de Insumos deve ter botão Salvar alterações');
-assert.ok(simulatorInputs.includes('Cancelar'),'Base de Insumos deve permitir cancelar edição');
-assert.ok(simulatorInputs.includes("(inputEditMode?'':'disabled')"),'Preços de insumos devem iniciar bloqueados');
-assert.ok(simulatorInputs.includes("inputDraft[i.dataset.inputPrice]"),'Alterações devem ficar em rascunho antes de salvar');
-assert.ok(simulatorInputs.includes('setInputPrice(item.code,value)'),'Salvar alterações deve aplicar preços ao motor');
+const simulatorInputs=read('assets/modules/inputs.js');
+assert.ok(simulatorInputs.includes('data-fin-edit'),'Base de Insumos deve permitir editar item');
+assert.ok(simulatorInputs.includes('data-fin-delete'),'Base de Insumos deve permitir remover item');
+assert.ok(simulatorInputs.includes('Preço vigente'),'Base de Insumos deve expor preço vigente');
+assert.ok(simulatorInputs.includes('manualOverride:true'),'Edições manuais devem ser preservadas sobre a base oficial');
+assert.ok(simulatorInputs.includes("saveDomain('INSUMOS',{item})"),'Salvar alterações deve persistir no domínio Insumos');
+assert.ok(simulatorInputs.includes('setInputPrice(item.code,item.price)'),'Preço editado deve alimentar o motor do Simulador');
 
 const mobileShell=read('assets/app-shell.css');
 assert.ok(mobileShell.includes('Focado Mobile UX v1'),'Shell deve publicar a camada mobile v1');

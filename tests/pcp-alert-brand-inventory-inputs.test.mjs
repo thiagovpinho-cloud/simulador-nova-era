@@ -75,7 +75,7 @@ const index=read('index.html');
 
 assert.match(inventory,/function productKey\(p\).*brand/);
 assert.match(inventory,/row\.product\.brand/);
-assert.match(loader,/inputs:\{css:'inputs\.css',js:'inputs\.js'\}/);
+assert.match(loader,/inputs:\{css:'inputs\.css',js:'inputs\.js'(?:,deps:\[[^\]]+\])?\}/);
 assert.ok(!loader.includes("inputs:{alias:'inventory'}"));
 assert.match(loader,/pcp-commercial-alerts/);
 assert.match(shell,/FocadoInputs/);
@@ -83,7 +83,7 @@ assert.match(shell,/notifyPCPDelay/);
 assert.match(shell,/id="fxRefresh"/);
 assert.match(shell,/setInterval\(\(\)=>syncSilent\(false\),60000\)/);
 
-assert.match(inputs,/Base-mãe do Simulador conectada/);
+assert.match(inputs,/Base de Insumos oficial carregada/);
 assert.match(inputs,/FocadoLegacySimulator/);
 assert.match(inputs,/inputCatalog/);
 assert.match(inputs,/inputInventory/);
@@ -95,6 +95,6 @@ assert.match(alerts,/Li e vou comunicar o cliente/);
 assert.ok(!alerts.includes('pcpaClose'),'Alerta obrigatório não pode ter fechamento sem registrar ciência');
 
 assert.match(index,/app-shell\.js\?v=20260902-ops-data-v1/);
-assert.match(index,/module-loader\.js\?v=20260902-ops-data-v1/);
+assert.match(index,/module-loader\.js\?v=(?:20260902-ops-data-v1|20260902-simulator-architecture-v2)/);
 
 console.log('pcp-alert-brand-inventory-inputs: ok');

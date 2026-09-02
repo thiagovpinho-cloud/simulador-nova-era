@@ -10,31 +10,35 @@
   const canEdit=()=>['ADMIN','ESTOQUE'].includes(String(window.FocadoAuth?.getRole?.()||'').toUpperCase());
 
   async function motherCatalog(){
-    const sim=window.FocadoLegacySimulator;
-    if(!sim?.ready)return [];
-    const initial=await sim.ready(),original=initial.activeBrand,rows=[];
-    try{
-      for(const b of initial.brands||[]){
-        const snap=sim.setBrand(b.id);
-        for(const i of snap.insumos||[])rows.push({
-          id:'mother_'+b.id+'_'+i.code,brand:b.label,brandId:b.id,code:i.code,name:i.desc,unit:i.unit,group:i.group,
-          price:Number(i.preco||0),source:'SIMULADOR_MAE',active:true
-        });
-      }
-    }finally{if(original)sim.setBrand(original)}
-    return rows;
+    const rows=Array.isArray(window.FocadoSimulatorMasterData?.inputs)?window.FocadoSimulatorMasterData.inputs:[];
+    return rows.map(x=>({...x,id:x.id||('mother_'+String(x.brand).replace(/\W+/g,'_')+'_'+x.code)}));
   }
 
   async function ensureCatalog(){
     let ops=load(),catalog=Array.isArray(ops.inputCatalog)?ops.inputCatalog:[];
     const mother=await motherCatalog();
-    const keys=new Set(catalog.map(x=>String(x.brand).toLowerCase()+'::'+String(x.code).toLowerCase()));
-    const missing=mother.filter(x=>!keys.has(String(x.brand).toLowerCase()+'::'+String(x.code).toLowerCase()));
-    if(missing.length&&canEdit()){
-      const result=await window.FocadoDataStore.saveDomain('INSUMOS',{seed:missing});
-      if(result?.payload)window.FocadoDataStore.writeLocal(result.payload);
+    const keyOf=x=>String(x.brand||'Geral').trim().toLowerCase()+'::'+String(x.code||'').trim().toLowerCase();
+    const byKey=new Map(catalog.map(x=>[keyOf(x),x]));
+    const seed=[];
+    for(const master of mother){
+      const prev=byKey.get(keyOf(master));
+      if(!prev){seed.push(master);continue}
+      if(prev.active===false)continue;
+      if(prev.source==='PLANILHA_MAE_07_07_2026'||prev.source==='PLANILHA_MAE_07_07_2026'){
+        seed.push({...master,id:prev.id||master.id,price:prev.manualOverride?prev.price:master.price,manualOverride:Boolean(prev.manualOverride)});
+      }
+    }
+    if(seed.length&&canEdit()){
+      for(const item of seed){
+        const result=await window.FocadoDataStore.saveDomain('INSUMOS',{item:{...item,source:item.manualOverride?'FOCADO':'PLANILHA_MAE_07_07_2026'}});
+        if(result?.payload)window.FocadoDataStore.writeLocal(result.payload);
+      }
       ops=load();catalog=ops.inputCatalog||[];
-    }else if(missing.length)catalog=[...catalog,...missing];
+    }else if(seed.length){
+      const merge=new Map(catalog.map(x=>[keyOf(x),x]));
+      for(const item of seed)merge.set(keyOf(item),{...merge.get(keyOf(item)),...item});
+      catalog=[...merge.values()];
+    }
     // Preserva itens físicos legados mesmo que não existam na planilha mãe.
     const knownCodes=new Set(catalog.map(x=>String(x.code)));
     const physical=Object.values(ops.inputInventory||{}).filter(x=>x?.code&&!knownCodes.has(String(x.code))).map(x=>({
@@ -61,7 +65,7 @@
     el.innerHTML='<div class="fin-page">'+
       '<div class="fin-head"><div><span>ESTOQUE DE INSUMOS</span><h1>Insumos</h1><p>Cadastro, preço e saldo físico independentes do estoque de produtos acabados.</p></div>'+(canEdit()?'<button class="fin-btn primary" id="finNew">+ Cadastrar insumo</button>':'<span class="fin-readonly">Consulta</span>')+'</div>'+
       '<div class="fin-kpis"><div><span>Base cadastrada</span><strong>'+catalog.length+'</strong><small>itens ativos</small></div><div><span>Com saldo físico</span><strong>'+Object.values(stock).filter(x=>Number(x.physical||0)>0).length+'</strong><small>itens em estoque</small></div><div><span>Saldo físico total</span><strong>'+fmt(physicalTotal,0)+'</strong><small>unidades de medida somadas apenas como referência</small></div></div>'+
-      '<div class="fin-note"><b>Base-mãe do Simulador conectada.</b><span>Nova Era e New Green mantêm seus preços por marca. O saldo físico de matéria-prima permanece separado do estoque de produtos acabados.</span></div>'+
+      '<div class="fin-note"><b>Base de Insumos oficial carregada.</b><span>Itens extraídos das planilhas “Precificação Nova Era - 07.07.26” e “Precificação Newgreen - 07.07.26”. Preços permanecem independentes por marca; o estoque físico de insumos é separado de produtos acabados.</span></div>'+
       '<div class="fin-toolbar"><input id="finSearch" placeholder="Buscar código, insumo, grupo ou marca" value="'+esc(filters.q)+'"><select id="finBrand"><option value="TODAS">Todas as marcas</option>'+brands.map(b=>'<option '+(filters.brand===b?'selected':'')+'>'+esc(b)+'</option>').join('')+'</select><select id="finGroup"><option value="TODOS">Todos os grupos</option>'+groups.map(g=>'<option '+(filters.group===g?'selected':'')+'>'+esc(g)+'</option>').join('')+'</select><span>'+rows.length+' item(ns)</span></div>'+
       '<div class="fin-table-wrap">'+table(rows,stock)+'</div></div>';
     if(document.getElementById('finNew'))document.getElementById('finNew').onclick=()=>openEditor(null);
@@ -69,6 +73,7 @@
     document.getElementById('finBrand').onchange=e=>render({brand:e.target.value});
     document.getElementById('finGroup').onchange=e=>render({group:e.target.value});
     document.querySelectorAll('[data-fin-edit]').forEach(b=>b.onclick=()=>openEditor(catalog.find(x=>String(x.id)===String(b.dataset.finEdit))));
+    document.querySelectorAll('[data-fin-delete]').forEach(b=>b.onclick=()=>removeItem(catalog.find(x=>String(x.id)===String(b.dataset.finDelete))));
   }
 
   function stockFor(item,stock){
@@ -76,23 +81,23 @@
   }
   function table(rows,stock){
     if(!rows.length)return '<div class="fin-empty">Nenhum insumo encontrado.</div>';
-    return '<table class="fin-table"><thead><tr><th>Marca</th><th>Código</th><th>Insumo</th><th>Grupo</th><th>Unidade</th><th>Preço vigente</th><th>Físico</th><th>Disponível</th><th></th></tr></thead><tbody>'+rows.map(x=>{
+    return '<table class="fin-table"><thead><tr><th>Marca</th><th>Cód. Senir</th><th>Código CHB</th><th>Insumo</th><th>Grupo</th><th>Unidade</th><th>Preço vigente</th><th>Físico</th><th>Disponível</th><th></th></tr></thead><tbody>'+rows.map(x=>{
       const inv=stockFor(x,stock);
-      return '<tr><td><span class="fin-brand">'+esc(x.brand)+'</span></td><td><b>'+esc(x.code)+'</b></td><td>'+esc(x.name)+'</td><td>'+esc(x.group||'—')+'</td><td>'+esc(x.unit||'—')+'</td><td><strong>'+money(x.price)+'</strong></td><td>'+fmt(inv.physical)+'</td><td>'+fmt(available(inv))+'</td><td>'+(canEdit()?'<button class="fin-btn small" data-fin-edit="'+esc(x.id)+'">Editar</button>':'—')+'</td></tr>';
+      return '<tr><td><span class="fin-brand">'+esc(x.brand)+'</span></td><td>'+esc(x.senirCode||'—')+'</td><td><b>'+esc(x.code)+'</b></td><td>'+esc(x.name)+'</td><td>'+esc(x.group||'—')+'</td><td>'+esc(x.unit||'—')+'</td><td><strong>'+money(x.price)+'</strong></td><td>'+fmt(inv.physical)+'</td><td>'+fmt(available(inv))+'</td><td>'+(canEdit()?'<div class="fin-row-actions"><button class="fin-btn small" data-fin-edit="'+esc(x.id)+'">Editar</button><button class="fin-btn small danger" data-fin-delete="'+esc(x.id)+'">Remover</button></div>':'—')+'</td></tr>';
     }).join('')+'</tbody></table>';
   }
 
   function modal(html){
     document.getElementById('finOverlay')?.remove();
     const ov=document.createElement('div');ov.id='finOverlay';ov.className='fin-overlay';
-    ov.innerHTML='<div class="fin-modal">'+html+'</div>';document.body.appendChild(ov);return ov;
+    ov.innerHTML='<div class="fin-modal">'+html+'</div>';(document.getElementById('focadoShell')||document.body).appendChild(ov);return ov;
   }
   function close(){document.getElementById('finOverlay')?.remove()}
   async function openEditor(item){
     const isNew=!item,ops=load(),inv=item?stockFor(item,ops.inputInventory||{}):{physical:0};
     const groups=['Matéria-prima','Embalagem','Rótulo','Logística','Processo','Outros'];
     const ov=modal('<div class="fin-modal-head"><div><span>'+(isNew?'NOVO INSUMO':'EDITAR INSUMO')+'</span><h2>'+(isNew?'Cadastrar insumo':esc(item.name))+'</h2></div><button id="finClose">×</button></div>'+
-      '<div class="fin-form"><label><span>Marca</span><select id="finEditBrand"><option>Nova Era</option><option>New Green</option><option>Geral</option></select></label><label><span>Código</span><input id="finEditCode" value="'+esc(item?.code||'')+'" '+(!isNew?'readonly':'')+'></label><label class="wide"><span>Descrição</span><input id="finEditName" value="'+esc(item?.name||'')+'"></label><label><span>Grupo</span><select id="finEditGroup">'+groups.map(g=>'<option '+(item?.group===g?'selected':'')+'>'+g+'</option>').join('')+'</select></label><label><span>Unidade</span><input id="finEditUnit" value="'+esc(item?.unit||'')+'" placeholder="KG, L, UND..."></label><label><span>Preço vigente</span><input id="finEditPrice" inputmode="decimal" value="'+Number(item?.price||0).toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})+'"></label><label><span>Saldo físico atual</span><input id="finEditPhysical" inputmode="decimal" value="'+Number(inv.physical||0).toLocaleString('pt-BR',{maximumFractionDigits:3})+'"></label></div>'+
+      '<div class="fin-form"><label><span>Marca</span><select id="finEditBrand"><option>Nova Era</option><option>New Green</option><option>Geral</option></select></label><label><span>Código Senir</span><input id="finEditSenir" value="'+esc(item?.senirCode||'')+'"></label><label><span>Código CHB</span><input id="finEditCode" value="'+esc(item?.code||'')+'" '+(!isNew?'readonly':'')+'></label><label class="wide"><span>Descrição</span><input id="finEditName" value="'+esc(item?.name||'')+'"></label><label><span>Grupo</span><select id="finEditGroup">'+groups.map(g=>'<option '+(item?.group===g?'selected':'')+'>'+g+'</option>').join('')+'</select></label><label><span>Unidade</span><input id="finEditUnit" value="'+esc(item?.unit||'')+'" placeholder="KG, L, UND..."></label><label><span>Preço vigente</span><input id="finEditPrice" inputmode="decimal" value="'+Number(item?.price||0).toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4})+'"></label><label><span>Saldo físico atual</span><input id="finEditPhysical" inputmode="decimal" value="'+Number(inv.physical||0).toLocaleString('pt-BR',{maximumFractionDigits:3})+'"></label></div>'+
       '<div class="fin-modal-actions"><button class="fin-btn" id="finCancel">Cancelar</button><button class="fin-btn primary" id="finSave">Salvar</button></div>');
     const brand=document.getElementById('finEditBrand');brand.value=item?.brand||'Nova Era';
     document.getElementById('finClose').onclick=close;document.getElementById('finCancel').onclick=close;
@@ -112,9 +117,9 @@
   async function saveEditor(previous,inv){
     const item={
       id:previous?.id||('inp_'+Date.now()),brand:document.getElementById('finEditBrand').value,
-      code:document.getElementById('finEditCode').value.trim(),name:document.getElementById('finEditName').value.trim(),
+      senirCode:document.getElementById('finEditSenir').value.trim(),code:document.getElementById('finEditCode').value.trim(),name:document.getElementById('finEditName').value.trim(),
       group:document.getElementById('finEditGroup').value,unit:document.getElementById('finEditUnit').value.trim().toUpperCase(),
-      price:Math.max(0,num(document.getElementById('finEditPrice').value)),active:true,source:previous?.source||'FOCADO'
+      price:Math.max(0,num(document.getElementById('finEditPrice').value)),active:true,source:'FOCADO',manualOverride:true
     };
     if(!item.code||!item.name||!item.unit){alert('Informe código, descrição e unidade.');return}
     const desired=Math.max(0,num(document.getElementById('finEditPhysical').value)),current=Number(inv?.physical||0),delta=desired-current;
@@ -132,6 +137,15 @@
     }
     try{await syncSimulator(item)}catch(err){console.warn('[FocadoInputs] preço não sincronizado ao simulador',err)}
     close();await render();
+  }
+
+  async function removeItem(item){
+    if(!item||!canEdit())return;
+    if(!confirm('Remover '+item.name+' da Base de Insumos?\n\nO histórico de estoque será preservado; o item ficará inativo para novos usos.'))return;
+    const result=await window.FocadoDataStore.saveDomain('INSUMOS',{deleteId:item.id});
+    if(!result?.ok){alert('Não foi possível remover o insumo.');return}
+    if(result.payload)window.FocadoDataStore.writeLocal(result.payload);
+    await render();
   }
 
   window.FocadoInputs=Object.freeze({render});

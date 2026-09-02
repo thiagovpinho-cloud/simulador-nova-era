@@ -1011,7 +1011,7 @@ function getFreightInfo(estadoCode, tipoFrete, totalValueComImpostos){
 
 
 const INSUMOS_NOVAERA = [
-  {code:'51640',  desc:'Álcool Anidro Granel',                unit:'L',   preco:2.88,   group:'Matéria-prima'},
+  {code:'51640',  desc:'Álcool Anidro Granel',                unit:'L',   preco:2.9,   group:'Matéria-prima'},
   {code:'00000',  desc:'Água',                                 unit:'L',   preco:0,      group:'Matéria-prima'},
   {code:'60227',  desc:'Carbopol',                              unit:'KG',  preco:41.09,  group:'Matéria-prima'},
   {code:'136451', desc:'Bactericida',                           unit:'UND', preco:31.53,  group:'Matéria-prima'},
@@ -1064,7 +1064,7 @@ const PRODUCTS_NOVAERA = [
     id:'inpm46', name:'Álcool 46° INPM 12x1L', ncm:'22072019', unitsPerCaixa:12,
     pricing:{ipi:0.052, icmsst:0, vendaCX:0, qtdCaixas:1, frete:0, contrato:0},
     materials:[
-      link('51640',0.56,0.03), link('00000',0,0), link('59900',1/12,0.03),
+      link('51640',0.6088607594936708,0.03), link('00000',0,0), link('59900',1/12,0.03),
       link('60124',1,0.03), link('60100',1,0.03), link('127255',(1/84)/12,0), link('68597',(0.3/84)/12,0),
     ],
     processo:{insumo:'125830', qty:1, perda:0}
@@ -1073,7 +1073,7 @@ const PRODUCTS_NOVAERA = [
     id:'inpm46bact', name:'Álcool 46° INPM Bactericida 12x1L', ncm:'38089429', unitsPerCaixa:12,
     pricing:{ipi:0.0325, icmsst:0, vendaCX:0, qtdCaixas:1, frete:0, contrato:0},
     materials:[
-      link('51640',0.56,0.03), link('00000',0,0), link('136451',0.003,0.03), link('59900',1/12,0.03),
+      link('51640',0.6088607594936708,0.03), link('00000',0,0), link('136451',0.003,0.03), link('59900',1/12,0.03),
       link('60124',1,0.03), link('60100',1,0.03), link('127255',(1/84)/12,0), link('68597',(0.3/84)/12,0),
     ],
     processo:{insumo:'187860', qty:1, perda:0}
@@ -1082,7 +1082,7 @@ const PRODUCTS_NOVAERA = [
     id:'inpm70', name:'Álcool 70° INPM 12x1L', ncm:'38089429', unitsPerCaixa:12,
     pricing:{ipi:0.0325, icmsst:0, vendaCX:0, qtdCaixas:1, frete:0, contrato:0},
     materials:[
-      link('51640',0.77,0.03), link('00000',0.27155,0), link('59900',1/12,0.03),
+      link('51640',0.8835443037974683,0.03), link('00000',0.27155,0), link('59900',1/12,0.03),
       link('60150',1,0.03), link('60100',1,0.03), link('127255',(1/84)/12,0), link('68597',(0.3/84)/12,0),
     ],
     processo:{insumo:'125842', qty:1, perda:0}
@@ -1091,7 +1091,7 @@ const PRODUCTS_NOVAERA = [
     id:'inpm70_3x5', name:'Álcool 70° INPM 3x5L', ncm:'38089429', unitsPerCaixa:3,
     pricing:{ipi:0.0325, icmsst:0, vendaCX:0, qtdCaixas:1, frete:0, contrato:0},
     materials:[
-      link('51640',3.85,0.03), link('00000',0.27155,0), link('93609',1,0.03),
+      link('51640',4.417721518987341,0.03), link('00000',0.27155,0), link('93609',1,0.03),
       link('46887',1/3,0.03), link('127255',(1/60)/3,0), link('68597',(0.3/60)/3,0),
     ],
     processo:{insumo:'125854', qty:1, perda:0}
@@ -1109,7 +1109,7 @@ const PRODUCTS_NOVAERA = [
     id:'gel70_43kg', name:'Álcool Gel 70° INPM 3x4,3kg', ncm:'38089429', unitsPerCaixa:3,
     pricing:{ipi:0.0325, icmsst:0, vendaCX:0, qtdCaixas:1, frete:0, contrato:0},
     materials:[
-      link('51640',3.85,0.03), link('00000',0,0), link('60227',0.002,0.03), link('93646',1,0.03),
+      link('51640',4.417721518987341,0.03), link('00000',0,0), link('60227',0.002,0.03), link('93646',1,0.03),
       link('46887',1/3,0.03), link('127255',(1/60)/3,0.03), link('68597',(0.3/60)/3,0.03),
     ],
     processo:{insumo:'125880', qty:1, perda:0}
@@ -1118,7 +1118,7 @@ const PRODUCTS_NOVAERA = [
     id:'gel80_barrica', name:'Álcool Gel 80° Acendedor Barrica 10kg', ncm:'22071090', unitsPerCaixa:1,
     pricing:{ipi:0, icmsst:0, vendaCX:0, qtdCaixas:1, frete:0, contrato:0},
     materials:[
-      link('51640',8.8,0.03), link('00000',0,0), link('60227',0.06,0.03), link('107852',1,0.03),
+      link('51640',10,0.03), link('00000',0,0), link('60227',0.06,0.03), link('107852',1,0.03),
       link('127255',1/48,0), link('68597',0.3/48,0),
     ],
     processo:{insumo:'125891', qty:1, perda:0}
@@ -1207,7 +1207,7 @@ const PRODUCTS_NEWGREEN = [
     id:'ng_inpm92', name:'Álcool 92° INPM 12x1L', ncm:'22072019', unitsPerCaixa:12,
     pricing:{ipi:0.052, icmsst:0, vendaCX:0, qtdCaixas:1, frete:0, contrato:0},
     materials:[
-      link('51640',0.945,0.01), link('00000',0,0), link('59900',1/12,0.01),
+      link('51640',0.945,0.01), link('00000',0.2715495090000001,0), link('59900',1/12,0.01),
       link('60124',1,0.01), link('60100',1,0.01), link('127255',(1/84)/12,0), link('68597',(0.3/84)/12,0),
     ],
     processo:{insumo:'125830', qty:1, perda:0}
@@ -1225,7 +1225,7 @@ const PRODUCTS_NEWGREEN = [
     id:'ng_barrica10', name:'Álcool Gel 80° Acendedor Barrica 10kg', ncm:'22071089', unitsPerCaixa:1,
     pricing:{ipi:0, icmsst:0, vendaCX:0, qtdCaixas:1, frete:0, contrato:0},
     materials:[
-      link('51640',8.8,0.01), link('00000',0,0), link('127267',1,0.01), link('101321',1,0.01),
+      link('51640',10,0.01), link('00000',0,0), link('127267',1,0.01), link('101321',1,0.01),
       link('60227',0.06,0.01), link('11111',1,0.01), link('127255',1/48,0), link('68597',0.3/48,0),
     ],
     processo:{insumo:'125891', qty:1, perda:0}
@@ -1234,7 +1234,7 @@ const PRODUCTS_NEWGREEN = [
     id:'ng_barrica13', name:'Álcool Gel 80° Acendedor Barrica 13kg', ncm:'22071089', unitsPerCaixa:1,
     pricing:{ipi:0, icmsst:0, vendaCX:0, qtdCaixas:1, frete:0, contrato:0},
     materials:[
-      link('51640',11.5,0.01), link('00000',0,0), link('127267',1,0.01), link('101321',1,0.01),
+      link('51640',13,0.01), link('00000',0,0), link('127267',1,0.01), link('101321',1,0.01),
       link('60227',0.06,0.01), link('11111',1,0.01), link('127255',1/48,0), link('68597',0.3/48,0),
     ],
     processo:{insumo:'125891', qty:1, perda:0}
@@ -1651,7 +1651,21 @@ window.FocadoLegacySimulator = {
     scheduleSave();return this.snapshot();
   },
   setMarginTarget(value){STATE.marginTarget=Math.max(0,Number(value)||0);scheduleSave();return this.snapshot()},
- quoteOrder(o={}){const id=String(o.brandId||STATE.activeBrand||''),b=BRANDS[id];if(!b)throw new Error('SIMULATOR_BRAND_NOT_FOUND');const bs=STATE.brands[id],uf=String(o.uf||bs.global.estado||'SP').toUpperCase();if(!IMPOSTOS[uf])throw new Error('SIMULATOR_UF_NOT_SUPPORTED');const ft=String(o.freightType||bs.global.tipoFrete||'CIF').toUpperCase(),mf=o.manualFreight!=null?!!o.manualFreight:!!bs.global.freteManual,rules=o.marginRules||{},cl=k=>String(rules[k]||'CUSTO').toUpperCase()==='MARGEM'?'MARGEM':'CUSTO';const src=(Array.isArray(o.items)?o.items:[]).filter(x=>Number(x.qty)>0&&Number(x.basePrice??x.finalPrice)>0),p=src.map(item=>{const i=b.products.findIndex(x=>String(x.id)===String(item.productId));if(i<0)return {e:'SIMULATOR_PRODUCT_NOT_FOUND',item};const d=b.products[i],s=structuredClone(bs.products[i]);s.pricing.qtdCaixas=Math.max(0,Number(item.qty)||0);if(item.freightPerBox!=null)s.pricing.frete=Math.max(0,Number(item.freightPerBox)||0);const basePrice=item.basePrice!=null?Number(item.basePrice):null;if(basePrice!=null)s.pricing.vendaCX=Math.max(0,basePrice||0);else{const div=1+Number(s.pricing.ipi||0)+(uf==='SP'?0:Number(s.pricing.icmsst||0));s.pricing.vendaCX=div?Math.max(0,Number(item.finalPrice)||0)/div:0;}const g={comissao:Number(bs.global.comissao||0),icms:IMPOSTOS[uf][d.ncm][0],estado:uf};return {item,d,s,g,c:computeCore(d,s,g,b,bs)};}),bad=p.find(x=>x.e);if(bad)return {ok:false,error:bad.e,item:bad.item};const total=p.reduce((a,x)=>a+x.c.AP,0),fi=ft==='CIF'?getFreightInfo(uf,'CIF',total):ft==='REDESPACHO'?getFreightInfo(uf,'REDESPACHO',total):{available:true,pct:0,tierLabel:null};const rows=p.map(x=>{let z=0,auto=true;if(ft!=='FOB'){if(mf||!fi.available){z=Math.max(0,Number(x.item.freightPerBox??x.s.pricing.frete)||0);auto=false}else z=Number(fi.pct||0)*x.c.O}const r=finishProduct(x.c,x.s,x.g,z),v={product_cost:Number(r.AB||0),icms:Number(r.H||0),pis:Number(r.G||0)*PIS_RATE,cofins:Number(r.G||0)*COFINS_RATE,ipi:Number(r.K||0),st:Number(r.M||0),freight:Number(r.Z||0),commission:Number(r.S||0),contract:Number(r.O||0)*Number(x.s.pricing.contrato||0)};const cost=Object.entries(v).reduce((a,[k,n])=>a+(cl(k)==='CUSTO'?Number(n||0):0),0),fp=Number(r.O||0),mv=fp-cost;return {productId:x.d.id,qty:Number(x.s.pricing.qtdCaixas||0),finalPrice:fp,basePrice:Number(r.G||0),costPerBox:Number(r.AB||0),marginValue:mv,marginPct:fp?mv/fp:null,freight:{value:Number(r.Z||0),automatic:auto,available:fi.available!==false,reason:fi.reason||null}};}),gross=rows.reduce((a,x)=>a+x.finalPrice*x.qty,0),mv=rows.reduce((a,x)=>a+x.marginValue*x.qty,0);return {ok:true,brandId:id,uf,freightType:ft,gross,marginValue:mv,marginPct:gross?mv/gross:null,freightInfo:fi,rows};},  addInput(input={}){
+ quoteOrder(o={}){const id=String(o.brandId||STATE.activeBrand||''),b=BRANDS[id];if(!b)throw new Error('SIMULATOR_BRAND_NOT_FOUND');const bs=STATE.brands[id],uf=String(o.uf||bs.global.estado||'SP').toUpperCase();if(!IMPOSTOS[uf])throw new Error('SIMULATOR_UF_NOT_SUPPORTED');const ft=String(o.freightType||bs.global.tipoFrete||'CIF').toUpperCase(),mf=o.manualFreight!=null?!!o.manualFreight:!!bs.global.freteManual,rules=o.marginRules||{},cl=k=>String(rules[k]||'CUSTO').toUpperCase()==='MARGEM'?'MARGEM':'CUSTO';const src=(Array.isArray(o.items)?o.items:[]).filter(x=>Number(x.qty)>0&&Number(x.basePrice??x.finalPrice)>0),p=src.map(item=>{const i=b.products.findIndex(x=>String(x.id)===String(item.productId));if(i<0)return {e:'SIMULATOR_PRODUCT_NOT_FOUND',item};const d=b.products[i],s=structuredClone(bs.products[i]);s.pricing.qtdCaixas=Math.max(0,Number(item.qty)||0);if(item.freightPerBox!=null)s.pricing.frete=Math.max(0,Number(item.freightPerBox)||0);const basePrice=item.basePrice!=null?Number(item.basePrice):null;if(basePrice!=null)s.pricing.vendaCX=Math.max(0,basePrice||0);else{const div=1+Number(s.pricing.ipi||0)+(uf==='SP'?0:Number(s.pricing.icmsst||0));s.pricing.vendaCX=div?Math.max(0,Number(item.finalPrice)||0)/div:0;}const g={comissao:Number(bs.global.comissao||0),icms:IMPOSTOS[uf][d.ncm][0],estado:uf};return {item,d,s,g,c:computeCore(d,s,g,b,bs)};}),bad=p.find(x=>x.e);if(bad)return {ok:false,error:bad.e,item:bad.item};const total=p.reduce((a,x)=>a+x.c.AP,0),fi=ft==='CIF'?getFreightInfo(uf,'CIF',total):ft==='REDESPACHO'?getFreightInfo(uf,'REDESPACHO',total):{available:true,pct:0,tierLabel:null};const rows=p.map(x=>{let z=0,auto=true;if(ft!=='FOB'){if(mf||!fi.available){z=Math.max(0,Number(x.item.freightPerBox??x.s.pricing.frete)||0);auto=false}else z=Number(fi.pct||0)*x.c.O}const r=finishProduct(x.c,x.s,x.g,z),v={product_cost:Number(r.AB||0),icms:Number(r.H||0),pis:Number(r.G||0)*PIS_RATE,cofins:Number(r.G||0)*COFINS_RATE,ipi:Number(r.K||0),st:Number(r.M||0),freight:Number(r.Z||0),commission:Number(r.S||0),contract:Number(r.O||0)*Number(x.s.pricing.contrato||0)};const cost=Object.entries(v).reduce((a,[k,n])=>a+(cl(k)==='CUSTO'?Number(n||0):0),0),fp=Number(r.O||0),mv=fp-cost;return {productId:x.d.id,qty:Number(x.s.pricing.qtdCaixas||0),finalPrice:fp,basePrice:Number(r.G||0),costPerBox:Number(r.AB||0),marginValue:mv,marginPct:fp?mv/fp:null,freight:{value:Number(r.Z||0),automatic:auto,available:fi.available!==false,reason:fi.reason||null}};}),gross=rows.reduce((a,x)=>a+x.finalPrice*x.qty,0),mv=rows.reduce((a,x)=>a+x.marginValue*x.qty,0);return {ok:true,brandId:id,uf,freightType:ft,gross,marginValue:mv,marginPct:gross?mv/gross:null,freightInfo:fi,rows};},  recipeFor(brandLabel,productRef){
+    const brand=Object.values(BRANDS).find(x=>String(x.label).toLowerCase()===String(brandLabel||'').toLowerCase())||BRANDS[STATE.activeBrand];
+    if(!brand)return [];
+    const bstate=STATE.brands[brand.id],index=brand.products.findIndex(p=>
+      String(p.id)===String(productRef)||String(brand.orderForm?.productCodes?.[p.id]||'')===String(productRef)
+    );
+    if(index<0)return [];
+    const def=brand.products[index],st=bstate.products[index];
+    return (def.materials||[]).map((m,i)=>{
+      const ins=brand.insumosByCode[m.insumo]||(bstate.customInsumos||[]).find(x=>String(x.code)===String(m.insumo))||{};
+      const cfg=st.materials?.[i]||{};
+      return {code:String(m.insumo),name:ins.desc||String(m.insumo),unit:cfg.unit||ins.unit||'',qty:Number(cfg.qty??m.qty??0),perda:Number(cfg.perda??m.perda??0),kind:'input'};
+    });
+  },
+  addInput(input={}){
     const brand=curBrand(),b=curState();
     const code=String(input.code||'').trim(),desc=String(input.desc||'').trim(),unit=String(input.unit||'').trim().toUpperCase();
     const group=String(input.group||'Outros').trim()||'Outros',preco=Math.max(0,Number(input.preco)||0);
@@ -4258,7 +4272,7 @@ init();
 </script>
 <!-- FOCADO_OPS_V6_END -->
 <script src="assets/core/data-store.js?v=20260828-stage2-v1"></script>
-<script src="assets/core/auth-client.js?v=20260902-freight-center-v1"></script>\n\n\n\n\n\n\n\n\n\n\n\n<script src="assets/core/module-loader.js?v=20260902-ops-data-v1"></script>
+<script src="assets/core/auth-client.js?v=20260902-freight-center-v1"></script>\n\n\n\n\n\n\n\n\n\n\n\n<script src="assets/core/module-loader.js?v=20260902-simulator-architecture-v2"></script>
 <script src="assets/app-shell.js?v=20260902-ops-data-v1"></script>\n
 <script src="assets/design-system.js?v=20260827-ds-v2"></script>
   <script src="assets/core/privileged-edit-actions.js?v=20260828-edit-actions-v5"></script>\n</body>
