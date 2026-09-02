@@ -186,7 +186,7 @@
     const allowEdit=canEditExisting();
     return '<table class="fo-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>CNPJ</th><th>Representante</th><th>Data</th><th>Itens</th><th>Valor</th><th>Status macro</th><th>Previsão</th><th></th></tr></thead><tbody>'+rows.map(o=>{
       const s=stage(o.status);
-      const canDelete=allowEdit&&o.status==='COMERCIAL';
+      const canDelete=allowEdit;
       return '<tr><td><div class="fo-order">'+esc(o.number)+'</div></td><td><div class="fo-client">'+esc(o.client||'—')+'</div><div class="fo-muted">'+esc([o.city,o.uf].filter(Boolean).join('/'))+'</div></td><td>'+esc(formatCnpj(o.cnpj)||'—')+'</td><td>'+esc(o.representative||'—')+'</td><td>'+dbr(o.orderDate)+'</td><td>'+(o.items||[]).length+'</td><td>'+money(value(o))+'</td><td><span class="fo-stage '+s[1]+'">'+s[0]+'</span></td><td>'+dbr(o.pcp?.availableDate||o.requestedDeliveryDate)+'</td><td><div class="fo-actions"><button class="fo-open" data-fo-open="'+esc(o.id)+'">Abrir</button>'+(allowEdit?'<button class="fo-open" data-fo-edit="'+esc(o.id)+'">Editar</button>':'')+(canDelete?'<button class="fo-open fo-delete-order" data-fo-delete="'+esc(o.id)+'">Excluir</button>':'')+'</div></td></tr>';
     }).join('')+'</tbody></table>';
   }
@@ -194,17 +194,23 @@
   async function deleteOrder(id){
     const ops=load(),order=(ops.orders||[]).find(o=>String(o.id)===String(id));
     if(!order){alert('Pedido não encontrado.');return}
-    if(!isDraft(order)||!canManageDraft()){alert('Somente rascunhos podem ser excluídos pelo Comercial.');return}
-    const ok=confirm('Excluir o pedido '+String(order.number||'')+'?\n\nEsta ação não poderá ser desfeita.');
+    const draft=isDraft(order);
+    if(draft&&!canManageDraft()){alert('Seu perfil não possui permissão para excluir este rascunho.');return}
+    if(!draft&&!canEditExisting()){alert('Somente Administrador, Diretor ou Gestor podem excluir pedidos já enviados.');return}
+    const detail=draft
+      ? 'O rascunho será removido definitivamente.'
+      : 'O pedido e os registros diretamente vinculados serão removidos. Reservas ou saídas de estoque geradas por este pedido serão revertidas.';
+    const ok=confirm('Excluir o pedido '+String(order.number||'')+'?\n\n'+detail+'\n\nEsta ação não poderá ser desfeita.');
     if(!ok)return;
     try{
-      const result=await window.FocadoDataStore.saveDomain('COMERCIAL',{deleteOrderId:order.id},order.id);
+      const changes=draft?{deleteOrderId:order.id}:{deleteOrderCascadeId:order.id};
+      const result=await window.FocadoDataStore.saveDomain('COMERCIAL',changes,order.id);
       if(!result?.ok){alert('Não foi possível excluir o pedido. Atualize a tela e tente novamente.');return}
       if(result.payload)window.FocadoDataStore.writeLocal(result.payload);
       render(currentFilters);
     }catch(err){
       console.error('[FocadoOrders] delete',err);
-      alert(err?.code==='ORDER_DELETE_BLOCKED_AFTER_COMMERCIAL'?'Este pedido já avançou no fluxo e não pode ser excluído.':'Não foi possível excluir o pedido.');
+      alert('Não foi possível excluir o pedido.');
     }
   }
 
