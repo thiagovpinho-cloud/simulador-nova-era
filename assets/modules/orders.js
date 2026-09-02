@@ -76,10 +76,6 @@
     const nums=(ops.orders||[]).map(o=>String(o.number||'').match(/(\d+)$/)).filter(Boolean).map(m=>Number(m[1])).filter(Number.isFinite);
     return 'PED-'+String((Math.max(0,...nums)+1)).padStart(5,'0');
   }
-  function addEvent(o,text){
-    o.events=o.events||[];
-    o.events.unshift({at:Date.now(),text,user:window.FocadoAuth?.getUser?.()?.name||sessionStorage.getItem('nova-era-role-label')||'Usuário'});
-  }
   function createBlank(ops){
     return {
       id:'op_'+Date.now(),number:nextNumber(ops),status:'COMERCIAL',createdAt:Date.now(),
