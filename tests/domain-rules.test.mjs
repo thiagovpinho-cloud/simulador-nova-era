@@ -18,7 +18,7 @@ const expectError=(fn,code)=>{
   assert.equal(caught.message,code);
 };
 
-assert.equal(RULES_VERSION,'2026.08.28.6');
+assert.equal(RULES_VERSION,'2026.09.02.1');
 assert.equal(DOMAIN_PERMISSION.PCP,'pcp.write');
 assert.equal(DOMAIN_PERMISSION.LOGISTICA,'logistics.write');
 assert.equal(FLOW.COMERCIAL.to,'PCP');
