@@ -66,6 +66,8 @@
       const data=await res.json();
       const queue=Array.isArray(data.workQueue)?data.workQueue:[];
       const role=window.FocadoAuth?.getRole?.()||'';
+      const title=box.querySelector('h2'),textEl=box.querySelector('p'),btn=box.querySelector('[data-open]');
+      if(!title||!textEl||!btn)return;
       const ops=loadOps(),orders=ops.orders||[];
       const quoteRequested=orders.filter(o=>['SOLICITADA','EM_COTACAO'].includes(o.freightQuote?.status));
       const quoteAnswered=orders.filter(o=>o.freightQuote?.status==='RESPONDIDA'&&!o.freightQuote?.commercialViewedAt);
@@ -91,8 +93,6 @@
       const areas=workflowAreasForRole(role);
       const mine=areas.length?queue.filter(x=>areas.includes(String(x.area||'').toUpperCase())):queue;
       const rows=String(role).toUpperCase()==='ADMIN'?queue:mine;
-      const title=box.querySelector('h2'),textEl=box.querySelector('p'),btn=box.querySelector('[data-open]');
-      if(!title||!textEl||!btn)return;
       if(!rows.length){
         box.className='fx-command ok';
         box.querySelector('.fx-command-eyebrow').textContent='OPERAÇÃO SOB CONTROLE';
