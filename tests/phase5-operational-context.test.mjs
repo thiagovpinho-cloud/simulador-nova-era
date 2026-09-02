@@ -23,3 +23,12 @@ assert.match(css,/\.fx-journey-action/);
 assert.match(css,/@media\(max-width:520px\)/);
 
 console.log('phase5-operational-context: ok');
+
+const orders=read('assets/modules/orders.js');
+const logistics=read('assets/modules/logistics.js');
+assert.match(orders,/status macro é preservado/);
+assert.match(orders,/Todos os status macro/);
+assert.match(orders,/Status macro/);
+assert.match(logistics,/Status macro: PCP/);
+assert.match(shell,/Status macro dos pedidos/);
+assert.match(shell,/Status macro PCP/);
