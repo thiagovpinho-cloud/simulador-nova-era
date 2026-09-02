@@ -77,3 +77,22 @@
   .fl-delivery-table{min-width:760px}
 }
 @media(max-width:430px){.fl-kpis{grid-template-columns:1fr}.fl-table tr{grid-template-columns:1fr}.fl-table td:last-child{grid-column:auto}}
+
+
+/* Cotação de frete — solicitação Comercial ↔ Logística */
+.fl-quote-panel{border-color:#dfe9e4;background:linear-gradient(180deg,#fff,#fbfdfc)}
+.fl-quote-request{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.fl-quote-request>div{border:1px solid var(--fx-border);border-radius:11px;padding:10px;background:#fafcfb;min-width:0}
+.fl-quote-request span{display:block;font-size:8px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--fx-muted)}
+.fl-quote-request b{display:block;margin-top:4px;font-size:10px;overflow-wrap:anywhere}
+.fl-quote-options{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+.fl-quote-row{border:1px solid #dfe7e3;border-radius:13px;padding:12px;background:#fff}
+.fl-quote-row-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.fl-quote-row-head b{font-size:10px;color:#0b6f53}
+.fl-quote-row-head button{width:30px;height:30px;border:1px solid var(--fx-border);border-radius:8px;background:#fff;cursor:pointer;font-size:16px}
+.fl-quote-note{margin-top:12px}
+@media(max-width:900px){.fl-quote-request{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){
+  .fl-quote-request{grid-template-columns:1fr}
+  .fl-quote-row{padding:10px}
+}
