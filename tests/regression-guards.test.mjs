@@ -267,13 +267,13 @@ const simulatorInline=read('index.html');
 assert.ok(simulatorInline.includes('item.basePrice!=null?Number(item.basePrice):null'),'Simulador deve aceitar preço base do pedido sem converter IPI/ST');
 assert.ok(simulatorInline.includes('Number(x.basePrice??x.finalPrice)>0'),'Simulador deve validar preço base ou legado');
 
-const simulatorInputs=read('assets/modules/simulator.js');
-assert.ok(simulatorInputs.includes('Editar valores'),'Base de Insumos deve ter botão Editar valores');
-assert.ok(simulatorInputs.includes('Salvar alterações'),'Base de Insumos deve ter botão Salvar alterações');
-assert.ok(simulatorInputs.includes('Cancelar'),'Base de Insumos deve permitir cancelar edição');
-assert.ok(simulatorInputs.includes("(inputEditMode?'':'disabled')"),'Preços de insumos devem iniciar bloqueados');
-assert.ok(simulatorInputs.includes("inputDraft[i.dataset.inputPrice]"),'Alterações devem ficar em rascunho antes de salvar');
-assert.ok(simulatorInputs.includes('setInputPrice(item.code,value)'),'Salvar alterações deve aplicar preços ao motor');
+const simulatorInputs=read('assets/modules/inputs.js');
+assert.ok(simulatorInputs.includes('data-fin-edit'),'Base de Insumos deve permitir editar item');
+assert.ok(simulatorInputs.includes('data-fin-delete'),'Base de Insumos deve permitir remover item');
+assert.ok(simulatorInputs.includes('Preço vigente'),'Base de Insumos deve expor preço vigente');
+assert.ok(simulatorInputs.includes('manualOverride:true'),'Edições manuais devem ser preservadas sobre a base oficial');
+assert.ok(simulatorInputs.includes("saveDomain('INSUMOS',{item})"),'Salvar alterações deve persistir no domínio Insumos');
+assert.ok(simulatorInputs.includes('setInputPrice(item.code,item.price)'),'Preço editado deve alimentar o motor do Simulador');
 
 const mobileShell=read('assets/app-shell.css');
 assert.ok(mobileShell.includes('Focado Mobile UX v1'),'Shell deve publicar a camada mobile v1');
