@@ -66,6 +66,28 @@
       const data=await res.json();
       const queue=Array.isArray(data.workQueue)?data.workQueue:[];
       const role=window.FocadoAuth?.getRole?.()||'';
+      const ops=loadOps(),orders=ops.orders||[];
+      const quoteRequested=orders.filter(o=>['SOLICITADA','EM_COTACAO'].includes(o.freightQuote?.status));
+      const quoteAnswered=orders.filter(o=>o.freightQuote?.status==='RESPONDIDA'&&!o.freightQuote?.commercialViewedAt);
+      const roleKey=String(role).toUpperCase();
+      if(roleKey==='LOGISTICA'&&quoteRequested.length){
+        box.className='fx-command warn';
+        box.querySelector('.fx-command-eyebrow').textContent='NOVA SOLICITAÇÃO DO COMERCIAL';
+        title.textContent=quoteRequested.length+' cotação(ões) de frete aguardando Logística';
+        const q=quoteRequested[0];
+        textEl.textContent=(q.number||q.id)+' · '+(q.client||'Cliente')+' · '+(q.city||'destino a confirmar');
+        btn.dataset.open='logistica';btn.textContent='Fazer cotação →';
+        return;
+      }
+      if(roleKey==='COMERCIAL'&&quoteAnswered.length){
+        box.className='fx-command info';
+        box.querySelector('.fx-command-eyebrow').textContent='COTAÇÃO DE FRETE RECEBIDA';
+        title.textContent=quoteAnswered.length+' cotação(ões) respondida(s) pela Logística';
+        const q=quoteAnswered[0],best=(q.freightQuote?.quotes||[]).slice().sort((a,b)=>Number(a.value||0)-Number(b.value||0))[0];
+        textEl.textContent=(q.number||q.id)+' · '+(best?best.provider+' · '+money(best.value):'Valores disponíveis para consulta');
+        btn.dataset.open='pedidos';btn.textContent='Ver cotações →';
+        return;
+      }
       const areas=workflowAreasForRole(role);
       const mine=areas.length?queue.filter(x=>areas.includes(String(x.area||'').toUpperCase())):queue;
       const rows=String(role).toUpperCase()==='ADMIN'?queue:mine;
