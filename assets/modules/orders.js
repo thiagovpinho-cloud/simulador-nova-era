@@ -91,6 +91,54 @@
     };
   }
   function canEdit(o){return o.status==='COMERCIAL'}
+  const canRequestFreightQuote=()=>['COMERCIAL','ADMIN','DIRETOR','GESTOR'].includes(currentRole());
+  const quoteStatusLabel=s=>({SOLICITADA:'Solicitada à Logística',EM_COTACAO:'Em cotação',RESPONDIDA:'Cotação respondida'})[String(s||'')]||'Não solicitada';
+
+  function freightQuoteCard(o){
+    const q=o.freightQuote||null;
+    const canRequest=canRequestFreightQuote()&&Boolean(editingId);
+    const quotes=(q?.quotes||[]).slice().sort((a,b)=>Number(a.value||0)-Number(b.value||0));
+    const options=quotes.length?'<div class="fo-freight-options">'+quotes.map((x,i)=>
+      '<div class="fo-freight-option '+(i===0?'best':'')+'"><div><span>'+(i===0?'MENOR COTAÇÃO':'OPÇÃO '+(i+1))+'</span><b>'+esc(x.provider)+'</b></div><strong>'+money(x.value)+'</strong><small>'+(Number(x.transitDays||0)>0?Number(x.transitDays)+' dia(s) de trânsito':'Prazo não informado')+(x.pickupEstimate?' · coleta '+dbr(x.pickupEstimate):'')+(x.notes?' · '+esc(x.notes):'')+'</small></div>'
+    ).join('')+'</div>':'';
+    const status=q?'<span class="fo-freight-chip '+String(q.status||'').toLowerCase()+'">'+esc(quoteStatusLabel(q.status))+'</span>':'<span class="fo-freight-chip">Ainda não solicitada</span>';
+    const response=q?.status==='RESPONDIDA'
+      ? '<div class="fo-freight-response"><b>Retorno da Logística</b><span>'+esc(q.responseNotes||'Valores disponíveis para análise comercial.')+'</span>'+options+'</div>'
+      : '';
+    const requestArea=canRequest
+      ? '<label class="fo-field wide"><span>Informações para a cotação</span><textarea id="foFreightQuoteNotes" placeholder="Ex.: urgência, janela de entrega, necessidade de veículo específico...">'+esc(q?.status==='RESPONDIDA'?'':q?.notes||'')+'</textarea></label><div class="fo-actions"><button type="button" class="fo-btn primary" id="foRequestFreightQuote">'+(q?'Solicitar nova cotação':'Solicitar cotação à Logística')+'</button></div>'
+      : (!editingId?'<div class="fo-cnpj-status warn">Salve o rascunho do pedido antes de solicitar a cotação.</div>':'');
+    return '<div class="fo-card fo-freight-card"><div class="fo-card-head"><div><h2>Cotação de frete</h2><p>Canal direto entre Comercial e Logística. O retorno fica registrado neste pedido.</p></div>'+status+'</div>'+
+      (q?'<div class="fo-freight-meta"><span>Solicitado por <b>'+esc(q.requestedBy||'Comercial')+'</b></span><span>'+new Date(Number(q.requestedAt||Date.now())).toLocaleString('pt-BR')+'</span></div>':'')+
+      response+requestArea+'</div>';
+  }
+
+  async function requestFreightQuote(o){
+    if(!editingId)return;
+    if(document.getElementById('foOrderForm')&&formEditable){
+      const saved=await persist(false,true);
+      if(saved===false)return;
+    }
+    const notes=String(document.getElementById('foFreightQuoteNotes')?.value||'').trim();
+    const by=window.FocadoAuth?.getUser?.()?.name||window.FocadoAuth?.roleLabel?.()||'Comercial';
+    const at=Date.now();
+    const result=await window.FocadoDataStore.saveDomain('COMERCIAL',{
+      freightQuoteRequest:{id:o.freightQuote?.id||('fq_'+at),notes,requestedAt:at,requestedBy:by},
+      event:{at,text:'Cotação de frete solicitada à Logística',user:by}
+    },editingId);
+    if(!result?.ok){alert('Não foi possível enviar a solicitação de frete. Atualize e tente novamente.');return}
+    if(result.payload)window.FocadoDataStore.writeLocal(result.payload);
+    const fresh=(result.payload?.orders||[]).find(x=>String(x.id)===String(editingId));
+    if(fresh)renderForm(fresh,result.payload);
+  }
+
+  async function markFreightQuoteViewed(o){
+    if(currentRole()!=='COMERCIAL'||o.freightQuote?.status!=='RESPONDIDA'||o.freightQuote?.commercialViewedAt)return;
+    const result=await window.FocadoDataStore.saveDomain('COMERCIAL',{
+      freightQuoteViewed:{at:Date.now(),by:window.FocadoAuth?.getUser?.()?.name||'Comercial'}
+    },o.id);
+    if(result?.payload)window.FocadoDataStore.writeLocal(result.payload);
+  }
   const CORRECTION_ROLE_LABELS={ADMIN:'Administrador',COMERCIAL:'Comercial'};
   function correctionRoles(ops){
     const configured=ops?.settings?.orderCorrectionRoles;
@@ -257,9 +305,13 @@
           '<datalist id="foProductCodes">'+cat.map(p=>'<option value="'+esc(p.code)+'">'+esc(p.name)+' · '+esc(p.brand)+'</option>').join('')+'</datalist>'+
           '<datalist id="foProductNames">'+cat.map(p=>'<option value="'+esc(p.name)+'">'+esc(p.code)+' · '+esc(p.brand)+'</option>').join('')+'</datalist>'+
           '<div class="fo-items-wrap"><table class="fo-items" id="foItems"><thead><tr><th>Código</th><th>Produto</th><th>Quantidade</th><th>Preço da mercadoria s/ IPI/ST</th><th>Margem estimada</th><th>Total</th><th></th></tr></thead><tbody>'+items.map((i,n)=>itemRow(i,n,editable)).join('')+'</tbody></table></div><div class="fo-order-profit"><div id="foProfitSummary"><span>Margem estimada do pedido</span><strong>—</strong><small>Preencha produto, quantidade, preço e UF</small></div><div class="fo-total"><span>Total do pedido</span><strong id="foGrandTotal">'+money(value(o))+'</strong></div></div></div>'+
+        freightQuoteCard(o)+
         '<div class="fo-card"><h2>Observações comerciais</h2><textarea name="notes" '+readonly+' placeholder="Observações do pedido, particularidades do cliente, entrega ou negociação">'+esc(o.notes||'')+'</textarea></div>'+
       '</form>'+history(o)+'</div>';
     document.getElementById('foBack').onclick=()=>render(currentFilters);
+    const requestFreight=document.getElementById('foRequestFreightQuote');
+    if(requestFreight)requestFreight.onclick=()=>requestFreightQuote(o);
+    markFreightQuoteViewed(o);
     const editPast=document.getElementById('foEditPast');
     if(editPast)editPast.onclick=()=>{
       if(!confirm('Editar este pedido já enviado?\n\nA etapa atual será mantida e a correção ficará registrada no histórico.'))return;
