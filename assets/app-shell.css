@@ -191,3 +191,312 @@
   .fx-journey-meta{display:grid;grid-template-columns:1fr 1fr}
   .fx-journey-action{grid-column:1/-1;width:100%}
 }
+
+
+/* FOCADO Mobile First Redesign — 2026-09-02 */
+.fx-mobile-title,.fx-mobile-nav{display:none}
+
+@media(max-width:760px){
+  #focadoShell{
+    height:100dvh;
+    min-height:100dvh;
+    background:#f5f7f6;
+  }
+  .fx-main{
+    height:100dvh;
+    min-height:0;
+    background:#f5f7f6;
+  }
+  .fx-topbar{
+    display:grid;
+    grid-template-columns:44px minmax(0,1fr) 44px;
+    align-items:center;
+    height:62px;
+    padding:0 10px;
+    gap:8px;
+    background:rgba(255,255,255,.96);
+    backdrop-filter:blur(16px);
+    box-shadow:0 1px 0 rgba(16,47,37,.06);
+  }
+  .fx-mobile-title{
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+    line-height:1.05;
+  }
+  .fx-mobile-title b{
+    font-size:15px;
+    letter-spacing:.35px;
+    color:#0b5d48;
+  }
+  .fx-mobile-title small{
+    margin-top:3px;
+    font-size:10px;
+    color:#7a8680;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .fx-search{display:none}
+  .fx-user{
+    margin-left:0;
+    justify-self:end;
+  }
+  .fx-user-meta,.fx-avatar{display:none!important}
+  .fx-logout{
+    width:44px;
+    min-width:44px;
+    height:44px;
+    min-height:44px;
+    padding:0!important;
+    border-radius:12px;
+    background:#f5f7f6;
+    border:1px solid #e4ebe7;
+  }
+  .fx-logout::after{content:"↪";font-size:18px}
+  .fx-menu-toggle{
+    width:44px;
+    min-width:44px;
+    height:44px;
+    min-height:44px;
+    border-radius:12px;
+    background:#eef4f1;
+    color:#0a6b51;
+    font-size:20px;
+  }
+
+  .fx-content{
+    padding:14px 12px calc(92px + env(safe-area-inset-bottom));
+    overflow:auto;
+  }
+
+  .fx-mobile-nav{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    position:absolute;
+    left:8px;
+    right:8px;
+    bottom:calc(8px + env(safe-area-inset-bottom));
+    z-index:6;
+    min-height:64px;
+    padding:6px;
+    background:rgba(255,255,255,.97);
+    border:1px solid #dfe8e3;
+    border-radius:18px;
+    box-shadow:0 12px 34px rgba(10,46,35,.16);
+    backdrop-filter:blur(18px);
+  }
+  .fx-mobile-nav-btn{
+    appearance:none;
+    border:0;
+    background:transparent;
+    min-width:0;
+    min-height:52px;
+    border-radius:13px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:3px;
+    color:#7d8983;
+    font-family:Inter,system-ui,sans-serif;
+    cursor:pointer;
+  }
+  .fx-mobile-nav-btn span{
+    font-size:18px;
+    line-height:1;
+  }
+  .fx-mobile-nav-btn b{
+    font-size:9px;
+    line-height:1.1;
+    max-width:100%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .fx-mobile-nav-btn.active{
+    background:#eaf6f0;
+    color:#08785b;
+  }
+
+  .fx-sidebar{
+    width:min(88vw,340px);
+    z-index:8;
+  }
+  .fx-mobile-backdrop{z-index:7}
+  .fx-brand{
+    min-height:70px!important;
+    padding:10px 16px!important;
+  }
+  .fx-brand>img#fxBrandLogo{
+    width:168px!important;
+    max-height:48px!important;
+  }
+  .fx-menu{
+    padding:4px 10px 24px;
+  }
+  .fx-menu-label{
+    font-size:9px!important;
+    padding:16px 10px 5px!important;
+  }
+  .fx-nav{
+    min-height:48px!important;
+    padding:12px!important;
+    border-radius:13px!important;
+    font-size:13px!important;
+  }
+
+  .fx-titlebar-premium{
+    margin:0 0 12px;
+  }
+  .fx-titlebar-premium .fx-eyebrow{
+    display:none;
+  }
+  .fx-titlebar-premium h1{
+    font-size:21px;
+    line-height:1.15;
+    margin:0;
+    color:#18392e;
+  }
+  .fx-titlebar-premium p{
+    display:none;
+  }
+  .fx-date{display:none}
+
+  .fx-command{
+    margin:0 0 12px;
+    padding:16px;
+    gap:12px;
+    border-radius:18px;
+    box-shadow:none;
+  }
+  .fx-command-eyebrow{
+    font-size:9px;
+    margin-bottom:5px;
+  }
+  .fx-command h2{
+    font-size:17px;
+    line-height:1.18;
+  }
+  .fx-command p{
+    font-size:11px;
+    line-height:1.4;
+  }
+  .fx-command-action{
+    width:100%;
+    min-height:46px;
+    font-size:12px;
+    border-radius:12px;
+  }
+
+  .fx-kpis,.fx-kpis-premium{
+    grid-template-columns:1fr 1fr!important;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .fx-kpi,.fx-kpis-premium .fx-kpi{
+    min-height:0;
+    padding:12px;
+    border-radius:15px;
+    box-shadow:none;
+  }
+  .fx-kpi-top{
+    align-items:flex-start;
+  }
+  .fx-kpi-icon{
+    width:30px;
+    height:30px;
+    border-radius:9px;
+    font-size:13px;
+  }
+  .fx-kpi span{font-size:9px}
+  .fx-kpi strong{
+    font-size:18px;
+    margin-top:7px;
+  }
+  .fx-kpi small{
+    font-size:8.5px;
+    line-height:1.25;
+  }
+
+  .fx-grid{
+    display:block;
+    margin:0;
+  }
+  .fx-panel{
+    margin-bottom:10px;
+    padding:14px;
+    border-radius:16px;
+    box-shadow:none;
+  }
+  .fx-panel-head h2{
+    font-size:13px;
+  }
+  .fx-panel.fx-mobile-secondary{
+    display:none;
+  }
+  .fx-table thead{display:none}
+  .fx-table,.fx-table tbody{display:block;width:100%}
+  .fx-table tr{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:4px 10px;
+    padding:11px 0;
+    border-bottom:1px solid #edf1ef;
+  }
+  .fx-table tr:last-child{border-bottom:0}
+  .fx-table td{
+    border:0;
+    padding:0;
+    font-size:10px;
+  }
+  .fx-table td:nth-child(2){
+    color:#69766f;
+  }
+  .fx-table td:nth-child(3){
+    grid-column:1;
+    font-weight:700;
+    color:#173b30;
+  }
+  .fx-table td:nth-child(4){
+    grid-column:2;
+    grid-row:1/3;
+    align-self:center;
+  }
+
+  .fx-journey-context{
+    margin:0 0 12px;
+    padding:13px 14px;
+    border-radius:15px;
+    gap:10px;
+  }
+  .fx-journey-main strong{
+    font-size:14px;
+  }
+  .fx-journey-main p{
+    font-size:10.5px;
+  }
+  .fx-journey-meta{
+    display:block!important;
+    width:100%;
+  }
+  .fx-journey-meta>div{
+    display:none;
+  }
+  .fx-journey-action{
+    width:100%;
+    min-height:44px;
+    font-size:11px;
+    margin-top:2px;
+  }
+  .fx-footer{display:none}
+}
+
+@media(max-width:390px){
+  .fx-content{padding-left:10px;padding-right:10px}
+  .fx-mobile-nav{left:6px;right:6px;bottom:calc(6px + env(safe-area-inset-bottom))}
+  .fx-mobile-nav-btn b{font-size:8.5px}
+  .fx-kpis,.fx-kpis-premium{grid-template-columns:1fr 1fr!important}
+  .fx-kpi{padding:10px}
+  .fx-kpi strong{font-size:17px}
+}
