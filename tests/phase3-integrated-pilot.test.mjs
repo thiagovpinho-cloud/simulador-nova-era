@@ -114,10 +114,18 @@ for(const o of [a1,a2,b1]){
 assert.equal(a2.items[0].qty,8);
 assert.equal(a2.items[0].originalRequestedQty,12);
 
-// Logística + expedição: A1 no prazo, A2 atrasado, B1 no prazo.
+// Regra crítica: Logística não pode coletar antes da disponibilidade informada pelo PCP.
+assert.throws(
+  ()=>applyDomain('LOGISTICA',state,{orderId:'A2',changes:{logistics:{
+    carrierId:'car1',pickupDate:'2026-09-03',deliveryDate:'2026-09-04',freightValue:150
+  }}}),
+  /PICKUP_BEFORE_PCP_AVAILABILITY/
+);
+
+// Logística + expedição: A1 no prazo, A2 atrasado após coleta válida, B1 no prazo.
 for(const cfg of [
   [a1,'2026-09-02','2026-09-03','2026-09-03',true],
-  [a2,'2026-09-03','2026-09-04','2026-09-06',false],
+  [a2,'2026-09-04','2026-09-05','2026-09-06',false],
   [b1,'2026-09-04','2026-09-05','2026-09-05',true]
 ]){
   const [o,pickup,delivery,actual,onTime]=cfg;
@@ -168,6 +176,7 @@ const result={
   stockConflictResolved:true,
   productionDependencyResolved:true,
   cutHandled:true,
+  prematurePickupBlocked:true,
   lateDeliveryHandled:true,
   financeStillHumanControlled:true,
   automationIdempotent:true,
