@@ -116,7 +116,7 @@
       return {mode:'blocked',ok:false,error:'API_REQUIRED',payload:current};
     }
     try{
-      const currentOrder=orderId?(current.orders||[]).find(o=>String(o.id||o.number)===String(orderId)):null;
+      const currentOrder=orderId?(current.orders||[]).find(o=>String(o.id)===String(orderId)):null;
       const body=await remoteRequest('/api/domain',{
         method:'PUT',
         body:JSON.stringify({domain,changes,orderId,expectedStatus:currentOrder?.status||null})
@@ -136,7 +136,7 @@
     if(!isRemoteReady()) return {mode:'local',ok:false,error:'API_REQUIRED'};
     try{
       const current=readLocal();
-      const currentOrder=(current.orders||[]).find(o=>String(o.id||o.number)===String(orderId));
+      const currentOrder=(current.orders||[]).find(o=>String(o.id)===String(orderId));
       const body=await remoteRequest('/api/transition',{
         method:'POST',
         body:JSON.stringify({orderId,expectedStatus:currentOrder?.status||null})
