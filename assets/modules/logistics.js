@@ -106,7 +106,7 @@
     const carrierOptions='<option value="">Selecione uma transportadora</option>'+cs.map(c=>'<option value="'+esc(c.id)+'" '+(String(c.id)===String(o.logistics?.carrierId||'')?'selected':'')+'>'+esc(c.name)+(c.city?' · '+esc(c.city):'')+'</option>').join('');
     content().innerHTML='<div class="fl-page">'+
       '<div class="fl-head"><div><button class="fl-btn primary" id="flBack">← Logística</button><h1>Logística · '+esc(o.number)+'</h1><p>'+esc(o.client||'')+'</p></div><span class="fl-chip '+(pre||o.status==='COMERCIAL'?'warn':'ready')+'">'+macroLabel+'</span></div>'+
-      (window.FocadoFreightQuotes?.logisticsPanel?.(o,ops)||'')+
+
       (pre?'<div class="fl-callout warn"><b>Visível para planejamento antecipado · ainda no PCP</b><span>Este pedido NÃO foi liberado pelo PCP. A Logística pode apenas adiantar a contratação do frete; a coleta continua bloqueada até a liberação operacional.</span></div>':'')+
       '<div class="fl-budget-row"><div><span>Orçamento previsto pelo Comercial</span><strong>'+money(budget)+'</strong></div><div><span>Frete planejado</span><strong id="flFreightSummary">'+money(freight)+'</strong></div><div id="flBudgetStatus" class="fl-budget-status"></div></div>'+
       '<div class="fl-detail-grid"><div class="fl-panel"><div class="fl-panel-title"><div><span class="fl-eyebrow">RETIRADA</span><h2>Itens e bases</h2></div></div><div class="fl-pickup-list">'+pickups+'</div>'+(availableDate?'<div class="fl-callout info"><b>Disponibilidade mínima para coleta</b><span>'+dbr(availableDate)+'</span></div>':'')+'</div>'+
@@ -120,7 +120,6 @@
         '<label class="fl-field fl-span-2"><span>Observações</span><textarea id="flNotes" placeholder="Negociação, janela de coleta, restrições...">'+esc(o.logistics?.notes||'')+'</textarea></label>'+
       '</div><div class="fl-actions fl-form-actions"><button class="fl-btn primary" id="flSavePlan">Salvar planejamento de frete</button></div></div></div></div>';
     document.getElementById('flBack').onclick=()=>render(listState);
-    window.FocadoFreightQuotes?.bindLogistics?.(o,ops,{onUpdated:()=>render(listState)});
     const fre=document.getElementById('flFreight');
     const updateBudget=()=>{
       const v=parseMoney(fre.value),status=document.getElementById('flBudgetStatus');
