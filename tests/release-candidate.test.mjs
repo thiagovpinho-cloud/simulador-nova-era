@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+
+const RELEASE_CANDIDATE='FOCADO-2026-09-01-RC1';
 import fs from 'node:fs';
 
 const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
@@ -45,4 +47,5 @@ assert.match(worker,/wrangler deploy --keep-vars/);
 assert.match(pkg.scripts.test,/workflow-automation\.test\.mjs/);
 assert.match(pkg.scripts.test,/phase3-integrated-pilot\.test\.mjs/);
 
-console.log('release-candidate: ok');
+assert.equal(RELEASE_CANDIDATE,'FOCADO-2026-09-01-RC1');
+console.log('release-candidate: ok',RELEASE_CANDIDATE);
