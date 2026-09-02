@@ -27,6 +27,8 @@
     representantes:['ADMIN','DIRETOR','GESTOR','COMERCIAL'],
     oportunidades:['ADMIN','DIRETOR','GESTOR','COMERCIAL'],
     pedidos:['ADMIN','DIRETOR','GESTOR','COMERCIAL'],
+    'cotacoes-frete':['ADMIN','DIRETOR','GESTOR','COMERCIAL'],
+    'cotacoes-frete-logistica':['ADMIN','LOGISTICA'],
     simulador:['ADMIN','DIRETOR','GESTOR','COMERCIAL','FINANCEIRO'],
     fichas:['ADMIN','COMERCIAL','PCP','PRODUCAO'],
     pcp:['ADMIN','PCP'],
