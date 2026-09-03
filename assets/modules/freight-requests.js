@@ -178,7 +178,10 @@
 
   function popupFor(r,kind){
     const key='fr-popup-'+kind+'-'+r.id+'-'+r.status;
-    if(sessionStorage.getItem(key)==='1')return;
+    if(sessionStorage.getItem(key)==='1'){
+      if(kind==='commercial'&&!r.commercialViewedAt)void acknowledgeCommercialPopup(r,key);
+      return;
+    }
     sessionStorage.setItem(key,'1');
     const route=kind==='logistics'?'cotacoes-frete-logistica':'cotacoes-frete';
     const title=kind==='logistics'?'Nova cotação solicitada':'Cotação de frete respondida';
