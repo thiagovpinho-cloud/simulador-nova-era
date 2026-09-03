@@ -72,6 +72,9 @@ assert.match(freight,/Cotações recebidas/);
 assert.match(freight,/Devolver ao Comercial/);
 assert.match(freight,/Histórico de comportamento de frete/);
 assert.match(freight,/popupFor/);
+assert.match(freight,/async function acknowledgeCommercialPopup\(r,key\)/);
+assert.match(freight,/if\(kind==='commercial'\)void acknowledgeCommercialPopup\(r,key\)/);
+assert.match(freight,/COTACAO_FRETE_COMERCIAL.*viewed:\{at:Date\.now\(\),by:user\(\)\}/s);
 assert.match(freight,/FocadoFreightRequests/);
 assert.match(freight,/bindMoneyFields/);
 assert.match(freight,/toLocaleString\('pt-BR',\{style:'currency',currency:'BRL'\}\)/);
@@ -92,7 +95,7 @@ assert.match(shell,/notifyFreight/);
 assert.match(shell,/FocadoNavigate/);
 assert.match(shell,/freightRequests/);
 
-assert.match(index,/module-loader\.js\?v=20260902-(?:freight-center|draft-ux|freight-money|ops-ux|ops-data)-v1|20260902-simulator-(?:architecture-v2|hotfix-v3)/);
+assert.match(index,/module-loader\.js\?v=20260902-(?:freight-center|draft-ux|freight-money|ops-ux|ops-data|freight-popup-history)-v1|20260902-simulator-(?:architecture-v2|hotfix-v3)/);
 assert.match(index,/auth-client\.js\?v=20260902-freight-center-v1/);
 assert.match(index,/app-shell\.js\?v=20260902-(?:freight-center|ops-ux|ops-data)-v1/);
 
