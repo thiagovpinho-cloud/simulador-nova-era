@@ -12,6 +12,24 @@
   const statusLabel=s=>({SOLICITADA:'Solicitada',EM_COTACAO:'Em cotação',RESPONDIDA:'Respondida'})[s]||s||'—';
   const canCommercial=()=>['COMERCIAL','ADMIN','DIRETOR','GESTOR'].includes(role());
   const canLogistics=()=>['LOGISTICA','ADMIN'].includes(role());
+  let requestDraft=null;
+  function storedDraft(){
+    if(requestDraft)return requestDraft;
+    try{requestDraft=JSON.parse(sessionStorage.getItem('focado-freight-draft')||'null')}catch(_){requestDraft=null}
+    return requestDraft;
+  }
+  function logisticsPreview(e){
+    if(!e||!Number(e.totalBoxes))return '';
+    const cubage=Number(e.volumeM3||0).toLocaleString('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3})+' m³';
+    const weight=Number(e.weightKg||0).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+' kg';
+    return '<div class="fr-logistics-box"><div class="fr-logistics-title"><span>FICHA LOGÍSTICA AUTOMÁTICA</span><b>Peso, cubagem e valor para cotação</b></div><div class="fr-logistics-grid">'+
+      '<div><span>Caixas</span><strong>'+Number(e.totalBoxes||0).toLocaleString('pt-BR')+'</strong></div>'+
+      '<div><span>Peso bruto</span><strong>'+weight+'</strong></div>'+
+      '<div><span>Cubagem</span><strong>'+cubage+'</strong></div>'+
+      '<div><span>Pallets est.</span><strong>'+Number(e.estimatedPallets||0).toLocaleString('pt-BR')+'</strong></div>'+
+      '<div><span>Mercadoria / NF est.</span><strong>'+money(e.merchandiseValue||0)+'</strong></div>'+
+      '</div>'+((e.missing?.length||e.volumeMissing?.length)?'<p class="fr-logistics-alert">Há item(ns) sem ficha logística completa. A Logística deve validar a cubagem antes de fechar a cotação.</p>':'')+'</div>';
+  }
 
   function ensureOverlay(){
     let el=$('#frOverlay');
@@ -38,6 +56,14 @@
       '</div></div>';
     $('#frNew')?.addEventListener('click',openRequestModal);
     el.querySelectorAll('[data-fr-open]').forEach(b=>b.onclick=()=>openDetail(b.dataset.frOpen,logistics));
+    if(!logistics&&storedDraft()){
+      try{
+        if(sessionStorage.getItem('focado-freight-draft-autostart')==='1'){
+          sessionStorage.removeItem('focado-freight-draft-autostart');
+          setTimeout(openRequestModal,0);
+        }
+      }catch(_){}
+    }
   }
 
   function bestQuote(r){return (r.quotes||[]).slice().sort((a,b)=>Number(a.value||0)-Number(b.value||0))[0]}
@@ -47,16 +73,20 @@
   }
 
   function openRequestModal(){
-    const el=modal('<div class="fr-modal-head"><div><span class="fr-eyebrow">NOVA DEMANDA</span><h2>Solicitar cotação de frete</h2><p>Esta mensagem será enviada formalmente para a Logística.</p></div><button class="fr-close" id="frClose">×</button></div>'+
+    const draft=storedDraft()||{};
+    const destination=draft.destination||'';
+    const origin=draft.origin||'';
+    const el=modal('<div class="fr-modal-head"><div><span class="fr-eyebrow">NOVA DEMANDA</span><h2>Solicitar cotação de frete</h2><p>'+(draft.source?'Carga preparada automaticamente a partir de '+esc(draft.source)+'.':'Esta mensagem será enviada formalmente para a Logística.')+'</p></div><button class="fr-close" id="frClose">×</button></div>'+
+      logisticsPreview(draft.logisticsEstimate)+
       '<div class="fr-form">'+
-      '<label><span>Cliente / referência <em>opcional</em></span><input id="frClient" placeholder="Cliente, oportunidade ou referência"></label>'+
-      '<label><span>Nº de referência <em>opcional</em></span><input id="frReference" placeholder="Pedido, orçamento, proposta..."></label>'+
-      '<label><span>Origem *</span><input id="frOrigin" placeholder="Cidade/UF ou endereço de coleta"></label>'+
-      '<label><span>Destino *</span><input id="frDestination" placeholder="Cidade/UF ou endereço de entrega"></label>'+
-      '<label><span>Carga / produto</span><input id="frCargo" placeholder="Descrição da carga"></label>'+
-      '<label><span>Quantidade / volume</span><input id="frQuantity" placeholder="Ex.: 120 caixas, 2 pallets"></label>'+
-      '<label><span>Data desejada</span><input id="frDate" type="date"></label>'+
-      '<label class="wide"><span>Mensagem para a Logística</span><textarea id="frNotes" placeholder="Urgência, restrições, veículo, janela de entrega..."></textarea></label>'+
+      '<label><span>Cliente / referência <em>opcional</em></span><input id="frClient" value="'+esc(draft.client||'')+'" placeholder="Cliente, oportunidade ou referência"></label>'+
+      '<label><span>Nº de referência <em>opcional</em></span><input id="frReference" value="'+esc(draft.reference||draft.sourceOrderNumber||'')+'" placeholder="Pedido, orçamento, proposta..."></label>'+
+      '<label><span>Origem *</span><input id="frOrigin" value="'+esc(origin)+'" placeholder="Cidade/UF ou endereço de coleta"></label>'+
+      '<label><span>Destino *</span><input id="frDestination" value="'+esc(destination)+'" placeholder="Cidade/UF ou endereço de entrega"></label>'+
+      '<label><span>Carga / produto</span><input id="frCargo" value="'+esc(draft.cargo||'')+'" placeholder="Descrição da carga"></label>'+
+      '<label><span>Quantidade / volume</span><input id="frQuantity" value="'+esc(draft.quantity||'')+'" placeholder="Ex.: 120 caixas, 2 pallets"></label>'+
+      '<label><span>Data desejada</span><input id="frDate" type="date" value="'+esc(draft.requestedDate||'')+'"></label>'+
+      '<label class="wide"><span>Mensagem para a Logística</span><textarea id="frNotes" placeholder="Urgência, restrições, veículo, janela de entrega...">'+esc(draft.notes||'')+'</textarea></label>'+
       '</div><div class="fr-modal-actions"><button class="fr-btn secondary" id="frCancel">Cancelar</button><button class="fr-btn primary" id="frSend">Enviar para Logística</button></div>');
     el.querySelector('#frClose').onclick=closeModal;el.querySelector('#frCancel').onclick=closeModal;
     el.querySelector('#frSend').onclick=sendRequest;
@@ -72,10 +102,16 @@
         id:'frq_'+at+'_'+Math.random().toString(36).slice(2,6),requestedAt:at,requestedBy:user(),
         client:$('#frClient').value.trim(),reference:$('#frReference').value.trim(),
         origin,destination,cargo:$('#frCargo').value.trim(),quantity:$('#frQuantity').value.trim(),
-        requestedDate:$('#frDate').value,notes:$('#frNotes').value.trim()
+        requestedDate:$('#frDate').value,notes:$('#frNotes').value.trim(),
+        source:String(storedDraft()?.source||''),brand:String(storedDraft()?.brand||''),
+        sourceOrderId:String(storedDraft()?.sourceOrderId||''),sourceOrderNumber:String(storedDraft()?.sourceOrderNumber||''),
+        items:Array.isArray(storedDraft()?.items)?storedDraft().items:[],
+        logisticsEstimate:storedDraft()?.logisticsEstimate||null
       }});
       if(!result?.ok)throw new Error(result?.error||'Falha ao registrar');
       if(result.payload)window.FocadoDataStore.writeLocal(result.payload);
+      try{sessionStorage.removeItem('focado-freight-draft');sessionStorage.removeItem('focado-freight-draft-autostart')}catch(_){}
+      requestDraft=null;
       closeModal();render('commercial');
       alert('Solicitação enviada formalmente para a Logística.');
     }catch(err){alert('Não foi possível enviar a cotação. '+String(err.message||''))}
@@ -99,7 +135,7 @@
   }
 
   function requestSummary(r){
-    return '<div class="fr-summary"><div><span>Cliente / referência</span><b>'+esc(r.client||r.reference||'—')+'</b></div><div><span>Carga</span><b>'+esc(r.cargo||'—')+'</b></div><div><span>Quantidade</span><b>'+esc(r.quantity||'—')+'</b></div><div><span>Data desejada</span><b>'+esc(r.requestedDate||'—')+'</b></div><div class="wide"><span>Mensagem</span><b>'+esc(r.notes||'Sem observação')+'</b></div></div>';
+    return '<div class="fr-summary"><div><span>Cliente / referência</span><b>'+esc(r.client||r.reference||'—')+'</b></div><div><span>Carga</span><b>'+esc(r.cargo||'—')+'</b></div><div><span>Quantidade</span><b>'+esc(r.quantity||'—')+'</b></div><div><span>Data desejada</span><b>'+esc(r.requestedDate||'—')+'</b></div><div class="wide"><span>Mensagem</span><b>'+esc(r.notes||'Sem observação')+'</b></div></div>'+logisticsPreview(r.logisticsEstimate);
   }
 
   function quoteRow(i){
