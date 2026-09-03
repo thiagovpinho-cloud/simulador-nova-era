@@ -4,9 +4,10 @@
   const loaded=new Map();
   const defs={
     'simulator-master-data':{js:'simulator-master-data.js'},
+    'logistics-engine':{js:'logistics-engine.js'},
     simulador:{css:'simulator.css',js:'simulator.js',deps:['simulator-master-data']},
     'regras-margem':{css:'margin-rules.css',js:'margin-rules.js'},
-    produtos:{css:'products.css',js:'products.js'},
+    produtos:{css:'products.css',js:'products.js',deps:['logistics-engine']},
     fichas:{css:'technical-sheets.css',js:'technical-sheets.js'},
     bases:{css:'bases.css',js:'bases.js'},
     representantes:{css:'representatives.css',js:'representatives.js'},
@@ -40,6 +41,7 @@
   };
   const contracts={
     'simulator-master-data':()=>Array.isArray(window.FocadoSimulatorMasterData?.inputs),
+    'logistics-engine':()=>typeof window.FocadoLogisticsEngine?.calculateLoad==='function',
     simulador:()=>typeof window.FocadoSimulator?.render==='function',
     'regras-margem':()=>typeof window.FocadoMarginRules?.render==='function',
     produtos:()=>typeof window.FocadoProducts?.render==='function',
