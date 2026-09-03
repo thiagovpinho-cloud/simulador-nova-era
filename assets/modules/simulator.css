@@ -63,3 +63,20 @@
 .fsim-brand-buttons{display:flex;gap:7px}.fsim-brand-buttons button{border:1px solid #cfdcd6;background:#f7faf8;color:#38574d;border-radius:10px;padding:9px 15px;font-weight:800;cursor:pointer}.fsim-brand-buttons button.active{background:#08785b;color:#fff;border-color:#08785b}
 .fsim-official-note{margin:-4px 0 14px;padding:11px 13px;border:1px solid #b9d7c9;border-radius:12px;background:#f0f8f4;color:#456158;font-size:11px}.fsim-official-note b,.fsim-official-note strong{color:#08785b}
 @media(max-width:700px){.fsim-brand-switch{align-items:stretch;flex-direction:column}.fsim-brand-buttons{display:grid;grid-template-columns:1fr 1fr}.fsim-brand-buttons button{min-height:44px}}
+
+/* Ficha logística automática v1 */
+.fsim-logistics{margin:16px 0;border:1px solid #cfe1d8;background:linear-gradient(180deg,#f7fbf9 0%,#fff 100%);border-radius:16px;padding:15px}
+.fsim-logistics.empty{display:flex;align-items:center;min-height:82px;background:#fafcfb}
+.fsim-logistics.empty span,.fsim-logistics-head span{display:block;font-size:9px;font-weight:900;letter-spacing:.08em;color:#08785b;margin-bottom:4px}
+.fsim-logistics h3{margin:0;color:#173b30;font-size:15px}.fsim-logistics p{margin:5px 0 0;color:#728079;font-size:10px}
+.fsim-logistics-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.fsim-logistics-head button{border:0;border-radius:11px;background:#08785b;color:#fff;min-height:42px;padding:0 15px;font-size:10px;font-weight:850;cursor:pointer;white-space:nowrap}
+.fsim-logistics-head button:hover{background:#076d52}
+.fsim-logistics-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:13px}
+.fsim-logistics-kpis>div{border:1px solid #dfe9e4;background:#fff;border-radius:12px;padding:10px;min-width:0}
+.fsim-logistics-kpis span{display:block;font-size:8.5px;color:#6f7e77;margin-bottom:4px}
+.fsim-logistics-kpis b{display:block;font-size:14px;color:#173b30;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fsim-logistics-kpis small{display:block;margin-top:3px;font-size:7.8px;color:#8a9690;line-height:1.25}
+.fsim-logistics-warning{margin-top:10px;padding:9px 10px;border-radius:10px;background:#fff7e8;color:#8a5a12;font-size:9px;border:1px solid #f2dfb7}
+@media(max-width:980px){.fsim-logistics-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.fsim-logistics-head{flex-direction:column}.fsim-logistics-head button{width:100%}.fsim-logistics-kpis{grid-template-columns:1fr 1fr}.fsim-logistics-kpis>div:last-child{grid-column:1/-1}}
