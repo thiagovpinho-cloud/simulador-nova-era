@@ -19,7 +19,7 @@ assert.equal(b.palletWeightKg,1045.3);
 
 const derived=e.derive({unitsPerBox:12,grossUnitKg:1.037,boxHeightMm:258,boxWidthMm:258,boxLengthMm:343,layerBoxes:14,layers:6});
 assert.ok(Math.abs(derived.grossBoxKg-12.444)<1e-12);
-assert.ok(Math.abs(derived.boxVolumeM3-0.022834662)<1e-12);
+assert.ok(Math.abs(derived.boxVolumeM3-0.022831452)<1e-12);
 assert.equal(derived.boxesPerPallet,84);
 assert.ok(Math.abs(derived.palletWeightKg-1045.296)<1e-12);
 
