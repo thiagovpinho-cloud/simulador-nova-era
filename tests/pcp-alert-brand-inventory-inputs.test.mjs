@@ -83,7 +83,7 @@ assert.match(shell,/notifyPCPDelay/);
 assert.match(shell,/id="fxRefresh"/);
 assert.match(shell,/setInterval\(\(\)=>syncSilent\(false\),60000\)/);
 
-assert.match(inputs,/Base de Insumos oficial carregada/);
+assert.match(inputs,/Mesma base das planilhas oficiais/);
 assert.match(inputs,/FocadoLegacySimulator/);
 assert.match(inputs,/inputCatalog/);
 assert.match(inputs,/inputInventory/);
