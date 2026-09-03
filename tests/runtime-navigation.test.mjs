@@ -97,7 +97,7 @@ assert.ok(loader.includes("if(existing&&existing()){\n        if(def.css)await c
 assert.ok(loader.includes("indicadores:{css:'indicators.css',js:'indicators.js'}"),'Indicadores devem ser carregados sob demanda');
 assert.ok(!index.includes('assets/modules/indicators.js?v='),'Indicadores não devem bloquear boot');
 
-assert.ok(loader.includes("simulador:{css:'simulator.css',js:'simulator.js',deps:['simulator-master-data']}"),'Simulador deve estar registrado no loader com a base oficial');
+assert.ok(loader.includes("simulador:{css:'simulator.css',js:'simulator.js',deps:['simulator-master-data','logistics-reference']}"),'Simulador deve estar registrado no loader com a base oficial e referência logística');
 assert.ok(loader.includes("simulador:()=>typeof window.FocadoSimulator?.render==='function'"),'Simulador moderno deve ter contrato');
 assert.ok(shell.includes("['simulador','∑','Simulador']"),'Simulador deve aparecer na barra lateral');
 
