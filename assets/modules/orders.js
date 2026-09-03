@@ -342,7 +342,7 @@
   function addItemRow(ops){
     const tbody=document.querySelector('#foItems tbody');tbody.insertAdjacentHTML('beforeend',itemRow({},tbody.children.length,true));bindItemEvents(ops);
   }
-  let profitabilityTimer=0,lastLogisticsDraft=null;
+  let profitabilityTimer=0;
   function brandIdFromLabel(label,snap){
     return snap?.brands?.find(b=>String(b.label||'').toLowerCase()===String(label||'').toLowerCase())?.id||'';
   }
@@ -382,44 +382,12 @@
     }
   }
   function renderOrderLogistics(items,quote){
-    const engine=window.FocadoLogisticsReference;
-    const box=document.getElementById('foLogisticsSummary');
-    if(!engine?.estimate||!box)return;
-    const quoteRows=new Map((quote?.rows||[]).map(x=>[String(x.productId),x]));
-    const payload=(items||[]).filter(x=>Number(x.qty)>0).map(x=>({
-      productId:x.productId,name:x.name,qtyBoxes:Number(x.qty)||0,
-      unitValue:Number(quoteRows.get(String(x.productId))?.finalPrice||0)
-    }));
-    const e=engine.estimate(payload);
-    const form=document.getElementById('foOrderForm'),fd=form?new FormData(form):null;
-    lastLogisticsDraft={
-      source:'PEDIDO',sourceOrderId:editingId||'',sourceOrderNumber:String(document.querySelector('[name="number"]')?.value||''),
-      client:String(fd?.get('client')||''),brand:String(fd?.get('brand')||''),
-      destination:String(fd?.get('deliveryAddress')||[fd?.get('city'),fd?.get('uf')].filter(Boolean).join('/')||''),
-      requestedDate:String(fd?.get('requestedDeliveryDate')||''),
-      cargo:payload.map(x=>x.name+' x '+x.qtyBoxes+' cx').join(' | '),quantity:e.totalBoxes+' caixas',
-      items:payload,logisticsEstimate:e
-    };
-    if(!e.totalBoxes){
-      box.className='fo-logistics-summary';
-      box.innerHTML='<span>FICHA LOGÍSTICA</span><b>Informe os produtos e quantidades para calcular peso e cubagem.</b>';
-      return;
-    }
-    const alerts=[];
-    if(e.missing?.length)alerts.push(e.missing.length+' item(ns) sem ficha logística');
-    if(e.volumeMissing?.length)alerts.push('cubagem incompleta');
-    box.className='fo-logistics-summary ready';
-    box.innerHTML='<div class="fo-logistics-title"><span>FICHA LOGÍSTICA AUTOMÁTICA</span><b>'+e.totalBoxes+' cx · '+Number(e.weightKg).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+' kg · '+Number(e.volumeM3).toLocaleString('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3})+' m³</b><small>'+e.estimatedPallets+' pallet(s) estimado(s) · Mercadoria/NF est. '+money(e.merchandiseValue)+(alerts.length?' · '+esc(alerts.join(' / ')):'')+'</small></div><button type="button" id="foPrepareFreight">Preparar cotação de frete →</button>';
-    const btn=document.getElementById('foPrepareFreight');
-    if(btn)btn.onclick=prepareOrderFreightQuote;
-  }
-  function prepareOrderFreightQuote(){
-    if(!lastLogisticsDraft?.logisticsEstimate?.totalBoxes)return;
-    try{
-      sessionStorage.setItem('focado-freight-draft',JSON.stringify(lastLogisticsDraft));
-      sessionStorage.setItem('focado-freight-draft-autostart','1');
-    }catch(_){}
-    window.FocadoNavigate?.('cotacoes-frete');
+    const val=name=>document.querySelector('[name="'+name+'"]')?.value||'';
+    return window.FocadoOrderLogistics?.render?.({
+      items,quote,orderId:editingId||'',orderNumber:val('number'),client:val('client'),brand:val('brand'),
+      destination:val('deliveryAddress')||[val('city'),val('uf')].filter(Boolean).join('/'),
+      requestedDate:val('requestedDeliveryDate')
+    });
   }
 
   function setMarginCell(row,value,detail){
@@ -549,7 +517,7 @@
       requestedDeliveryDate:fd.get('requestedDeliveryDate')||'',freightType:fd.get('freightType')||'CIF',paymentTerms:fd.get('paymentTerms')||'',
       logisticsBudget:parseMoneyInput(fd.get('logisticsBudget')),
       deliveryAddress:fd.get('deliveryAddress')||'',notes:fd.get('notes')||'',
-      logisticsEstimate:lastLogisticsDraft?.logisticsEstimate||null,
+      logisticsEstimate:window.FocadoOrderLogistics?.lastEstimate?.()||null,
       items:[...document.querySelectorAll('[data-item-row]')].map(r=>{
         const code=r.querySelector('[data-k="code"]').value,name=r.querySelector('[data-k="name"]').value,p=findProduct(code||name,brand,ops);
         return {productId:p?.simulatorId||r.dataset.productId||'',code:p?.code||code,name:p?.name||name,qty:r.querySelector('[data-k="qty"]').value,price:parseMoneyInput(r.querySelector('[data-k="price"]').value)};
