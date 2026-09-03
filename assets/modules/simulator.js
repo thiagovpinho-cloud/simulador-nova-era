@@ -71,7 +71,7 @@
     const rows=[['painel','Painel']];
     if(canRecipes())rows.push(['receitas','Receitas']);
     return '<div class="fsim-tabs">'+rows.map(([id,label])=>'<button data-fsim-tab="'+id+'" class="'+(tab===id?'active':'')+'">'+label+'</button>').join('')+
-      '<button type="button" id="fsimGoInputs">Base de Insumos — '+esc(brandLabel())+' →</button></div>';
+      '<button type="button" id="fsimGoInputs">Base de Insumos → <small>'+esc(brandLabel())+'</small></button></div>';
   }
 
   function summary(){
@@ -113,7 +113,7 @@
     if(!canRecipes())return '<div class="fsim-error"><b>Acesso restrito.</b><span>Receitas são visíveis somente para Administradores e Diretores.</span></div>';
     const p=snap.products.find(x=>x.id===selectedProduct)||snap.products[0];
     if(!p)return '<div class="fsim-empty">Nenhum produto disponível.</div>';
-    return '<div class="fsim-card"><div class="fsim-card-head split"><div><h2>Receitas — '+esc(brandLabel())+'</h2><p>Quantidades e perdas desta receita alimentam a necessidade real de insumos da Produção. Esta receita pertence somente à marca selecionada.</p></div><select id="fsimProductSel">'+
+    return '<div class="fsim-card"><div class="fsim-card-head split"><div><h2>Receitas de Produção — '+esc(brandLabel())+'</h2><p>Quantidades e perdas desta receita alimentam a necessidade real de insumos da Produção. Esta receita pertence somente à marca selecionada.</p></div><select id="fsimProductSel">'+
       snap.products.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===p.id?'selected':'')+'>'+esc(x.name)+'</option>').join('')+'</select></div>'+
       '<div class="fsim-composition-summary"><div><span>Custo por caixa</span><b>'+money(p.metrics.custoCaixa)+'</b></div><div><span>Unidades por caixa</span><b>'+num(p.unitsPerCaixa)+'</b></div><div><span>Preço base</span><b>'+money(p.metrics.precoBaseCaixa)+'</b></div><div><span>Margem base</span><b>'+pct(p.metrics.margemSem)+'</b></div></div>'+
       '<div class="fsim-table-wrap"><table class="fsim-table"><thead><tr><th>Código</th><th>Componente</th><th>Unid.</th><th>Qtd por unidade</th><th>Perda</th><th>Preço vigente</th><th>Custo incorporado</th></tr></thead><tbody>'+
