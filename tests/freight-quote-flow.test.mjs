@@ -96,7 +96,7 @@ assert.match(shell,/notifyFreight/);
 assert.match(shell,/FocadoNavigate/);
 assert.match(shell,/freightRequests/);
 
-assert.match(index,/module-loader\.js\?v=(?:20260903-freight-cta-v1|20260902-(?:freight-center|draft-ux|freight-money|ops-ux|ops-data|freight-popup-history|simulator-parity)-v[12]|20260902-simulator-(?:architecture-v2|hotfix-v3))/);
+assert.match(index,/module-loader\.js\?v=(?:20260903-(?:freight-cta|logistics-cubage)-v1|20260902-(?:freight-center|draft-ux|freight-money|ops-ux|ops-data|freight-popup-history|simulator-parity)-v[12]|20260902-simulator-(?:architecture-v2|hotfix-v3))/);
 assert.match(index,/auth-client\.js\?v=20260902-freight-center-v1/);
 assert.match(index,/app-shell\.js\?v=20260902-(?:freight-center|ops-ux|ops-data)-v1/);
 
@@ -105,3 +105,7 @@ console.log('freight-quote-flow: ok');
 assert.match(freight,/Responder cotação/);
 assert.match(freight,/fr-respond-cta/);
 assert.ok(!freight.includes('Responder →'),'CTA antigo não deve reaparecer');
+
+assert.match(freight,/FICHA LOGÍSTICA AUTOMÁTICA/);
+assert.match(freight,/logisticsEstimate/);
+assert.match(freight,/focado-freight-draft-autostart/);
