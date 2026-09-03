@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260903-product-logistics-v1';
+  const VERSION='20260903-freight-cta-v1';
   const loaded=new Map();
   const defs={
     'simulator-master-data':{js:'simulator-master-data.js'},
@@ -74,15 +74,8 @@
     financeiro:()=>typeof window.FocadoFinance?.render==='function'
   };
   function verify(name){const key=defs[name]?.alias||name;const fn=contracts[name]||contracts[key];if(fn&&!fn())throw new Error('MODULE_CONTRACT_FAILED:'+name);return true}
-  function css(href){
-    const selector='link[data-focado-module="'+href+'"]',preloaded=document.querySelector('link[href*="assets/modules/'+href+'"]');if(preloaded&&preloaded.sheet)return Promise.resolve();
-    const existing=document.querySelector(selector);if(existing){if(existing.dataset.loaded==='1'||existing.sheet)return Promise.resolve();existing.remove()}
-    return new Promise((resolve,reject)=>{const el=document.createElement('link');el.rel='stylesheet';el.href='assets/modules/'+href+'?v='+VERSION;el.dataset.focadoModule=href;el.onload=()=>{el.dataset.loaded='1';resolve()};el.onerror=err=>{el.remove();reject(err||new Error('MODULE_CSS_LOAD_FAILED:'+href))};const ds=document.querySelector('link[href*="assets/design-system.css"]');if(ds)document.head.insertBefore(el,ds);else document.head.appendChild(el)})
-  }
+  function css(href){const selector='link[data-focado-module="'+href+'"]',preloaded=document.querySelector('link[href*="assets/modules/'+href+'"]');if(preloaded&&preloaded.sheet)return Promise.resolve();const existing=document.querySelector(selector);if(existing){if(existing.dataset.loaded==='1'||existing.sheet)return Promise.resolve();existing.remove()}return new Promise((resolve,reject)=>{const el=document.createElement('link');el.rel='stylesheet';el.href='assets/modules/'+href+'?v='+VERSION;el.dataset.focadoModule=href;el.onload=()=>{el.dataset.loaded='1';resolve()};el.onerror=err=>{el.remove();reject(err||new Error('MODULE_CSS_LOAD_FAILED:'+href))};const ds=document.querySelector('link[href*="assets/design-system.css"]');if(ds)document.head.insertBefore(el,ds);else document.head.appendChild(el)})}
   function js(src){if(document.querySelector('script[data-focado-module="'+src+'"]'))return Promise.resolve();return new Promise((resolve,reject)=>{const el=document.createElement('script');el.src='assets/modules/'+src+'?v='+VERSION;el.defer=true;el.dataset.focadoModule=src;el.onload=resolve;el.onerror=reject;document.body.appendChild(el)})}
-  async function ensure(name){
-    let def=defs[name];if(!def)return true;if(def.alias){await ensure(def.alias);verify(name);return true}if(loaded.has(name))return loaded.get(name);
-    const p=(async()=>{for(const dep of def.deps||[])await ensure(dep);const existing=contracts[name];if(existing&&existing()){if(def.css)await css(def.css);verify(name);return true}await Promise.all([def.css?css(def.css):null,def.js?js(def.js):null].filter(Boolean));verify(name);return true})();loaded.set(name,p);try{return await p}catch(err){loaded.delete(name);throw err}
-  }
+  async function ensure(name){let def=defs[name];if(!def)return true;if(def.alias){await ensure(def.alias);verify(name);return true}if(loaded.has(name))return loaded.get(name);const p=(async()=>{for(const dep of def.deps||[])await ensure(dep);const existing=contracts[name];if(existing&&existing()){if(def.css)await css(def.css);verify(name);return true}await Promise.all([def.css?css(def.css):null,def.js?js(def.js):null].filter(Boolean));verify(name);return true})();loaded.set(name,p);try{return await p}catch(err){loaded.delete(name);throw err}}
   window.FocadoModules=Object.freeze({ensure,version:VERSION,definitions:defs});
 })();
