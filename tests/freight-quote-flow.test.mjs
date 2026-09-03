@@ -67,7 +67,7 @@ assert.ok(!orders.includes('FocadoFreightQuotes'),'Cotação não pode permanece
 assert.ok(!logistics.includes('FocadoFreightQuotes'),'Cotação não pode permanecer embutida na Logística operacional');
 
 assert.match(freight,/Solicitar cotação de frete/);
-assert.match(freight,/Esta mensagem será enviada formalmente para a Logística/);
+assert.match(freight,/Monte a carga abaixo e o Focado calcula peso, cubagem, pallets e valor estimado para seguro/);
 assert.match(freight,/Cotações recebidas/);
 assert.match(freight,/Devolver ao Comercial/);
 assert.match(freight,/Histórico de comportamento de frete/);
