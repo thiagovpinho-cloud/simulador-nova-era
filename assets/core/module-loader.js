@@ -28,7 +28,7 @@
     'pcp-commercial-alerts':{css:'pcp-commercial-alerts.css',js:'pcp-commercial-alerts.js'},
     purchases:{css:'purchases.css',js:'purchases.js',deps:['cockpit']},
     expedicao:{css:'expedition.css',js:'expedition.js'},
-    logistica:{css:'logistics.css',js:'logistics.js',deps:['cockpit']},
+    logistica:{css:'logistics.css',js:'logistics.js',deps:['cockpit','logistics-reference']},
     entregas:{alias:'logistica'},
     transportadoras:{alias:'logistica'},
     kanban:{css:'kanban.css',js:'kanban.js',deps:['pedidos']},
