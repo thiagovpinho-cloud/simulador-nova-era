@@ -14,6 +14,26 @@
   };
   const moneyInput=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   const value=o=>(o.items||[]).reduce((s,i)=>s+(Number(i.qty)||0)*(Number(i.price)||0),0);
+  function logisticsEstimate(o){
+    if(o?.logisticsEstimate&&Number(o.logisticsEstimate.totalBoxes)>0)return o.logisticsEstimate;
+    const engine=window.FocadoLogisticsReference;
+    if(!engine?.estimate)return null;
+    return engine.estimate((o?.items||[]).map(i=>({productId:i.productId,name:i.name,qtyBoxes:Number(i.qty||0),unitValue:Number(i.finalPrice||0)})));
+  }
+  function logisticsCard(o){
+    const e=logisticsEstimate(o);
+    if(!e||!Number(e.totalBoxes))return '';
+    const alerts=[];
+    if(e.missing?.length)alerts.push(e.missing.length+' item(ns) sem ficha logística');
+    if(e.volumeMissing?.length)alerts.push('cubagem incompleta');
+    return '<div class="fl-cargo-card"><div class="fl-panel-title"><div><span class="fl-eyebrow">CARGA</span><h2>Ficha logística automática</h2></div><small>Fonte: tabela de referência de 03/09/2026</small></div><div class="fl-cargo-kpis">'+
+      '<div><span>Caixas</span><b>'+Number(e.totalBoxes||0).toLocaleString('pt-BR')+'</b></div>'+
+      '<div><span>Peso bruto</span><b>'+Number(e.weightKg||0).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+' kg</b></div>'+
+      '<div><span>Cubagem</span><b>'+Number(e.volumeM3||0).toLocaleString('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3})+' m³</b></div>'+
+      '<div><span>Pallets estimados</span><b>'+Number(e.estimatedPallets||0).toLocaleString('pt-BR')+'</b></div>'+
+      '<div><span>Mercadoria / NF est.</span><b>'+money(e.merchandiseValue||0)+'</b></div>'+
+      '</div>'+(alerts.length?'<div class="fl-callout warn"><b>Validar antes da contratação</b><span>'+esc(alerts.join(' · '))+'</span></div>':'')+'</div>';
+  }
   const days=(a,b)=>{if(!a||!b)return null;const x=new Date(a+'T12:00:00'),y=new Date(b+'T12:00:00');if(isNaN(x)||isNaN(y))return null;return Math.round((y-x)/86400000)};
   let listState={q:'',status:'TODOS'};
 
@@ -108,6 +128,7 @@
       '<div class="fl-head"><div><button class="fl-btn primary" id="flBack">← Logística</button><h1>Logística · '+esc(o.number)+'</h1><p>'+esc(o.client||'')+'</p></div><span class="fl-chip '+(pre||o.status==='COMERCIAL'?'warn':'ready')+'">'+macroLabel+'</span></div>'+
 
       (pre?'<div class="fl-callout warn"><b>Visível para planejamento antecipado · ainda no PCP</b><span>Este pedido NÃO foi liberado pelo PCP. A Logística pode apenas adiantar a contratação do frete; a coleta continua bloqueada até a liberação operacional.</span></div>':'')+
+      logisticsCard(o)+
       '<div class="fl-budget-row"><div><span>Orçamento previsto pelo Comercial</span><strong>'+money(budget)+'</strong></div><div><span>Frete planejado</span><strong id="flFreightSummary">'+money(freight)+'</strong></div><div id="flBudgetStatus" class="fl-budget-status"></div></div>'+
       '<div class="fl-detail-grid"><div class="fl-panel"><div class="fl-panel-title"><div><span class="fl-eyebrow">RETIRADA</span><h2>Itens e bases</h2></div></div><div class="fl-pickup-list">'+pickups+'</div>'+(availableDate?'<div class="fl-callout info"><b>Disponibilidade mínima para coleta</b><span>'+dbr(availableDate)+'</span></div>':'')+'</div>'+
       '<div class="fl-panel"><div class="fl-panel-title"><div><span class="fl-eyebrow">PLANEJAMENTO</span><h2>Frete e entrega prevista</h2></div></div><div class="fl-form-grid">'+
