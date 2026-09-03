@@ -62,9 +62,9 @@ assert.match(flow,/CARGA GRAVADA NA SOLICITAÇÃO/);
 const freight=1000,boxes=100,kg=1244.4,m3=2.2835,pallets=2,merch=5810.70;
 assert.equal(freight/boxes,10);
 assert.ok(Math.abs(freight/kg-0.8036001285760206)<1e-12);
-assert.ok(Math.abs(freight/m3-437.9231432012262)<1e-10);
+assert.ok(Math.abs(freight/m3-437.92423910663456)<1e-10);
 assert.equal(freight/pallets,500);
-assert.ok(Math.abs(freight/merch-0.17209631162855887)<1e-12);
+assert.ok(Math.abs(freight/merch-0.17209630509232968)<1e-12);
 
 assert.match(css,/\.flog-kpis/);
 assert.match(css,/\.flog-freight-preview/);
