@@ -4,3 +4,13 @@
   border-radius:10px;background:#08785b;color:#fff;font-size:10px;font-weight:800;white-space:nowrap
 }
 .fr-card:hover .fr-card-action{background:#066b51}
+
+/* Cotação recebida — CTA compacto e hierarquia visual */
+.fr-card-value{display:flex;flex-direction:column;align-items:flex-end;justify-content:center}
+.fr-respond-cta{display:inline-flex!important;align-items:center;justify-content:center;gap:7px;width:auto!important;min-width:0!important;min-height:38px!important;padding:0 14px!important;border:1px solid #08785b!important;border-radius:10px!important;background:#08785b!important;color:#fff!important;box-shadow:0 3px 10px rgba(8,120,91,.14)!important;font-size:10.5px!important;font-weight:850!important;line-height:1!important;white-space:nowrap!important;transition:background .16s ease,border-color .16s ease,transform .16s ease,box-shadow .16s ease}
+.fr-respond-cta span{display:inline!important;color:inherit!important;font-size:inherit!important;font-weight:inherit!important}
+.fr-respond-cta i{font-style:normal;font-size:14px;line-height:1;opacity:.9;transition:transform .16s ease}
+.fr-card:hover .fr-respond-cta{background:#076d52!important;border-color:#076d52!important;box-shadow:0 5px 14px rgba(8,120,91,.18)!important}
+.fr-card:hover .fr-respond-cta i{transform:translateX(2px)}
+.fr-card:focus-visible{outline:3px solid rgba(8,120,91,.18);outline-offset:2px}
+@media(max-width:700px){.fr-card-value{align-items:flex-start}.fr-respond-cta{min-height:42px!important;padding:0 15px!important}}
