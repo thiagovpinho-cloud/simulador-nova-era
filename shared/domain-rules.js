@@ -199,6 +199,7 @@ function applyCommercial(state,body){
       requestedDeliveryDate:String(src.requestedDeliveryDate||''),suggestedPickup:String(src.suggestedPickup||src.suggestedPickupDate||''),
       freightType:String(src.freightType||'CIF'),paymentTerms:String(src.paymentTerms||''),
       logisticsBudget:Number(src.logisticsBudget||0),deliveryAddress:String(src.deliveryAddress||''),notes:String(src.notes||''),
+      logisticsEstimate:src.logisticsEstimate&&typeof src.logisticsEstimate==='object'?structuredClone(src.logisticsEstimate):null,
       commercial:{completedAt:null,completedBy:null},
       pcp:{deliveryBase:'',productionDate:'',availableDate:'',separated:false,scheduledQty:0,autoScheduled:false},
       logistics:{freightValue:'',pickupDate:'',deliveryDate:'',carrier:''},
@@ -232,6 +233,7 @@ function applyCommercial(state,body){
     'representativeId','representative','salesChannel','salesJustification','requestedDeliveryDate','paymentTerms',
     'logisticsBudget','deliveryAddress','email','phone','cep','bairro'
   ]));
+  if(changes.logisticsEstimate&&typeof changes.logisticsEstimate==='object')o.logisticsEstimate=structuredClone(changes.logisticsEstimate);
   if(Array.isArray(changes.items)){
     const previous=new Map((o.items||[]).map(i=>[String(i.id||i.code||i.productId||i.name),i]));
     o.items=changes.items.map((incoming,index)=>{
@@ -824,6 +826,10 @@ function applyFreightCommercial(state,body){
       client:String(src.client||'').trim(),reference:String(src.reference||'').trim(),
       origin:String(src.origin||'').trim(),destination:String(src.destination||'').trim(),
       cargo:String(src.cargo||'').trim(),quantity:String(src.quantity||'').trim(),
+      source:String(src.source||'').trim(),brand:String(src.brand||'').trim(),
+      sourceOrderId:String(src.sourceOrderId||'').trim(),sourceOrderNumber:String(src.sourceOrderNumber||'').trim(),
+      items:Array.isArray(src.items)?structuredClone(src.items).slice(0,100):[],
+      logisticsEstimate:src.logisticsEstimate&&typeof src.logisticsEstimate==='object'?structuredClone(src.logisticsEstimate):null,
       requestedDate:String(src.requestedDate||'').slice(0,10),notes:String(src.notes||'').trim(),
       logisticsViewedAt:null,respondedAt:null,respondedBy:'',commercialViewedAt:null,quotes:[],
       history:[{at,type:'SOLICITADA',by,notes:String(src.notes||'').trim()}]
