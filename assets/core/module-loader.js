@@ -1,10 +1,11 @@
 (function(){
   'use strict';
-  const VERSION='20260903-freight-cta-v1';
+  const VERSION='20260903-logistics-cubage-v1';
   const loaded=new Map();
   const defs={
     'simulator-master-data':{js:'simulator-master-data.js'},
-    simulador:{css:'simulator.css',js:'simulator.js',deps:['simulator-master-data']},
+    'logistics-reference':{js:'logistics-reference.js'},
+    simulador:{css:'simulator.css',js:'simulator.js',deps:['simulator-master-data','logistics-reference']},
     'regras-margem':{css:'margin-rules.css',js:'margin-rules.js'},
     produtos:{css:'products.css',js:'products.js'},
     fichas:{css:'technical-sheets.css',js:'technical-sheets.js'},
@@ -15,11 +16,11 @@
     cockpit:{css:'intelligence.css',js:'intelligence.js',deps:['intelligence-core']},
     pendencias:{css:'pendencias.css',js:'pendencias.js'},
     'corpo-auditor':{alias:'cockpit'},
-    'freight-requests':{css:'freight-requests.css',js:'freight-requests.js'},
+    'freight-requests':{css:'freight-requests.css',js:'freight-requests.js',deps:['logistics-reference']},
     'cotacoes-frete':{alias:'freight-requests'},
     'cotacoes-frete-logistica':{alias:'freight-requests'},
     'order-drafts':{js:'order-drafts.js'},
-    pedidos:{css:'orders.css',js:'orders.js',deps:['produtos','order-drafts']},
+    pedidos:{css:'orders.css',js:'orders.js',deps:['produtos','order-drafts','logistics-reference']},
     pcp:{css:'pcp.css',js:'pcp.js',deps:['produtos','production','cockpit']},
     production:{css:'production.css',js:'production.js',deps:['produtos']},
     inventory:{css:'inventory.css',js:'inventory.js'},
@@ -40,6 +41,7 @@
   };
   const contracts={
     'simulator-master-data':()=>Array.isArray(window.FocadoSimulatorMasterData?.inputs),
+    'logistics-reference':()=>typeof window.FocadoLogisticsReference?.estimate==='function',
     simulador:()=>typeof window.FocadoSimulator?.render==='function',
     'regras-margem':()=>typeof window.FocadoMarginRules?.render==='function',
     produtos:()=>typeof window.FocadoProducts?.render==='function',
