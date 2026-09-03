@@ -84,5 +84,12 @@ function prepare(){
   window.FocadoNavigate?.('cotacoes-frete');
 }
 function last(){return lastEstimate}
+function autoAttach(){
+  const run=()=>{const form=document.getElementById('foOrderForm');if(form&&form.dataset.logisticsBound!=='1')attach('')};
+  run();
+  const root=document.getElementById('fxContent')||document.body;
+  if(root&&typeof MutationObserver!=='undefined')new MutationObserver(run).observe(root,{childList:true,subtree:true});
+}
 window.FocadoOrderLogistics=Object.freeze({attach,compute,prepare,lastEstimate:last});
+setTimeout(autoAttach,0);
 })();
