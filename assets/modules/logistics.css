@@ -96,3 +96,10 @@
   .fl-quote-request{grid-template-columns:1fr}
   .fl-quote-row{padding:10px}
 }
+
+/* Ficha logística automática do pedido */
+.fl-cargo-card{margin:0 0 14px;border:1px solid #cfe1d8;background:#f7fbf9;border-radius:15px;padding:13px}
+.fl-cargo-card .fl-panel-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.fl-cargo-card .fl-panel-title small{font-size:8px;color:#809087}
+.fl-cargo-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:10px}
+.fl-cargo-kpis>div{border:1px solid #dfe9e4;background:#fff;border-radius:10px;padding:9px;min-width:0}.fl-cargo-kpis span{display:block;font-size:8px;color:#728079;margin-bottom:3px}.fl-cargo-kpis b{display:block;font-size:12px;color:#173b30;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:900px){.fl-cargo-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:700px){.fl-cargo-card .fl-panel-title{flex-direction:column}.fl-cargo-kpis>div:last-child{grid-column:1/-1}}
