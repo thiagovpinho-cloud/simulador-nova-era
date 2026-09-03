@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260902-freight-popup-history-v2';
+  const VERSION='20260902-simulator-parity-v1';
   const loaded=new Map();
   const defs={
     'simulator-master-data':{js:'simulator-master-data.js'},
