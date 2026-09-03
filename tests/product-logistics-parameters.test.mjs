@@ -45,6 +45,6 @@ assert.match(products,/Excluir este produto do uso operacional/);
 assert.match(products,/calculateLoad/);
 assert.match(loader,/'logistics-engine':\{js:'logistics-engine\.js'\}/);
 assert.match(loader,/produtos:\{css:'products\.css',js:'products\.js',deps:\['logistics-engine'\]\}/);
-assert.match(loader,/simulador:\{css:'simulator\.css',js:'simulator\.js',deps:\['simulator-master-data','produtos'\]\}/);
+assert.match(loader,/simulador:\{css:'simulator\.css',js:'simulator\.js',deps:\['simulator-master-data'\]\}/);
 
 console.log('product-logistics-parameters: ok');
