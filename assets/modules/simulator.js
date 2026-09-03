@@ -114,6 +114,7 @@
         cargo:items.map(x=>x.name+' x '+x.qtyBoxes+' cx').join(' | '),
         quantity:e.totalBoxes+' caixas',items,logisticsEstimate:e
       }));
+      sessionStorage.setItem('focado-freight-draft-autostart','1');
     }catch(_){}
     window.FocadoNavigate?.('cotacoes-frete');
   }
