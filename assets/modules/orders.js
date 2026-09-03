@@ -298,7 +298,6 @@
         budget.onblur=()=>{budget.value=moneyInput(parseMoneyInput(budget.value))};
       }
     }
-    window.FocadoOrderLogistics?.attach?.(editingId||'');
   }
   function field(label,name,val,type='text',forceDisabled=false,cls=''){
     return '<label class="fo-field '+cls+'"><span>'+label+'</span><input name="'+name+'" type="'+type+'" value="'+esc(val||'')+'" '+((forceDisabled||!formEditable)?'disabled':'')+'></label>';
@@ -506,7 +505,6 @@
       requestedDeliveryDate:fd.get('requestedDeliveryDate')||'',freightType:fd.get('freightType')||'CIF',paymentTerms:fd.get('paymentTerms')||'',
       logisticsBudget:parseMoneyInput(fd.get('logisticsBudget')),
       deliveryAddress:fd.get('deliveryAddress')||'',notes:fd.get('notes')||'',
-      logisticsEstimate:window.FocadoOrderLogistics?.lastEstimate?.()||null,
       items:[...document.querySelectorAll('[data-item-row]')].map(r=>{
         const code=r.querySelector('[data-k="code"]').value,name=r.querySelector('[data-k="name"]').value,p=findProduct(code||name,brand,ops);
         return {productId:p?.simulatorId||r.dataset.productId||'',code:p?.code||code,name:p?.name||name,qty:r.querySelector('[data-k="qty"]').value,price:parseMoneyInput(r.querySelector('[data-k="price"]').value)};
