@@ -261,7 +261,7 @@
         '<div class="fo-card"><div class="fo-card-head"><div><h2>Itens do pedido</h2><p>Informe o <b>preço base da mercadoria por caixa, sem IPI e sem ST</b>, igual ao Simulador. Na margem, a referência logística é o orçamento de logística dividido pelo total de caixas do pedido.</p></div>'+(editable?'<div class="fo-actions"><button class="fo-btn secondary" type="button" id="foProducts">Cadastrar produto</button><button class="fo-btn secondary" type="button" id="foAddItem">+ Linha</button></div>':'')+'</div>'+
           '<datalist id="foProductCodes">'+cat.map(p=>'<option value="'+esc(p.code)+'">'+esc(p.name)+' · '+esc(p.brand)+'</option>').join('')+'</datalist>'+
           '<datalist id="foProductNames">'+cat.map(p=>'<option value="'+esc(p.name)+'">'+esc(p.code)+' · '+esc(p.brand)+'</option>').join('')+'</datalist>'+
-          '<div class="fo-items-wrap"><table class="fo-items" id="foItems"><thead><tr><th>Código</th><th>Produto</th><th>Quantidade</th><th>Preço da mercadoria s/ IPI/ST</th><th>Margem estimada</th><th>Total</th><th></th></tr></thead><tbody>'+items.map((i,n)=>itemRow(i,n,editable)).join('')+'</tbody></table></div><div class="fo-order-profit"><div id="foProfitSummary"><span>Margem estimada do pedido</span><strong>—</strong><small>Preencha produto, quantidade, preço e UF</small></div><div class="fo-total"><span>Total do pedido</span><strong id="foGrandTotal">'+money(value(o))+'</strong></div></div><div id="foLogisticsSummary" class="fo-logistics-summary"><span>FICHA LOGÍSTICA</span><b>Informe os produtos e quantidades para calcular peso e cubagem.</b></div></div>'+
+          '<div class="fo-items-wrap"><table class="fo-items" id="foItems"><thead><tr><th>Código</th><th>Produto</th><th>Quantidade</th><th>Preço da mercadoria s/ IPI/ST</th><th>Margem estimada</th><th>Total</th><th></th></tr></thead><tbody>'+items.map((i,n)=>itemRow(i,n,editable)).join('')+'</tbody></table></div><div class="fo-order-profit"><div id="foProfitSummary"><span>Margem estimada do pedido</span><strong>—</strong><small>Preencha produto, quantidade, preço e UF</small></div><div class="fo-total"><span>Total do pedido</span><strong id="foGrandTotal">'+money(value(o))+'</strong></div></div></div>'+
 
         '<div class="fo-card"><h2>Observações comerciais</h2><textarea name="notes" '+readonly+' placeholder="Observações do pedido, particularidades do cliente, entrega ou negociação">'+esc(o.notes||'')+'</textarea></div>'+
         (editable?'<div class="fo-form-finish"><div><span>'+(correctionMode?'CORREÇÃO':'FINAL DO PREENCHIMENTO')+'</span><h2>'+(correctionMode?'Revise e salve a correção':'O que deseja fazer com este pedido?')+'</h2><p>'+(correctionMode?'A etapa atual será mantida e a alteração ficará no histórico.':'Salvar rascunho guarda o preenchimento sem enviar ao PCP. Finalizar envia o pedido para o PCP.')+'</p></div><div class="fo-form-finish-actions">'+(correctionMode?'<button class="fo-btn secondary" type="button" id="foCancelCorrection">Cancelar correção</button><button class="fo-btn primary" type="button" id="foSave">Salvar correção</button>':'<button class="fo-btn secondary" type="button" id="foSave">Salvar como rascunho</button><button class="fo-btn primary" type="button" id="foFinalize">Finalizar e enviar ao PCP</button>')+'</div></div>':'')+
@@ -298,7 +298,7 @@
         budget.onblur=()=>{budget.value=moneyInput(parseMoneyInput(budget.value))};
       }
     }
-    scheduleProfitability(ops);
+    window.FocadoOrderLogistics?.attach?.(editingId||'');
   }
   function field(label,name,val,type='text',forceDisabled=false,cls=''){
     return '<label class="fo-field '+cls+'"><span>'+label+'</span><input name="'+name+'" type="'+type+'" value="'+esc(val||'')+'" '+((forceDisabled||!formEditable)?'disabled':'')+'></label>';
@@ -349,15 +349,14 @@
   async function updateProfitability(ops){
     const rows=[...document.querySelectorAll('[data-item-row]')],uf=String(document.querySelector('[name="uf"]')?.value||'').toUpperCase();
     const brandLabel=document.querySelector('[name="brand"]')?.value||'',freightType=String(document.querySelector('[name="freightType"]')?.value||'CIF').toUpperCase();
-    const items=rows.map(r=>({
-      row:r,productId:r.dataset.productId||'',name:r.querySelector('[data-k="name"]')?.value||'',qty:Number(r.querySelector('[data-k="qty"]')?.value)||0,
-      basePrice:parseMoneyInput(r.querySelector('[data-k="price"]')?.value||0)
-    }));
-    renderOrderLogistics(items,null);
     if(!window.FocadoLegacySimulator){rows.forEach(r=>setMarginCell(r,null,'Simulador indisponível'));return}
     if(!uf){rows.forEach(r=>setMarginCell(r,null,'Informe a UF'));return}
     try{
       const snap=await window.FocadoLegacySimulator.ready(),brandId=brandIdFromLabel(brandLabel,snap);
+      const items=rows.map(r=>({
+        row:r,productId:r.dataset.productId||'',qty:Number(r.querySelector('[data-k="qty"]').value)||0,
+        basePrice:parseMoneyInput(r.querySelector('[data-k="price"]').value)
+      }));
       const valid=items.filter(x=>x.productId&&x.qty>0&&x.basePrice>0);
       rows.forEach(r=>setMarginCell(r,null,'Aguardando dados'));
       if(!valid.length)return;
@@ -376,20 +375,10 @@
       });
       const box=document.getElementById('foProfitSummary');
       if(box)box.innerHTML='<span>Margem estimada do pedido</span><strong class="'+(quote.marginPct>=0?'ok':'bad')+'">'+(quote.marginPct*100).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%</strong><small>'+esc(uf)+' · '+esc(freightType)+' · Logística '+money(freightPerBox)+'/cx · preço sem IPI/ST</small>';
-      renderOrderLogistics(items,quote);
     }catch(err){
       console.warn('[OrdersProfitability]',err);valid?.forEach?.(x=>setMarginCell(x.row,null,'Não foi possível calcular'));
     }
   }
-  function renderOrderLogistics(items,quote){
-    const val=name=>document.querySelector('[name="'+name+'"]')?.value||'';
-    return window.FocadoOrderLogistics?.render?.({
-      items,quote,orderId:editingId||'',orderNumber:val('number'),client:val('client'),brand:val('brand'),
-      destination:val('deliveryAddress')||[val('city'),val('uf')].filter(Boolean).join('/'),
-      requestedDate:val('requestedDeliveryDate')
-    });
-  }
-
   function setMarginCell(row,value,detail){
     const cell=row.querySelector('.fo-margin-cell');if(!cell)return;const chip=cell.querySelector('.fo-margin'),small=cell.querySelector('small');
     if(value==null){chip.className='fo-margin pending';chip.textContent='—';small.textContent=detail||'';return}
