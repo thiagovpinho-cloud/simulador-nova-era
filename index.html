@@ -1390,16 +1390,20 @@ function scheduleSave(){
     sessionStorage.setItem('nova-era-login-time', String(Date.now()));
   }
   const ind = document.getElementById('saveIndicator');
-  ind.textContent = 'salvando…';
-  ind.className = 'save-indicator';
+  if(ind){
+    ind.textContent = 'salvando…';
+    ind.className = 'save-indicator';
+  }
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
     try{
       await window.storage.set('nova-era-simulador-state', JSON.stringify(STATE), false);
-      ind.textContent = 'salvo';
-      ind.className = 'save-indicator on';
+      if(ind){
+        ind.textContent = 'salvo';
+        ind.className = 'save-indicator on';
+      }
     }catch(e){
-      ind.textContent = 'erro ao salvar';
+      if(ind)ind.textContent = 'erro ao salvar';
       console.error(e);
     }
   }, 500);
