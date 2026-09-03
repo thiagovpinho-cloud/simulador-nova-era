@@ -73,9 +73,9 @@
     return summary()+
       '<div class="fsim-card fsim-sheet-card"><div class="fsim-card-head"><div><h2>PAINEL</h2><p>Campos, lógica e fórmulas do arquivo oficial.</p></div></div>'+
       '<div class="fsim-table-wrap"><table class="fsim-table fsim-panel-table"><thead><tr>'+
-      '<th>NCM</th><th>Descrição técnica</th><th>UND</th><th>Qtd/CX</th><th>ICMS</th><th>Qtd CXS</th>'+
-      '<th>Venda CX sem IPI/ST</th><th>Venda UN sem IPI/ST</th>'+(showFreight?'<th>Frete/CX</th>':'')+
-      '<th>Contrato</th><th>Venda CX com IPI/ST</th><th>Venda UN com IPI/ST</th><th>Valor final venda</th><th>Margem sem IPI/ST</th><th>Margem com IPI/ST</th>'+
+      '<th>NCM</th><th>DESCRIÇÃO TÉCNICA DO PRODUTO</th><th>UND</th><th>QTD P/ CX</th><th>ICMS</th><th>QTD DE CXS</th>'+
+      '<th>VALOR DE VENDA CX (SEM IPI E ST)</th><th>VALOR DE VENDA UNID. (SEM IPI E ST)</th>'+(showFreight?'<th>VALOR DE FRETE POR CX</th>':'')+
+      '<th>CONTRATO</th><th>VALOR DE VENDA CX (COM IPI E ST)</th><th>VALOR DE VENDA UNID. (COM IPI E ST)</th><th>VALOR FINAL DA VENDA</th><th>(%) MARGEM SEM IPI E ST</th><th>(%) MARGEM COM IPI E ST</th>'+
       '</tr></thead><tbody>'+
       snap.products.map(p=>{
         const units=Math.max(1,num(p.unitsPerCaixa)),qty=Math.max(0,num(p.pricing.qtdCaixas));
