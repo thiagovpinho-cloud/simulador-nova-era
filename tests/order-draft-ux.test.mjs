@@ -5,6 +5,7 @@ import {applyDomain} from '../shared/domain-rules.js';
 const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const orders=read('assets/modules/orders.js');
 const drafts=read('assets/modules/order-drafts.js');
+const orderLogistics=read('assets/modules/order-logistics.js');
 const css=read('assets/modules/orders.css');
 const loader=read('assets/core/module-loader.js');
 const index=read('index.html');
@@ -58,11 +59,12 @@ assert.match(css,/\.fo-drafts/);
 assert.match(css,/\.fo-stage\.draft/);
 
 assert.match(loader,/'order-drafts':\{js:'order-drafts\.js'\}/);
-assert.match(loader,/pedidos:\{css:'orders\.css',js:'orders\.js',deps:\['produtos','order-drafts'\]\}/);
+assert.match(loader,/pedidos:\{css:'orders\.css',js:'orders\.js',deps:\['produtos','order-drafts','order-logistics'\]\}/);
 assert.match(index,/module-loader\.js\?v=(?:20260903-(?:freight-cta|logistics-cubage)-v1|20260902-(?:draft-ux|freight-money|ops-ux|ops-data|freight-popup-history|simulator-parity)-v[12]|20260902-simulator-(?:architecture-v2|hotfix-v3))/);
 
 console.log('order-draft-ux: ok');
 
-assert.match(orders,/foLogisticsSummary/);
-assert.match(orders,/prepareOrderFreightQuote/);
-assert.match(orders,/logisticsEstimate:lastLogisticsDraft/);
+assert.match(orderLogistics,/foLogisticsSummary/);
+assert.match(orderLogistics,/Preparar cotação de frete/);
+assert.match(orderLogistics,/focado-freight-draft-autostart/);
+assert.match(orderLogistics,/MutationObserver/);
