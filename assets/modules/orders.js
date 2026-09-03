@@ -261,7 +261,7 @@
         '<div class="fo-card"><div class="fo-card-head"><div><h2>Itens do pedido</h2><p>Informe o <b>preço base da mercadoria por caixa, sem IPI e sem ST</b>, igual ao Simulador. Na margem, a referência logística é o orçamento de logística dividido pelo total de caixas do pedido.</p></div>'+(editable?'<div class="fo-actions"><button class="fo-btn secondary" type="button" id="foProducts">Cadastrar produto</button><button class="fo-btn secondary" type="button" id="foAddItem">+ Linha</button></div>':'')+'</div>'+
           '<datalist id="foProductCodes">'+cat.map(p=>'<option value="'+esc(p.code)+'">'+esc(p.name)+' · '+esc(p.brand)+'</option>').join('')+'</datalist>'+
           '<datalist id="foProductNames">'+cat.map(p=>'<option value="'+esc(p.name)+'">'+esc(p.code)+' · '+esc(p.brand)+'</option>').join('')+'</datalist>'+
-          '<div class="fo-items-wrap"><table class="fo-items" id="foItems"><thead><tr><th>Código</th><th>Produto</th><th>Quantidade</th><th>Preço da mercadoria s/ IPI/ST</th><th>Margem estimada</th><th>Total</th><th></th></tr></thead><tbody>'+items.map((i,n)=>itemRow(i,n,editable)).join('')+'</tbody></table></div><div class="fo-order-profit"><div id="foProfitSummary"><span>Margem estimada do pedido</span><strong>—</strong><small>Preencha produto, quantidade, preço e UF</small></div><div class="fo-total"><span>Total do pedido</span><strong id="foGrandTotal">'+money(value(o))+'</strong></div></div></div>'+
+          '<div class="fo-items-wrap"><table class="fo-items" id="foItems"><thead><tr><th>Código</th><th>Produto</th><th>Quantidade</th><th>Preço da mercadoria s/ IPI/ST</th><th>Margem estimada</th><th>Total</th><th></th></tr></thead><tbody>'+items.map((i,n)=>itemRow(i,n,editable)).join('')+'</tbody></table></div><div class="fo-order-profit"><div id="foProfitSummary"><span>Margem estimada do pedido</span><strong>—</strong><small>Preencha produto, quantidade, preço e UF</small></div><div class="fo-total"><span>Total do pedido</span><strong id="foGrandTotal">'+money(value(o))+'</strong></div></div><div id="foLogisticsSummary" class="fo-logistics-summary"><span>FICHA LOGÍSTICA</span><b>Informe os produtos e quantidades para calcular peso e cubagem.</b></div></div>'+
 
         '<div class="fo-card"><h2>Observações comerciais</h2><textarea name="notes" '+readonly+' placeholder="Observações do pedido, particularidades do cliente, entrega ou negociação">'+esc(o.notes||'')+'</textarea></div>'+
         (editable?'<div class="fo-form-finish"><div><span>'+(correctionMode?'CORREÇÃO':'FINAL DO PREENCHIMENTO')+'</span><h2>'+(correctionMode?'Revise e salve a correção':'O que deseja fazer com este pedido?')+'</h2><p>'+(correctionMode?'A etapa atual será mantida e a alteração ficará no histórico.':'Salvar rascunho guarda o preenchimento sem enviar ao PCP. Finalizar envia o pedido para o PCP.')+'</p></div><div class="fo-form-finish-actions">'+(correctionMode?'<button class="fo-btn secondary" type="button" id="foCancelCorrection">Cancelar correção</button><button class="fo-btn primary" type="button" id="foSave">Salvar correção</button>':'<button class="fo-btn secondary" type="button" id="foSave">Salvar como rascunho</button><button class="fo-btn primary" type="button" id="foFinalize">Finalizar e enviar ao PCP</button>')+'</div></div>':'')+
@@ -298,6 +298,7 @@
         budget.onblur=()=>{budget.value=moneyInput(parseMoneyInput(budget.value))};
       }
     }
+    scheduleProfitability(ops);
   }
   function field(label,name,val,type='text',forceDisabled=false,cls=''){
     return '<label class="fo-field '+cls+'"><span>'+label+'</span><input name="'+name+'" type="'+type+'" value="'+esc(val||'')+'" '+((forceDisabled||!formEditable)?'disabled':'')+'></label>';
@@ -341,21 +342,22 @@
   function addItemRow(ops){
     const tbody=document.querySelector('#foItems tbody');tbody.insertAdjacentHTML('beforeend',itemRow({},tbody.children.length,true));bindItemEvents(ops);
   }
-  let profitabilityTimer=0;
+  let profitabilityTimer=0,lastLogisticsDraft=null;
   function brandIdFromLabel(label,snap){
     return snap?.brands?.find(b=>String(b.label||'').toLowerCase()===String(label||'').toLowerCase())?.id||'';
   }
   async function updateProfitability(ops){
     const rows=[...document.querySelectorAll('[data-item-row]')],uf=String(document.querySelector('[name="uf"]')?.value||'').toUpperCase();
     const brandLabel=document.querySelector('[name="brand"]')?.value||'',freightType=String(document.querySelector('[name="freightType"]')?.value||'CIF').toUpperCase();
+    const items=rows.map(r=>({
+      row:r,productId:r.dataset.productId||'',name:r.querySelector('[data-k="name"]')?.value||'',qty:Number(r.querySelector('[data-k="qty"]')?.value)||0,
+      basePrice:parseMoneyInput(r.querySelector('[data-k="price"]')?.value||0)
+    }));
+    renderOrderLogistics(items,null);
     if(!window.FocadoLegacySimulator){rows.forEach(r=>setMarginCell(r,null,'Simulador indisponível'));return}
     if(!uf){rows.forEach(r=>setMarginCell(r,null,'Informe a UF'));return}
     try{
       const snap=await window.FocadoLegacySimulator.ready(),brandId=brandIdFromLabel(brandLabel,snap);
-      const items=rows.map(r=>({
-        row:r,productId:r.dataset.productId||'',qty:Number(r.querySelector('[data-k="qty"]').value)||0,
-        basePrice:parseMoneyInput(r.querySelector('[data-k="price"]').value)
-      }));
       const valid=items.filter(x=>x.productId&&x.qty>0&&x.basePrice>0);
       rows.forEach(r=>setMarginCell(r,null,'Aguardando dados'));
       if(!valid.length)return;
@@ -374,10 +376,52 @@
       });
       const box=document.getElementById('foProfitSummary');
       if(box)box.innerHTML='<span>Margem estimada do pedido</span><strong class="'+(quote.marginPct>=0?'ok':'bad')+'">'+(quote.marginPct*100).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%</strong><small>'+esc(uf)+' · '+esc(freightType)+' · Logística '+money(freightPerBox)+'/cx · preço sem IPI/ST</small>';
+      renderOrderLogistics(items,quote);
     }catch(err){
       console.warn('[OrdersProfitability]',err);valid?.forEach?.(x=>setMarginCell(x.row,null,'Não foi possível calcular'));
     }
   }
+  function renderOrderLogistics(items,quote){
+    const engine=window.FocadoLogisticsReference;
+    const box=document.getElementById('foLogisticsSummary');
+    if(!engine?.estimate||!box)return;
+    const quoteRows=new Map((quote?.rows||[]).map(x=>[String(x.productId),x]));
+    const payload=(items||[]).filter(x=>Number(x.qty)>0).map(x=>({
+      productId:x.productId,name:x.name,qtyBoxes:Number(x.qty)||0,
+      unitValue:Number(quoteRows.get(String(x.productId))?.finalPrice||0)
+    }));
+    const e=engine.estimate(payload);
+    const form=document.getElementById('foOrderForm'),fd=form?new FormData(form):null;
+    lastLogisticsDraft={
+      source:'PEDIDO',sourceOrderId:editingId||'',sourceOrderNumber:String(document.querySelector('[name="number"]')?.value||''),
+      client:String(fd?.get('client')||''),brand:String(fd?.get('brand')||''),
+      destination:String(fd?.get('deliveryAddress')||[fd?.get('city'),fd?.get('uf')].filter(Boolean).join('/')||''),
+      requestedDate:String(fd?.get('requestedDeliveryDate')||''),
+      cargo:payload.map(x=>x.name+' x '+x.qtyBoxes+' cx').join(' | '),quantity:e.totalBoxes+' caixas',
+      items:payload,logisticsEstimate:e
+    };
+    if(!e.totalBoxes){
+      box.className='fo-logistics-summary';
+      box.innerHTML='<span>FICHA LOGÍSTICA</span><b>Informe os produtos e quantidades para calcular peso e cubagem.</b>';
+      return;
+    }
+    const alerts=[];
+    if(e.missing?.length)alerts.push(e.missing.length+' item(ns) sem ficha logística');
+    if(e.volumeMissing?.length)alerts.push('cubagem incompleta');
+    box.className='fo-logistics-summary ready';
+    box.innerHTML='<div class="fo-logistics-title"><span>FICHA LOGÍSTICA AUTOMÁTICA</span><b>'+e.totalBoxes+' cx · '+Number(e.weightKg).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+' kg · '+Number(e.volumeM3).toLocaleString('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3})+' m³</b><small>'+e.estimatedPallets+' pallet(s) estimado(s) · Mercadoria/NF est. '+money(e.merchandiseValue)+(alerts.length?' · '+esc(alerts.join(' / ')):'')+'</small></div><button type="button" id="foPrepareFreight">Preparar cotação de frete →</button>';
+    const btn=document.getElementById('foPrepareFreight');
+    if(btn)btn.onclick=prepareOrderFreightQuote;
+  }
+  function prepareOrderFreightQuote(){
+    if(!lastLogisticsDraft?.logisticsEstimate?.totalBoxes)return;
+    try{
+      sessionStorage.setItem('focado-freight-draft',JSON.stringify(lastLogisticsDraft));
+      sessionStorage.setItem('focado-freight-draft-autostart','1');
+    }catch(_){}
+    window.FocadoNavigate?.('cotacoes-frete');
+  }
+
   function setMarginCell(row,value,detail){
     const cell=row.querySelector('.fo-margin-cell');if(!cell)return;const chip=cell.querySelector('.fo-margin'),small=cell.querySelector('small');
     if(value==null){chip.className='fo-margin pending';chip.textContent='—';small.textContent=detail||'';return}
@@ -505,6 +549,7 @@
       requestedDeliveryDate:fd.get('requestedDeliveryDate')||'',freightType:fd.get('freightType')||'CIF',paymentTerms:fd.get('paymentTerms')||'',
       logisticsBudget:parseMoneyInput(fd.get('logisticsBudget')),
       deliveryAddress:fd.get('deliveryAddress')||'',notes:fd.get('notes')||'',
+      logisticsEstimate:lastLogisticsDraft?.logisticsEstimate||null,
       items:[...document.querySelectorAll('[data-item-row]')].map(r=>{
         const code=r.querySelector('[data-k="code"]').value,name=r.querySelector('[data-k="name"]').value,p=findProduct(code||name,brand,ops);
         return {productId:p?.simulatorId||r.dataset.productId||'',code:p?.code||code,name:p?.name||name,qty:r.querySelector('[data-k="qty"]').value,price:parseMoneyInput(r.querySelector('[data-k="price"]').value)};
