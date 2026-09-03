@@ -141,7 +141,7 @@ assert.ok(simulatorModule.includes('window.FocadoLegacySimulator'),'Módulo mode
 assert.ok(!simulatorModule.includes('function computeCore'),'Módulo moderno não pode duplicar o cálculo tributário');
 assert.ok(simulatorModule.includes('Base de Insumos →'),'Simulador deve encaminhar para a Base de Insumos independente');
 assert.ok(simulatorModule.includes('Receitas de Produção'),'Simulador moderno deve expor receitas somente no contexto autorizado');
-assert.ok(simulatorModule.includes('Venda CX sem IPI/ST'),'Painel deve separar preço base de impostos como a planilha oficial');
+assert.ok(simulatorModule.includes('VALOR DE VENDA CX (SEM IPI E ST)'),'Painel deve separar preço base de impostos como a planilha oficial');
 
 const simulatorV3=read('assets/modules/simulator.js');
 const simulatorCssV3=read('assets/modules/simulator.css');

@@ -26,7 +26,7 @@ assert.match(inputs,/Código CHB/);
 assert.match(inputs,/data-fin-delete/);
 assert.match(inputs,/deleteId:item\.id/);
 assert.match(inputs,/manualOverride:true/);
-assert.match(inputs,/prev\.active===false/);
+assert.match(inputs,/active!==false/);
 
 // Histórico PCP deve usar a mesma definição do KPI concluído.
 assert.match(pcp,/historyRows=\(ops\.orders\|\|\[\]\)[\s\S]*?\['LOGISTICA','ENTREGUE'\]\.includes/);
@@ -35,7 +35,7 @@ assert.match(pcp,/inventoryEntry\(ops,item,brand=''/);
 assert.match(pcp,/stockView\(ops,i,o\.brand\)/);
 
 // Painel espelha colunas da planilha e Receitas é restrito.
-for(const label of ['NCM','Descrição técnica','Qtd CXS','Venda CX sem IPI/ST','Venda UN sem IPI/ST','Frete/CX','Contrato','Venda CX com IPI/ST','Valor final venda','Margem sem IPI/ST','Margem com IPI/ST']){
+for(const label of ['NCM','DESCRIÇÃO TÉCNICA DO PRODUTO','QTD DE CXS','VALOR DE VENDA CX (SEM IPI E ST)','VALOR DE VENDA UNID. (SEM IPI E ST)','VALOR DE FRETE POR CX','CONTRATO','VALOR DE VENDA CX (COM IPI E ST)','VALOR FINAL DA VENDA','(%) MARGEM SEM IPI E ST','(%) MARGEM COM IPI E ST']){
   assert.ok(sim.includes(label),'Painel sem coluna: '+label);
 }
 assert.match(sim,/const canRecipes=.*ADMIN.*DIRETOR/);
@@ -61,7 +61,7 @@ assert.match(sim,/setInputPrice/);
 assert.match(sim,/PLANILHA|FocadoSimulatorMasterData/);
 
 // Cache publica a nova arquitetura.
-assert.match(index,/module-loader\.js\?v=20260902-simulator-architecture-v2/);
-assert.match(loader,/const VERSION='20260902-simulator-architecture-v2'/);
+assert.match(index,/module-loader\.js\?v=20260902-simulator-hotfix-v3/);
+assert.match(loader,/const VERSION='20260902-simulator-hotfix-v3'/);
 
 console.log('simulator-architecture-v2: ok');
