@@ -116,8 +116,10 @@ jobs:
 
           # 3) Preservar smoke das funções de negócio essenciais e da arquitetura oficial do Simulador.
           grep -q "window.FocadoSimulator" /tmp/simulator.js
-          grep -q "Painel de formação de preço" /tmp/simulator.js
+          grep -q "PAINEL DE DADOS E APROVAÇÃO" /tmp/simulator.js
           grep -q "Receitas de Produção" /tmp/simulator.js
+          grep -q "VALOR DE VENDA CX (SEM IPI E ST)" /tmp/simulator.js
+          grep -q "QTD DE CXS" /tmp/simulator.js
           grep -q "Manual por caixa" /tmp/simulator.js
           grep -q "Cadastrar insumo" /tmp/inputs.js
           grep -q "data-fin-delete" /tmp/inputs.js
