@@ -109,3 +109,10 @@ assert.ok(!freight.includes('Responder →'),'CTA antigo não deve reaparecer');
 assert.match(freight,/FICHA LOGÍSTICA AUTOMÁTICA/);
 assert.match(freight,/logisticsEstimate/);
 assert.match(freight,/focado-freight-draft-autostart/);
+
+assert.match(freight,/COMPOSIÇÃO DA CARGA/);
+assert.match(freight,/data-fr-cargo-product/);
+assert.match(freight,/data-fr-cargo-qty/);
+assert.match(freight,/data-fr-cargo-value/);
+assert.match(freight,/COTACAO_AVULSA/);
+assert.match(freight,/refreshCargoBuilder/);
