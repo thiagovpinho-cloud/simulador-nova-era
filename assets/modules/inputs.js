@@ -9,51 +9,35 @@
   let filters={q:'',brand:'TODAS',group:'TODOS'};
   const canEdit=()=>['ADMIN','ESTOQUE'].includes(String(window.FocadoAuth?.getRole?.()||'').toUpperCase());
 
-  async function motherCatalog(){
+  function motherCatalog(){
     const rows=Array.isArray(window.FocadoSimulatorMasterData?.inputs)?window.FocadoSimulatorMasterData.inputs:[];
     return rows.map(x=>({...x,id:x.id||('mother_'+String(x.brand).replace(/\W+/g,'_')+'_'+x.code)}));
   }
 
-  async function ensureCatalog(){
-    let ops=load(),catalog=Array.isArray(ops.inputCatalog)?ops.inputCatalog:[];
-    const mother=await motherCatalog();
+  function ensureCatalog(){
+    const ops=load(),persisted=Array.isArray(ops.inputCatalog)?ops.inputCatalog:[];
+    const mother=motherCatalog();
     const keyOf=x=>String(x.brand||'Geral').trim().toLowerCase()+'::'+String(x.code||'').trim().toLowerCase();
-    const byKey=new Map(catalog.map(x=>[keyOf(x),x]));
-    const seed=[];
-    for(const master of mother){
-      const prev=byKey.get(keyOf(master));
-      if(!prev){seed.push(master);continue}
-      if(prev.active===false)continue;
-      if(prev.source==='PLANILHA_MAE_07_07_2026'||prev.source==='PLANILHA_MAE_07_07_2026'){
-        seed.push({...master,id:prev.id||master.id,price:prev.manualOverride?prev.price:master.price,manualOverride:Boolean(prev.manualOverride)});
-      }
+    const byKey=new Map(mother.map(x=>[keyOf(x),{...x}]));
+    for(const saved of persisted){
+      const key=keyOf(saved),base=byKey.get(key)||{};
+      byKey.set(key,{...base,...saved});
     }
-    if(seed.length&&canEdit()){
-      for(const item of seed){
-        const result=await window.FocadoDataStore.saveDomain('INSUMOS',{item:{...item,source:item.manualOverride?'FOCADO':'PLANILHA_MAE_07_07_2026'}});
-        if(result?.payload)window.FocadoDataStore.writeLocal(result.payload);
-      }
-      ops=load();catalog=ops.inputCatalog||[];
-    }else if(seed.length){
-      const merge=new Map(catalog.map(x=>[keyOf(x),x]));
-      for(const item of seed)merge.set(keyOf(item),{...merge.get(keyOf(item)),...item});
-      catalog=[...merge.values()];
-    }
-    // Preserva itens físicos legados mesmo que não existam na planilha mãe.
+    const catalog=[...byKey.values()].filter(x=>x.active!==false);
     const knownCodes=new Set(catalog.map(x=>String(x.code)));
     const physical=Object.values(ops.inputInventory||{}).filter(x=>x?.code&&!knownCodes.has(String(x.code))).map(x=>({
       id:'legacy_'+x.code,brand:'Geral',code:String(x.code),name:String(x.name||x.code),unit:String(x.unit||''),group:'Estoque legado',
       price:0,source:'ESTOQUE_LEGADO',active:true
     }));
-    return [...catalog.filter(x=>x.active!==false),...physical];
+    return [...catalog,...physical];
   }
 
   async function render(next){
     filters={...filters,...(next||{})};
     const el=content();if(!el)return;
     el.innerHTML='<div class="fin-page"><div class="fin-loading">Carregando base-mãe de insumos…</div></div>';
-    const catalog=await ensureCatalog(),ops=load(),stock=ops.inputInventory||{};
-    const groups=[...new Set(catalog.map(x=>x.group).filter(Boolean))].sort();
+    const catalog=ensureCatalog(),ops=load(),stock=ops.inputInventory||{};
+    const groups=[...new Set(catalog.map(x=>x.group).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'pt-BR'));
     const brands=[...new Set(catalog.map(x=>x.brand).filter(Boolean))].sort();
     const q=String(filters.q||'').toLowerCase();
     const rows=catalog.filter(x=>
@@ -63,9 +47,9 @@
     );
     const physicalTotal=Object.values(stock).reduce((s,x)=>s+Number(x.physical||0),0);
     el.innerHTML='<div class="fin-page">'+
-      '<div class="fin-head"><div><span>ESTOQUE DE INSUMOS</span><h1>Insumos</h1><p>Cadastro, preço e saldo físico independentes do estoque de produtos acabados.</p></div>'+(canEdit()?'<button class="fin-btn primary" id="finNew">+ Cadastrar insumo</button>':'<span class="fin-readonly">Consulta</span>')+'</div>'+
+      '<div class="fin-head"><div><span>BASE DE INSUMOS</span><h1>Base de Insumos</h1><p>Relação oficial de itens e serviços das planilhas Nova Era e New Green, integrada ao estoque de insumos.</p></div>'+(canEdit()?'<button class="fin-btn primary" id="finNew">+ Cadastrar insumo</button>':'<span class="fin-readonly">Consulta</span>')+'</div>'+
       '<div class="fin-kpis"><div><span>Base cadastrada</span><strong>'+catalog.length+'</strong><small>itens ativos</small></div><div><span>Com saldo físico</span><strong>'+Object.values(stock).filter(x=>Number(x.physical||0)>0).length+'</strong><small>itens em estoque</small></div><div><span>Saldo físico total</span><strong>'+fmt(physicalTotal,0)+'</strong><small>unidades de medida somadas apenas como referência</small></div></div>'+
-      '<div class="fin-note"><b>Base de Insumos oficial carregada.</b><span>Itens extraídos das planilhas “Precificação Nova Era - 07.07.26” e “Precificação Newgreen - 07.07.26”. Preços permanecem independentes por marca; o estoque físico de insumos é separado de produtos acabados.</span></div>'+
+      '<div class="fin-note"><b>Mesma base das planilhas oficiais.</b><span>Código Senir, Código CHB, descrição, medida e preço unitário são mantidos por marca. Itens podem ser adicionados, editados, precificados ou removidos sem misturar com produto acabado.</span></div>'+
       '<div class="fin-toolbar"><input id="finSearch" placeholder="Buscar código, insumo, grupo ou marca" value="'+esc(filters.q)+'"><select id="finBrand"><option value="TODAS">Todas as marcas</option>'+brands.map(b=>'<option '+(filters.brand===b?'selected':'')+'>'+esc(b)+'</option>').join('')+'</select><select id="finGroup"><option value="TODOS">Todos os grupos</option>'+groups.map(g=>'<option '+(filters.group===g?'selected':'')+'>'+esc(g)+'</option>').join('')+'</select><span>'+rows.length+' item(ns)</span></div>'+
       '<div class="fin-table-wrap">'+table(rows,stock)+'</div></div>';
     if(document.getElementById('finNew'))document.getElementById('finNew').onclick=()=>openEditor(null);
