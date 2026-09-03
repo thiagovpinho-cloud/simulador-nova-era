@@ -1,6 +1,7 @@
 (function(){
   'use strict';
   const PREFILL_KEY='focado-logistics-freight-prefill-v1';
+  const MARKER='FOCADO_LOGISTICS_V1';
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const n=v=>{const x=Number(v);return Number.isFinite(x)?x:0};
   const money=v=>n(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -114,6 +115,33 @@
     const sig=signature(snapshot);if(el.dataset.signature===sig)return;el.dataset.signature=sig;el.innerHTML=summaryHtml(snapshot,'order');attachQuote(el,snapshot);
   }
 
+  function compactSnapshot(snapshot){
+    const context=snapshot?.context||{};
+    return {
+      v:1,source:snapshot?.source||'FOCADO_LOGISTICS_ENGINE_V1',calculatedAt:n(snapshot?.calculatedAt)||Date.now(),basis:String(snapshot?.basis||''),brand:String(snapshot?.brand||''),
+      boxes:n(snapshot?.boxes),grossWeightKg:n(snapshot?.grossWeightKg),volumeM3:n(snapshot?.volumeM3),palletEquivalent:n(snapshot?.palletEquivalent),palletsEstimated:n(snapshot?.palletsEstimated),
+      estimatedMerchandiseValue:n(snapshot?.estimatedMerchandiseValue),complete:Boolean(snapshot?.complete),missing:Array.isArray(snapshot?.missing)?snapshot.missing:[],
+      details:(snapshot?.details||[]).map(d=>({name:String(d.name||''),code:String(d.code||''),boxes:n(d.boxes),grossWeightKg:n(d.grossWeightKg),volumeM3:n(d.volumeM3),boxesPerPallet:n(d.boxesPerPallet),palletEquivalent:n(d.palletEquivalent)})),
+      context:{kind:String(context.kind||''),brand:String(context.brand||''),client:String(context.client||''),reference:String(context.reference||''),destination:String(context.destination||''),requestedDate:String(context.requestedDate||''),uf:String(context.uf||''),freightType:String(context.freightType||'')}
+    };
+  }
+  function encodeSnapshot(snapshot){
+    try{
+      const bytes=new TextEncoder().encode(JSON.stringify(compactSnapshot(snapshot)));let bin='';
+      for(const b of bytes)bin+=String.fromCharCode(b);return btoa(bin);
+    }catch(err){console.warn('[FocadoLogisticsFlow] encode snapshot',err);return ''}
+  }
+  function decodeSnapshot(raw){
+    try{
+      const bin=atob(String(raw||'')),bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));
+      const parsed=JSON.parse(new TextDecoder().decode(bytes));return parsed&&parsed.v===1?parsed:null;
+    }catch(_){return null}
+  }
+  function markerRegex(){return new RegExp('\\s*\\[\\['+MARKER+':([A-Za-z0-9+/=]+)\\]\\]\\s*$')}
+  function snapshotMarker(snapshot){const encoded=encodeSnapshot(snapshot);return encoded?'\n[['+MARKER+':'+encoded+']]':''}
+  function visibleNotes(value){return String(value||'').replace(markerRegex(),'').trim()}
+  function extractSnapshot(value){const match=String(value||'').match(markerRegex());return match?decodeSnapshot(match[1]):null}
+
   function freightText(snapshot){
     const incomplete=snapshot.complete?'':'\nATENÇÃO: há produto(s) com parametrização logística incompleta no Cadastro de Produtos.';
     const fiscal=snapshot.basis==='PRECO_COM_IPI_ST'?'estimado com IPI/ST':'referência pelo preço base; validar valor fiscal antes da contratação';
@@ -145,6 +173,11 @@
     const s=prefill.snapshot;if(!s)return '';
     return '<div class="flog-freight-preview"><span>CARGA CALCULADA PELO FOCADO</span><div><b>'+fmt(s.boxes,0)+' cx</b><b>'+fmt(s.grossWeightKg,1)+' kg</b><b>'+fmt(s.volumeM3,3)+' m³</b><b>~'+fmt(s.palletsEstimated,0)+' pallet(s)</b><b>'+money(s.estimatedMerchandiseValue)+' seguro</b></div>'+(s.complete?'':'<small>⚠ Existem dados logísticos incompletos no cadastro.</small>')+'</div>';
   }
+  function bindSnapshotSubmit(modal,snapshot){
+    const btn=modal?.querySelector('#frSend'),notes=modal?.querySelector('#frNotes');if(!btn||!notes||btn.dataset.flogSnapshotBound==='1')return;
+    btn.dataset.flogSnapshotBound='1';
+    btn.addEventListener('click',()=>{notes.value=visibleNotes(notes.value)+snapshotMarker(snapshot)},true);
+  }
   function hydrateFreightPrefill(){
     let raw;try{raw=sessionStorage.getItem(PREFILL_KEY)}catch(_){return}if(!raw)return;
     let prefill;try{prefill=JSON.parse(raw)}catch(_){try{sessionStorage.removeItem(PREFILL_KEY)}catch(__){}return}
@@ -154,14 +187,65 @@
     modal.dataset.flogPrefilled='1';
     field('frClient',prefill.client);field('frReference',prefill.reference);field('frOrigin',prefill.origin);field('frDestination',prefill.destination);field('frCargo',prefill.cargo);field('frQuantity',prefill.quantity);field('frDate',prefill.requestedDate);field('frNotes',prefill.notes);
     const form=modal.querySelector('.fr-form');if(form&&prefill.snapshot)form.insertAdjacentHTML('beforebegin',freightPreview(prefill));
+    if(prefill.snapshot)bindSnapshotSubmit(modal,prefill.snapshot);
     try{sessionStorage.removeItem(PREFILL_KEY)}catch(_){}
   }
+
+  function quoteEconomics(value,snapshot){
+    const v=n(value),boxes=n(snapshot?.boxes),kg=n(snapshot?.grossWeightKg),m3=n(snapshot?.volumeM3),pallets=n(snapshot?.palletsEstimated),merch=n(snapshot?.estimatedMerchandiseValue);
+    return {
+      perBox:boxes>0?v/boxes:0,perKg:kg>0?v/kg:0,perM3:m3>0?v/m3:0,perPallet:pallets>0?v/pallets:0,pctMerch:merch>0?v/merch:0
+    };
+  }
+  function economicsHtml(value,snapshot,compact=false){
+    const x=quoteEconomics(value,snapshot),parts=[];
+    if(x.perBox>0)parts.push('<span><b>'+money(x.perBox)+'</b>/cx</span>');
+    if(x.perKg>0)parts.push('<span><b>'+money(x.perKg)+'</b>/kg</span>');
+    if(x.perM3>0)parts.push('<span><b>'+money(x.perM3)+'</b>/m³</span>');
+    if(!compact&&x.perPallet>0)parts.push('<span><b>'+money(x.perPallet)+'</b>/pallet</span>');
+    if(x.pctMerch>0)parts.push('<span><b>'+(x.pctMerch*100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%</b> da carga</span>');
+    return parts.length?'<div class="flog-economics '+(compact?'compact':'')+'">'+parts.join('')+'</div>':'';
+  }
+  function persistedRequests(){const ops=load();return Array.isArray(ops.freightRequests)?ops.freightRequests:[]}
+  function requestSnapshot(request){return extractSnapshot(request?.notes||'')}
+  function bestQuote(request){return (request?.quotes||[]).slice().sort((a,b)=>n(a.value)-n(b.value))[0]||null}
+  function enhanceFreightCards(){
+    const byId=new Map(persistedRequests().map(r=>[String(r.id),r]));
+    document.querySelectorAll('.fr-card[data-fr-open]').forEach(card=>{
+      const request=byId.get(String(card.dataset.frOpen||'')),snapshot=requestSnapshot(request),best=bestQuote(request);
+      let slot=card.querySelector('[data-flog-card-economics]');
+      if(!snapshot||!best){slot?.remove();return}
+      const html=economicsHtml(best.value,snapshot,true);if(!html){slot?.remove();return}
+      if(!slot){slot=document.createElement('div');slot.dataset.flogCardEconomics='1';slot.className='flog-card-economics';card.querySelector('.fr-card-value')?.appendChild(slot)}
+      slot.innerHTML=html;
+    });
+  }
+  function snapshotBar(snapshot){
+    return '<div class="flog-request-snapshot"><div><span>CARGA GRAVADA NA SOLICITAÇÃO</span><b>'+fmt(snapshot.boxes,0)+' caixas · '+fmt(snapshot.grossWeightKg,1)+' kg · '+fmt(snapshot.volumeM3,3)+' m³ · ~'+fmt(snapshot.palletsEstimated,0)+' pallet(s)</b></div><div><span>REFERÊNCIA PARA SEGURO</span><b>'+money(snapshot.estimatedMerchandiseValue)+'</b><small>'+(snapshot.basis==='PRECO_COM_IPI_ST'?'IPI/ST estimados':'preço base; validar fiscal')+'</small></div></div>';
+  }
+  function enhanceFreightModal(){
+    const modal=document.querySelector('.fr-modal');if(!modal)return;
+    const noteEl=modal.querySelector('.fr-summary .wide b');if(!noteEl)return;
+    const raw=noteEl.textContent||'',snapshot=extractSnapshot(raw);noteEl.textContent=visibleNotes(raw);
+    if(!snapshot)return;
+    if(!modal.querySelector('[data-flog-request-snapshot]')){
+      const holder=document.createElement('div');holder.dataset.flogRequestSnapshot='1';holder.innerHTML=snapshotBar(snapshot);
+      const anchor=modal.querySelector('.fr-response,.fr-response-form,.fr-wait,.fr-history');
+      if(anchor)anchor.before(holder);else modal.querySelector('.fr-summary')?.after(holder);
+    }
+    modal.querySelectorAll('.fr-quote').forEach(q=>{
+      if(q.querySelector('[data-flog-quote-economics]'))return;
+      const value=parseMoney(q.querySelector('strong')?.textContent||'');if(!(value>0))return;
+      const slot=document.createElement('div');slot.dataset.flogQuoteEconomics='1';slot.innerHTML=economicsHtml(value,snapshot,false);q.appendChild(slot);
+    });
+  }
+  function enhanceFreight(){enhanceFreightCards();enhanceFreightModal()}
 
   let runTimer=0,running=false,rerun=false;
   function schedule(delay=70){clearTimeout(runTimer);runTimer=setTimeout(run,delay)}
   async function run(){
     if(running){rerun=true;return}running=true;
-    try{await enhanceSimulator();await enhanceOrder();hydrateFreightPrefill()}catch(err){console.warn('[FocadoLogisticsFlow]',err)}finally{running=false;if(rerun){rerun=false;schedule(80)}}
+    try{await enhanceSimulator();await enhanceOrder();hydrateFreightPrefill();enhanceFreight()}catch(err){console.warn('[FocadoLogisticsFlow]',err)}finally{running=false;if(rerun){rerun=false;schedule(80)}}
   }
   const observer=new MutationObserver(()=>schedule(90));
   const start=()=>{if(document.body)observer.observe(document.body,{childList:true,subtree:true});schedule(0)};
@@ -170,5 +254,8 @@
   document.addEventListener('change',e=>{if(e.target?.closest?.('.fsim-page,#foOrderForm'))schedule(40)},true);
   window.addEventListener('focado:ops-updated',()=>schedule(80));
 
-  window.FocadoLogisticsFlow=Object.freeze({refresh:()=>schedule(0),simulatorLoad,orderLoad,prepareFreight,prefillKey:PREFILL_KEY});
+  window.FocadoLogisticsFlow=Object.freeze({
+    refresh:()=>schedule(0),simulatorLoad,orderLoad,prepareFreight,prefillKey:PREFILL_KEY,
+    compactSnapshot,extractSnapshot,visibleNotes,quoteEconomics
+  });
 })();
