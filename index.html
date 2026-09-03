@@ -1053,21 +1053,21 @@ function std(desc, unit, qty, perda, preco){ return {standalone:true, desc, unit
 const PRODUCTS_NOVAERA = [
   {
     id:'bicarbonato', name:'Álcool + Bicarbonato 12x1L', ncm:'34029090', unitsPerCaixa:12,
-    pricing:{ipi:0.0325, icmsst:0, vendaCX:0, qtdCaixas:1, frete:0, contrato:0},
+    pricing:{ipi:0.0325, icmsst:0.082, vendaCX:0, qtdCaixas:1, frete:0, contrato:0},
     materials:[
-      link('51640',0.083291,0.03), link('00000',0,0), link('59900',1/12,0.03),
+      link('51640',0.08329113924050632,0.03), link('00000',0,0), link('59900',1/12,0.03),
       link('60150',1,0.03), link('111960',1,0.03), link('127255',(1/84)/12,0), link('68597',(0.3/84)/12,0),
     ],
-    processo:{insumo:'125866', qty:1, perda:0}
+    processo:std('Processo Mist. e Envase — Álcool + Bicarbonato 12x1L','UND',1,0,0.51)
   },
   {
     id:'inpm46', name:'Álcool 46° INPM 12x1L', ncm:'22072019', unitsPerCaixa:12,
-    pricing:{ipi:0.052, icmsst:0, vendaCX:0, qtdCaixas:1, frete:0, contrato:0},
+    pricing:{ipi:0.052, icmsst:0.118, vendaCX:0, qtdCaixas:1, frete:0, contrato:0},
     materials:[
       link('51640',0.6088607594936708,0.03), link('00000',0,0), link('59900',1/12,0.03),
       link('60124',1,0.03), link('60100',1,0.03), link('127255',(1/84)/12,0), link('68597',(0.3/84)/12,0),
     ],
-    processo:{insumo:'125830', qty:1, perda:0}
+    processo:std('Processo Mist. e Envase — Álcool 46° INPM 12x1L','UND',1,0,0.34)
   },
   {
     id:'inpm46bact', name:'Álcool 46° INPM Bactericida 12x1L', ncm:'38089429', unitsPerCaixa:12,
@@ -1076,7 +1076,7 @@ const PRODUCTS_NOVAERA = [
       link('51640',0.6088607594936708,0.03), link('00000',0,0), link('136451',0.003,0.03), link('59900',1/12,0.03),
       link('60124',1,0.03), link('60100',1,0.03), link('127255',(1/84)/12,0), link('68597',(0.3/84)/12,0),
     ],
-    processo:{insumo:'187860', qty:1, perda:0}
+    processo:{insumo:'125842', qty:1, perda:0, desc:'Processo Mist. e Envase — Álcool 46° Bactericida INPM 12x1L'}
   },
   {
     id:'inpm70', name:'Álcool 70° INPM 12x1L', ncm:'38089429', unitsPerCaixa:12,
@@ -1085,7 +1085,7 @@ const PRODUCTS_NOVAERA = [
       link('51640',0.8835443037974683,0.03), link('00000',0.27155,0), link('59900',1/12,0.03),
       link('60150',1,0.03), link('60100',1,0.03), link('127255',(1/84)/12,0), link('68597',(0.3/84)/12,0),
     ],
-    processo:{insumo:'125842', qty:1, perda:0}
+    processo:std('Processo Mist. e Envase — Álcool 70° INPM 12x1L','UND',1,0,0.34)
   },
   {
     id:'inpm70_3x5', name:'Álcool 70° INPM 3x5L', ncm:'38089429', unitsPerCaixa:3,
@@ -1100,7 +1100,7 @@ const PRODUCTS_NOVAERA = [
     id:'gel70_440', name:'Álcool Gel 70° INPM 12x440g Pump', ncm:'38089429', unitsPerCaixa:12,
     pricing:{ipi:0.0325, icmsst:0, vendaCX:0, qtdCaixas:1, frete:0, contrato:0},
     materials:[
-      link('51640',0.441772,0.03), link('00000',0.125145,0), link('60227',0.002,0.03), link('46735',1,0.03),
+      link('51640',0.44177215189873414,0.03), link('00000',0.125145,0), link('60227',0.002,0.03), link('46735',1,0.03),
       link('60082',1,0.03), link('60148',1,0.03), link('46875',1/12,0.03), link('127255',(1/84)/12,0), link('68597',(0.3/84)/12,0),
     ],
     processo:{insumo:'125878', qty:1, perda:0}
@@ -1116,7 +1116,7 @@ const PRODUCTS_NOVAERA = [
   },
   {
     id:'gel80_barrica', name:'Álcool Gel 80° Acendedor Barrica 10kg', ncm:'22071090', unitsPerCaixa:1,
-    pricing:{ipi:0, icmsst:0, vendaCX:0, qtdCaixas:1, frete:0, contrato:0},
+    pricing:{ipi:0.0325, icmsst:0, vendaCX:0, qtdCaixas:1, frete:0, contrato:0},
     materials:[
       link('51640',10,0.03), link('00000',0,0), link('60227',0.06,0.03), link('107852',1,0.03),
       link('127255',1/48,0), link('68597',0.3/48,0),
@@ -1167,9 +1167,9 @@ const INSUMOS_NEWGREEN = [
 const PRODUCTS_NEWGREEN = [
   {
     id:'ng_bicarbonato', name:'Álcool + Bicarbonato 12x1L', ncm:'34029090', unitsPerCaixa:12,
-    pricing:{ipi:0.0325, icmsst:0, vendaCX:0, qtdCaixas:1, frete:0, contrato:0},
+    pricing:{ipi:0.0325, icmsst:0.082, vendaCX:0, qtdCaixas:1, frete:0, contrato:0},
     materials:[
-      link('51640',0.083291,0.01), link('00000',0,0), link('59900',1/12,0.01),
+      link('51640',0.08329113924050632,0.01), link('00000',0,0), link('59900',1/12,0.01),
       link('60150',1,0.01), link('111960',1,0.01), link('127255',(1/84)/12,0), link('68597',(0.3/84)/12,0),
     ],
     // não vinculado à Base de Insumos na planilha original (valor digitado direto na célula)
@@ -1197,7 +1197,7 @@ const PRODUCTS_NEWGREEN = [
     id:'ng_gel425', name:'Álcool Gel Acendedor 80° INPM 425g', ncm:'22071089', unitsPerCaixa:12,
     pricing:{ipi:0, icmsst:0, vendaCX:0, qtdCaixas:1, frete:0, contrato:0},
     materials:[
-      link('51640',0.441772,0.01), link('00000',0.125145,0), link('60227',0.0296/12,0.01), link('46735',1,0.01),
+      link('51640',0.44177215189873414,0.01), link('00000',0.125145,0), link('60227',0.0296/12,0.01), link('46735',1,0.01),
       link('60082',1,0.01), link('46875',1/12,0.01), link('127255',(1/84)/12,0), link('68597',(0.3/84)/12,0),
     ],
     // não vinculado à Base de Insumos na planilha original (valor digitado direto na célula)
@@ -1317,7 +1317,7 @@ function freshClientForm(){
 
 function freshBrandState(brand){
   return {
-    global: { estado: brand.defaultEstado, comissao: brand.defaultComissao, tipoFrete: 'CIF', freteManual: false },
+    global: { estado: brand.defaultEstado, comissao: brand.defaultComissao, tipoFrete: 'CIF', freteManual: false, spreadsheetMode:false },
     insumos: Object.fromEntries(brand.insumos.map(i => [i.code, {preco:i.preco}])),
     customInsumos: [],
     products: brand.products.map(p => ({
@@ -1427,6 +1427,7 @@ async function loadState(){
           for(const ci of b.customInsumos){if(ci?.code&&!b.insumos[ci.code])b.insumos[ci.code]={preco:Number(ci.preco||0)}}
           if(!b.global.tipoFrete) b.global.tipoFrete = 'CIF';
           if(b.global.freteManual === undefined) b.global.freteManual = false;
+          if(b.global.spreadsheetMode === undefined) b.global.spreadsheetMode = false;
         });
         if(STATE.marginTarget === undefined) STATE.marginTarget = 0.06;
         if(!STATE.clientForm) STATE.clientForm = freshClientForm();
@@ -1462,7 +1463,7 @@ function computeMaterials(def, st, brand, bstate){
     procPreco = ps.preco; procLinked = false;
   }else{
     const procIns = brand.insumosByCode[def.processo.insumo];
-    procCode = procIns.code; procDesc = procIns.desc; procUnit = ps.unit||procIns.unit;
+    procCode = procIns.code; procDesc = def.processo.desc||procIns.desc; procUnit = ps.unit||procIns.unit;
     procPreco = bstate.insumos[def.processo.insumo].preco; procLinked = true;
   }
   const procCustoUnit = procPreco * ps.qty;
@@ -1484,7 +1485,8 @@ function computeCore(def, st, global, brand, bstate){
   const H = G * ICMS;
   const I = G * PIS_COFINS;
   const K = G * p.ipi;
-  const stZerado = global.estado === 'SP';
+  const spreadsheetMode = Boolean(global.spreadsheetMode);
+  const stZerado = !spreadsheetMode && global.estado === 'SP';
   const M = G * (stZerado ? 0 : p.icmsst);
   const O = G + K + M;
   const N = O / C;
@@ -1492,7 +1494,7 @@ function computeCore(def, st, global, brand, bstate){
   return {
     rows, cicUnit, cicCaixa, C,G,E,F,H,I,K,M,O,N,P,
     AH:G, AI:G*E, AO:O, AP:P,
-    icms: IMPOSTOS[global.estado][def.ncm],
+    icms: spreadsheetMode ? [ICMS,0,0] : IMPOSTOS[global.estado][def.ncm],
   };
 }
 
@@ -1521,11 +1523,12 @@ function computeAll(){
   const bstate = curState();
   const tipoFrete = bstate.global.tipoFrete;
   const manualFrete = bstate.global.freteManual;
+  const spreadsheetMode = Boolean(bstate.global.spreadsheetMode);
 
   // Passo 1: tudo que NÃO depende do frete (preço, impostos, valor com IPI/ST)
   const cores = brand.products.map((def, i) => {
     const st = bstate.products[i];
-    const g = { comissao: bstate.global.comissao, icms: IMPOSTOS[bstate.global.estado][def.ncm][0], estado: bstate.global.estado };
+    const g = { comissao: bstate.global.comissao, icms: spreadsheetMode ? 0.18 : IMPOSTOS[bstate.global.estado][def.ncm][0], estado: bstate.global.estado, spreadsheetMode };
     return computeCore(def, st, g, brand, bstate);
   });
 
@@ -1544,7 +1547,9 @@ function computeAll(){
     const core = cores[i];
     const g = { comissao: bstate.global.comissao, icms: core.icms[0], estado: bstate.global.estado };
     let Z, freteAuto;
-    if(tipoFrete === 'FOB'){
+    if(spreadsheetMode){
+      Z = st.pricing.frete; freteAuto = false;
+    }else if(tipoFrete === 'FOB'){
       Z = 0; freteAuto = true;
     }else if(manualFrete){
       Z = st.pricing.frete; freteAuto = false;
@@ -1575,7 +1580,7 @@ function computeAll(){
   });
   const avgSem = sumQtd !== 0 ? sumWeightSemNum / sumQtd : 0;
   const avgCom = sumQtd !== 0 ? sumWeightComNum / sumQtd : 0;
-  return { results, avgSem, avgCom, totalSem, totalCom, pricedCount, freightInfo, freightAvailability, icmsGlobal: IMPOSTOS[bstate.global.estado][brand.products[0].ncm][0] };
+  return { results, avgSem, avgCom, totalSem, totalCom, pricedCount, freightInfo, freightAvailability, icmsGlobal: spreadsheetMode ? 0.18 : IMPOSTOS[bstate.global.estado][brand.products[0].ncm][0] };
 }
 
 
@@ -1598,6 +1603,7 @@ window.FocadoLegacySimulator = {
         comissao:Number(bstate.global.comissao||0),
         tipoFrete:bstate.global.tipoFrete,
         freteManual:Boolean(bstate.global.freteManual),
+        spreadsheetMode:Boolean(bstate.global.spreadsheetMode),
         icms:Number(all.icmsGlobal||0)
       },
       totals:{
@@ -1652,6 +1658,7 @@ window.FocadoLegacySimulator = {
     if(patch.comissao!=null)g.comissao=Math.max(0,Number(patch.comissao)||0);
     if(patch.tipoFrete&&['CIF','FOB','REDESPACHO'].includes(patch.tipoFrete))g.tipoFrete=patch.tipoFrete;
     if(patch.freteManual!=null)g.freteManual=Boolean(patch.freteManual);
+    if(patch.spreadsheetMode!=null)g.spreadsheetMode=Boolean(patch.spreadsheetMode);
     scheduleSave();return this.snapshot();
   },
   setMarginTarget(value){STATE.marginTarget=Math.max(0,Number(value)||0);scheduleSave();return this.snapshot()},
