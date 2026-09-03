@@ -31,6 +31,50 @@
       '</div>'+((e.missing?.length||e.volumeMissing?.length)?'<p class="fr-logistics-alert">Há item(ns) sem ficha logística completa. A Logística deve validar a cubagem antes de fechar a cotação.</p>':'')+'</div>';
   }
 
+  function cargoReferenceOptions(selected){
+    const rows=window.FocadoLogisticsReference?.rows||[];
+    return '<option value="">Selecione o produto</option>'+rows.map(r=>'<option value="'+esc(r.key)+'" '+(String(selected||'')===String(r.key)?'selected':'')+'>'+esc(r.name)+'</option>').join('');
+  }
+  function cargoBuilderRow(item={},index=0){
+    return '<div class="fr-cargo-row" data-fr-cargo-row><select data-fr-cargo-product>'+cargoReferenceOptions(item.referenceKey||item.productId)+'</select><input data-fr-cargo-qty type="number" min="0" step="1" value="'+esc(item.qtyBoxes||'')+'" placeholder="Caixas"><div class="fr-cargo-money"><span>R$</span><input data-fr-cargo-value inputmode="decimal" value="'+moneyField(item.unitValue||'')+'" placeholder="Valor/cx"></div><button type="button" data-fr-cargo-remove title="Remover">×</button></div>';
+  }
+  function cargoBuilderHtml(items=[]){
+    const rows=items.length?items:[{}];
+    return '<div class="fr-cargo-builder"><div class="fr-cargo-builder-head"><div><span>COMPOSIÇÃO DA CARGA</span><b>Produtos, caixas e valor para seguro</b><small>Peso, cubagem e pallets são calculados pela tabela logística interna.</small></div><button type="button" id="frAddCargo">+ Produto</button></div><div id="frCargoRows">'+rows.map(cargoBuilderRow).join('')+'</div></div>';
+  }
+  function parseCargoMoney(v){
+    const s=String(v??'').trim();if(!s)return 0;
+    if(s.includes(','))return Number(s.replace(/[^0-9,-]/g,'').replace(/\./g,'').replace(',','.'))||0;
+    return Number(s.replace(/[^0-9.-]/g,''))||0;
+  }
+  function refreshCargoBuilder(){
+    const rows=[...document.querySelectorAll('[data-fr-cargo-row]')];
+    const refs=window.FocadoLogisticsReference?.rows||[];
+    const items=rows.map(row=>{
+      const key=row.querySelector('[data-fr-cargo-product]')?.value||'';
+      const ref=refs.find(x=>String(x.key)===String(key));
+      return {productId:key,referenceKey:key,name:ref?.name||'',qtyBoxes:Number(row.querySelector('[data-fr-cargo-qty]')?.value)||0,unitValue:parseCargoMoney(row.querySelector('[data-fr-cargo-value]')?.value)};
+    }).filter(x=>x.productId&&x.qtyBoxes>0);
+    const e=window.FocadoLogisticsReference?.estimate?.(items)||null;
+    const preview=document.getElementById('frLogisticsDynamic');if(preview)preview.innerHTML=logisticsPreview(e);
+    const cargo=items.map(x=>x.name+' x '+x.qtyBoxes+' cx').join(' | ');
+    const cargoInput=$('#frCargo'),quantity=$('#frQuantity');
+    if(cargoInput)cargoInput.value=cargo;
+    if(quantity)quantity.value=e?.totalBoxes?(e.totalBoxes+' caixas'):'';
+    requestDraft={...(requestDraft||{}),source:'COTACAO_AVULSA',cargo,quantity:e?.totalBoxes?(e.totalBoxes+' caixas'):'',items,logisticsEstimate:e};
+    return e;
+  }
+  function bindCargoBuilder(){
+    const rows=document.getElementById('frCargoRows');if(!rows)return;
+    const bind=()=>{
+      rows.querySelectorAll('select,input').forEach(el=>{el.onchange=refreshCargoBuilder;el.oninput=refreshCargoBuilder});
+      rows.querySelectorAll('[data-fr-cargo-remove]').forEach(btn=>btn.onclick=()=>{if(rows.children.length>1)btn.closest('[data-fr-cargo-row]').remove();else{const row=btn.closest('[data-fr-cargo-row]');row.querySelectorAll('select,input').forEach(el=>el.value='')}refreshCargoBuilder()});
+    };
+    const add=document.getElementById('frAddCargo');
+    if(add)add.onclick=()=>{rows.insertAdjacentHTML('beforeend',cargoBuilderRow({},rows.children.length));bind()};
+    bind();refreshCargoBuilder();
+  }
+
   function ensureOverlay(){
     let el=$('#frOverlay');
     if(el)return el;
@@ -76,8 +120,10 @@
     const draft=storedDraft()||{};
     const destination=draft.destination||'';
     const origin=draft.origin||'';
-    const el=modal('<div class="fr-modal-head"><div><span class="fr-eyebrow">NOVA DEMANDA</span><h2>Solicitar cotação de frete</h2><p>'+(draft.source?'Carga preparada automaticamente a partir de '+esc(draft.source)+'.':'Esta mensagem será enviada formalmente para a Logística.')+'</p></div><button class="fr-close" id="frClose">×</button></div>'+
-      logisticsPreview(draft.logisticsEstimate)+
+    const externalDraft=Boolean(draft.source&&draft.source!=='COTACAO_AVULSA');
+    const el=modal('<div class="fr-modal-head"><div><span class="fr-eyebrow">NOVA DEMANDA</span><h2>Solicitar cotação de frete</h2><p>'+(externalDraft?'Carga preparada automaticamente a partir de '+esc(draft.source)+'.':'Monte a carga abaixo e o Focado calcula peso, cubagem, pallets e valor estimado para seguro.')+'</p></div><button class="fr-close" id="frClose">×</button></div>'+
+      '<div id="frLogisticsDynamic">'+logisticsPreview(draft.logisticsEstimate)+'</div>'+
+      (!externalDraft?cargoBuilderHtml(draft.items||[]):'')+
       '<div class="fr-form">'+
       '<label><span>Cliente / referência <em>opcional</em></span><input id="frClient" value="'+esc(draft.client||'')+'" placeholder="Cliente, oportunidade ou referência"></label>'+
       '<label><span>Nº de referência <em>opcional</em></span><input id="frReference" value="'+esc(draft.reference||draft.sourceOrderNumber||'')+'" placeholder="Pedido, orçamento, proposta..."></label>'+
@@ -90,6 +136,7 @@
       '</div><div class="fr-modal-actions"><button class="fr-btn secondary" id="frCancel">Cancelar</button><button class="fr-btn primary" id="frSend">Enviar para Logística</button></div>');
     el.querySelector('#frClose').onclick=closeModal;el.querySelector('#frCancel').onclick=closeModal;
     el.querySelector('#frSend').onclick=sendRequest;
+    if(!externalDraft)bindCargoBuilder();
   }
 
   async function sendRequest(){
