@@ -11,8 +11,8 @@ assert.match(loader,/pedidos:\{css:'orders\.css',js:'orders\.js',deps:\['produto
 assert.match(loader,/'freight-requests':\{css:'freight-requests\.css',js:'freight-requests\.js',deps:\['logistics-flow'\]\}/);
 assert.match(loader,/'logistics-flow':\(\)=>typeof window\.FocadoLogisticsFlow\?\.refresh==='function'/);
 
-assert.match(flow,/Resumo logístico da simulação/);
-assert.match(flow,/Resumo logístico do pedido/);
+assert.match(flow,/Resumo logístico/);
+assert.match(flow,/kind==='simulator'\?'da simulação':'do pedido'/);
 assert.match(flow,/Valor estimado para seguro/);
 assert.match(flow,/calculateLoad/);
 assert.match(flow,/quoteOrder/);
