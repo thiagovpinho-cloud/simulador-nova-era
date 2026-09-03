@@ -36,8 +36,40 @@ assert.match(flow,/data-flog-context="simulator"/);
 assert.match(flow,/data-flog-context="order"/);
 assert.match(flow,/window\.FocadoNavigate\)window\.FocadoNavigate\('cotacoes-frete'\)/);
 
+// A solicitação originada do Simulador/Pedido deve carregar um snapshot de máquina
+// dentro do payload já persistido pelo domínio, sem alterar a mensagem mostrada ao usuário.
+assert.match(flow,/const MARKER='FOCADO_LOGISTICS_V1'/);
+assert.match(flow,/function compactSnapshot\(snapshot\)/);
+assert.match(flow,/function snapshotMarker\(snapshot\)/);
+assert.match(flow,/function extractSnapshot\(value\)/);
+assert.match(flow,/notes\.value=visibleNotes\(notes\.value\)\+snapshotMarker\(snapshot\)/);
+assert.match(flow,/noteEl\.textContent=visibleNotes\(raw\)/);
+
+// Economia de frete calculada sobre o snapshot original da carga.
+assert.match(flow,/perBox:boxes>0\?v\/boxes:0/);
+assert.match(flow,/perKg:kg>0\?v\/kg:0/);
+assert.match(flow,/perM3:m3>0\?v\/m3:0/);
+assert.match(flow,/perPallet:pallets>0\?v\/pallets:0/);
+assert.match(flow,/pctMerch:merch>0\?v\/merch:0/);
+assert.match(flow,/\/cx<\/span>/);
+assert.match(flow,/\/kg<\/span>/);
+assert.match(flow,/\/m³<\/span>/);
+assert.match(flow,/\/pallet<\/span>/);
+assert.match(flow,/da carga<\/span>/);
+assert.match(flow,/CARGA GRAVADA NA SOLICITAÇÃO/);
+
+// Prova numérica independente: frete R$ 1.000 para a carga teste da planilha.
+const freight=1000,boxes=100,kg=1244.4,m3=2.2835,pallets=2,merch=5810.70;
+assert.equal(freight/boxes,10);
+assert.ok(Math.abs(freight/kg-0.8036001285760206)<1e-12);
+assert.ok(Math.abs(freight/m3-437.9231432012262)<1e-10);
+assert.equal(freight/pallets,500);
+assert.ok(Math.abs(freight/merch-0.17209631162855887)<1e-12);
+
 assert.match(css,/\.flog-kpis/);
 assert.match(css,/\.flog-freight-preview/);
+assert.match(css,/\.flog-economics/);
+assert.match(css,/\.flog-request-snapshot/);
 assert.match(css,/\.fr-summary \.wide b\{white-space:pre-line\}/);
 
 console.log('logistics-flow-integration: ok');
