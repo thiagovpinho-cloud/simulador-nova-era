@@ -171,8 +171,18 @@ function applyCommercial(state,body){
     const id=String(src.id||src.number||'').trim();
     if(!id)throw Object.assign(new Error('ORDER_ID_REQUIRED'),{status:422});
     if(state.orders.some(o=>String(o.id)===id))throw Object.assign(new Error('ORDER_ALREADY_EXISTS'),{status:409});
-    const number=String(src.number||id).trim();
-    if(state.orders.some(o=>String(o.number||'').trim().toUpperCase()===number.toUpperCase())){
+    const requestedNumber=String(src.number||id).trim();
+    const isAutoOrderNumber=/^PED-\d+$/i.test(requestedNumber);
+    const nextOrderNumber=()=>{
+      const nums=state.orders
+        .map(o=>String(o.number||'').match(/^PED-(\d+)$/i))
+        .filter(Boolean)
+        .map(m=>Number(m[1]))
+        .filter(Number.isFinite);
+      return 'PED-'+String(Math.max(0,...nums)+1).padStart(5,'0');
+    };
+    const number=isAutoOrderNumber?nextOrderNumber():requestedNumber;
+    if(!isAutoOrderNumber&&state.orders.some(o=>String(o.number||'').trim().toUpperCase()===number.toUpperCase())){
       throw Object.assign(new Error('ORDER_NUMBER_ALREADY_EXISTS'),{status:409,number});
     }
     const order={

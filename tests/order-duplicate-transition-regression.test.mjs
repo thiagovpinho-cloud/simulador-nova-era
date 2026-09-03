@@ -10,18 +10,23 @@ const baseOrder=(id,number)=>({
 const state={orders:[]};
 applyDomain('COMERCIAL',state,{changes:{createOrder:baseOrder('op_1','PED-00001')}});
 assert.equal(state.orders.length,1);
-
-assert.throws(
-  ()=>applyDomain('COMERCIAL',state,{changes:{createOrder:baseOrder('op_2','PED-00001')}}),
-  /ORDER_NUMBER_ALREADY_EXISTS/,
-  'Backend deve impedir dois IDs com o mesmo número de pedido'
-);
-assert.equal(state.orders.length,1);
-
-applyDomain('COMERCIAL',state,{changes:{createOrder:baseOrder('op_2','PED-00002')}});
-assert.equal(state.orders.length,2);
 assert.equal(getOrder(state,'op_1').number,'PED-00001');
+
+applyDomain('COMERCIAL',state,{changes:{createOrder:baseOrder('op_2','PED-00001')}});
+assert.equal(state.orders.length,2,'Colisão de número automático não pode impedir a criação do pedido');
+assert.equal(getOrder(state,'op_2').number,'PED-00002','Backend deve renumerar a colisão de forma transacional');
+
+applyDomain('COMERCIAL',state,{changes:{createOrder:baseOrder('op_3','PED-00001')}});
+assert.equal(getOrder(state,'op_3').number,'PED-00003','Sequência deve avançar a partir do maior PED existente');
 assert.equal(getOrder(state,'PED-00001'),undefined,'Número não pode funcionar como ID interno');
+
+const custom={orders:[]};
+applyDomain('COMERCIAL',custom,{changes:{createOrder:baseOrder('custom_1','VENDA-001')}});
+assert.throws(
+  ()=>applyDomain('COMERCIAL',custom,{changes:{createOrder:baseOrder('custom_2','VENDA-001')}}),
+  /ORDER_NUMBER_ALREADY_EXISTS/,
+  'Número manual duplicado continua proibido'
+);
 
 const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const orders=read('assets/modules/orders.js');
@@ -32,6 +37,8 @@ const domain=read('shared/domain-rules.js');
 
 assert.match(orders,/let persistInFlight=false/);
 assert.match(orders,/if\(persistInFlight\)return false/);
+assert.match(domain,/const isAutoOrderNumber=\/\^PED-/);
+assert.match(domain,/nextOrderNumber/);
 assert.match(domain,/ORDER_NUMBER_ALREADY_EXISTS/);
 
 assert.ok(!store.includes('String(o.id||o.number)===String(orderId)'),'DataStore não pode localizar pedido por número');
