@@ -81,6 +81,43 @@
       '<div class="fsim-approval"><div><span>PAINEL DE DADOS E APROVAÇÃO</span><strong class="'+(approved?'ok':'bad')+'">'+(approved?'APROVADO':'NEGADO')+'</strong></div><div><span>MÉDIA PONDERADA</span><b>'+pct(snap.totals.margemSem)+'</b><b>'+pct(snap.totals.margemCom)+'</b></div></div>';
   }
 
+  function logisticsEstimate(){
+    const engine=window.FocadoLogisticsReference;
+    if(!engine?.estimate)return null;
+    return engine.estimate((snap.products||[]).map(p=>({
+      productId:p.id,name:p.name,qtyBoxes:num(p.pricing?.qtdCaixas),
+      unitValue:num(p.metrics?.precoComImpostosCaixa)
+    })));
+  }
+
+  function logisticsSummary(){
+    const e=logisticsEstimate();
+    if(!e||!e.totalBoxes)return '<div class="fsim-logistics empty"><div><span>LOGÍSTICA</span><h3>Peso, cubagem e valor da carga</h3><p>Informe a quantidade de caixas no painel para gerar automaticamente a ficha logística da cotação.</p></div></div>';
+    const alerts=[];
+    if(e.missing?.length)alerts.push(e.missing.length+' item(ns) sem ficha logística cadastrada');
+    if(e.volumeMissing?.length)alerts.push('cubagem incompleta: '+e.volumeMissing.map(x=>x.name).join(', '));
+    const warning=alerts.length?'<div class="fsim-logistics-warning"><b>Atenção:</b> '+esc(alerts.join(' · '))+'</div>':'';
+    return '<div class="fsim-logistics"><div class="fsim-logistics-head"><div><span>FICHA LOGÍSTICA AUTOMÁTICA</span><h3>Peso, cubagem e valor estimado da carga</h3><p>Calculado com a tabela interna de pesos, dimensões e palletização do modelo de cotação de 03/09/2026.</p></div><button type="button" id="fsimPrepareFreight">Preparar cotação de frete →</button></div>'+
+      '<div class="fsim-logistics-kpis"><div><span>Total de caixas</span><b>'+num(e.totalBoxes).toLocaleString('pt-BR')+'</b></div><div><span>Peso bruto</span><b>'+num(e.weightKg).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+' kg</b></div><div><span>Cubagem</span><b>'+num(e.volumeM3).toLocaleString('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3})+' m³</b></div><div><span>Pallets estimados</span><b>'+num(e.estimatedPallets).toLocaleString('pt-BR')+'</b><small>'+num(e.palletEquivalent).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' pallet-equivalente</small></div><div><span>Mercadoria / NF estimada</span><b>'+money(e.merchandiseValue)+'</b><small>valor com IPI/ST informado no simulador</small></div></div>'+warning+'</div>';
+  }
+
+  function prepareFreightQuote(){
+    const e=logisticsEstimate();
+    if(!e?.totalBoxes)return;
+    const items=(snap.products||[]).filter(p=>num(p.pricing?.qtdCaixas)>0).map(p=>({
+      productId:p.id,name:p.name,qtyBoxes:num(p.pricing.qtdCaixas),
+      unitValue:num(p.metrics?.precoComImpostosCaixa)
+    }));
+    try{
+      sessionStorage.setItem('focado-freight-draft',JSON.stringify({
+        source:'SIMULADOR',brand:brandLabel(),createdAt:Date.now(),
+        cargo:items.map(x=>x.name+' x '+x.qtyBoxes+' cx').join(' | '),
+        quantity:e.totalBoxes+' caixas',items,logisticsEstimate:e
+      }));
+    }catch(_){}
+    window.FocadoNavigate?.('cotacoes-frete');
+  }
+
   function painel(){
     const official=Boolean(snap.global.spreadsheetMode);
     return summary()+
@@ -106,6 +143,7 @@
           '<td><span class="fsim-margin '+(num(p.metrics.margemSem)>=num(snap.marginTarget)?'ok':'bad')+'">'+pct(p.metrics.margemSem)+'</span></td>'+
           '<td>'+pct(p.metrics.margemCom)+'</td></tr>';
       }).join('')+'</tbody></table></div>'+
+      logisticsSummary()+
       '<div class="fsim-cost-summary"><h3>RESUMO DE CUSTOS</h3>'+snap.products.map(p=>'<div><span>'+esc(p.name)+'</span><b>'+money(p.metrics.custoCaixa)+'</b></div>').join('')+'</div></div>';
   }
 
@@ -184,6 +222,7 @@
       if(!snap.global.spreadsheetMode&&!snap.global.freteManual)window.FocadoLegacySimulator.setGlobal({freteManual:true});
       rerender(window.FocadoLegacySimulator.setPricing(i.dataset.freightPrice,{frete:num(i.value)}));
     });
+    if($('#fsimPrepareFreight'))$('#fsimPrepareFreight').onclick=prepareFreightQuote;
     if($('#fsimProductSel'))$('#fsimProductSel').onchange=e=>{selectedProduct=e.target.value;rerender(snap)};
     document.querySelectorAll('[data-comp-unit]').forEach(i=>i.onchange=()=>updateCompositionField(i,'unit'));
     document.querySelectorAll('[data-comp-qty]').forEach(i=>i.onchange=()=>updateCompositionField(i,'qty'));
