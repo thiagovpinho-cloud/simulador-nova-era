@@ -26,7 +26,7 @@ assert.match(inputs,/Código CHB/);
 assert.match(inputs,/data-fin-delete/);
 assert.match(inputs,/deleteId:item\.id/);
 assert.match(inputs,/manualOverride:true/);
-assert.match(inputs,/prev\.active===false/);
+assert.match(inputs,/active!==false/);
 
 // Histórico PCP deve usar a mesma definição do KPI concluído.
 assert.match(pcp,/historyRows=\(ops\.orders\|\|\[\]\)[\s\S]*?\['LOGISTICA','ENTREGUE'\]\.includes/);
@@ -61,7 +61,7 @@ assert.match(sim,/setInputPrice/);
 assert.match(sim,/PLANILHA|FocadoSimulatorMasterData/);
 
 // Cache publica a nova arquitetura.
-assert.match(index,/module-loader\.js\?v=20260902-simulator-architecture-v2/);
-assert.match(loader,/const VERSION='20260902-simulator-architecture-v2'/);
+assert.match(index,/module-loader\.js\?v=20260902-simulator-hotfix-v3/);
+assert.match(loader,/const VERSION='20260902-simulator-hotfix-v3'/);
 
 console.log('simulator-architecture-v2: ok');
