@@ -14,3 +14,12 @@
 .fr-card:hover .fr-respond-cta i{transform:translateX(2px)}
 .fr-card:focus-visible{outline:3px solid rgba(8,120,91,.18);outline-offset:2px}
 @media(max-width:700px){.fr-card-value{align-items:flex-start}.fr-respond-cta{min-height:42px!important;padding:0 15px!important}}
+
+/* Ficha logística automática na cotação */
+.fr-logistics-box{margin:0 0 14px;border:1px solid #cfe1d8;border-radius:14px;background:#f7fbf9;padding:12px}
+.fr-logistics-title span{display:block;font-size:8px;font-weight:900;letter-spacing:.08em;color:#08785b;margin-bottom:3px}.fr-logistics-title b{font-size:12px;color:#173b30}
+.fr-logistics-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin-top:10px}
+.fr-logistics-grid>div{background:#fff;border:1px solid #dfe9e4;border-radius:10px;padding:8px;min-width:0}
+.fr-logistics-grid span{display:block;font-size:7.5px;color:#7a8982;margin-bottom:3px}.fr-logistics-grid strong{display:block;font-size:11px;color:#173b30;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fr-logistics-alert{margin:9px 0 0;padding:8px;border-radius:9px;background:#fff7e8;color:#8a5a12;font-size:8.5px}
+@media(max-width:700px){.fr-logistics-grid{grid-template-columns:1fr 1fr}.fr-logistics-grid>div:last-child{grid-column:1/-1}}
