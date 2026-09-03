@@ -42,6 +42,12 @@ assert.match(sim,/const canRecipes=.*ADMIN.*DIRETOR/);
 assert.match(sim,/Receitas de Produção/);
 assert.ok(!sim.includes("['insumos','Base de Insumos']"));
 assert.match(sim,/FocadoNavigate\?\.\('inputs'\)/);
+assert.match(sim,/data-fsim-brand/);
+assert.match(sim,/Planilha oficial 07\/07\/2026/);
+assert.match(sim,/focado-input-brand-from-simulator/);
+assert.ok(!sim.includes('const showFreight='),'Frete por caixa não pode desaparecer do Painel');
+assert.match(inputs,/data-fin-brand/);
+assert.match(inputs,/focado-input-brand-from-simulator/);
 
 // Receita vigente alimenta Produção.
 assert.match(index,/recipeFor\(brandLabel,productRef\)/);
@@ -61,7 +67,7 @@ assert.match(sim,/setInputPrice/);
 assert.match(sim,/PLANILHA|FocadoSimulatorMasterData/);
 
 // Cache publica a nova arquitetura.
-assert.match(index,/module-loader\.js\?v=(?:20260902-simulator-hotfix-v3|20260902-freight-popup-history-v[12])/);
-assert.match(loader,/const VERSION='(?:20260902-simulator-hotfix-v3|20260902-freight-popup-history-v[12])'/);
+assert.match(index,/module-loader\.js\?v=(?:20260902-simulator-hotfix-v3|20260902-freight-popup-history-v[12]|20260902-simulator-parity-v1)/);
+assert.match(loader,/const VERSION='(?:20260902-simulator-hotfix-v3|20260902-freight-popup-history-v[12]|20260902-simulator-parity-v1)'/);
 
 console.log('simulator-architecture-v2: ok');
