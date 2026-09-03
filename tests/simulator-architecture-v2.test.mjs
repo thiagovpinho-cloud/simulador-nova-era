@@ -68,6 +68,6 @@ assert.match(sim,/PLANILHA|FocadoSimulatorMasterData/);
 
 // Cache publica a nova arquitetura.
 assert.match(index,/module-loader\.js\?v=(?:20260903-freight-cta-v1|20260902-simulator-hotfix-v3|20260902-freight-popup-history-v[12]|20260902-simulator-parity-v1)/);
-assert.match(loader,/const VERSION='(?:20260903-freight-cta-v1|20260902-simulator-hotfix-v3|20260902-freight-popup-history-v[12]|20260902-simulator-parity-v1)'/);
+assert.match(loader,/const VERSION='(?:20260903-logistics-visibility-v2|20260903-freight-cta-v1|20260902-simulator-hotfix-v3|20260902-freight-popup-history-v[12]|20260902-simulator-parity-v1)'/);
 
 console.log('simulator-architecture-v2: ok');
