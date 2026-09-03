@@ -67,8 +67,8 @@ assert.match(shell,/focado-context-hidden:/);
 assert.match(shell,/fx-journey-close/);
 assert.match(shellCss,/\.fx-journey-close/);
 
-assert.match(freight,/fr-card-action/);
-assert.match(freightCss,/\.fr-card-action/);
+assert.match(freight,/fr-respond-cta/);
+assert.match(freightCss,/\.fr-respond-cta/);
 assert.match(freightCss,/background:#08785b/);
 
 assert.match(orders,/const canDelete=allowEdit;/);

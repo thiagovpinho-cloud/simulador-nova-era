@@ -43,7 +43,7 @@
   function bestQuote(r){return (r.quotes||[]).slice().sort((a,b)=>Number(a.value||0)-Number(b.value||0))[0]}
   function card(r,logistics){
     const best=bestQuote(r);
-    return '<button class="fr-card" data-fr-open="'+esc(r.id)+'"><div class="fr-card-main"><div class="fr-card-top"><b>'+esc(r.origin||'—')+' → '+esc(r.destination||'—')+'</b><span class="fr-status '+String(r.status||'').toLowerCase()+'">'+esc(statusLabel(r.status))+'</span></div><p>'+esc(r.client||r.reference||r.cargo||'Solicitação de frete')+'</p><small>'+dateTime(r.requestedAt)+' · '+esc(r.requestedBy||'Comercial')+'</small></div><div class="fr-card-value">'+(best?'<span>Melhor cotação</span><strong>'+money(best.value)+'</strong><small>'+esc(best.provider)+'</small>':(logistics?'<span class="fr-card-action">Responder →</span>':'<strong>Aguardando</strong>'))+'</div></button>';
+    return '<button class="fr-card" data-fr-open="'+esc(r.id)+'"><div class="fr-card-main"><div class="fr-card-top"><b>'+esc(r.origin||'—')+' → '+esc(r.destination||'—')+'</b><span class="fr-status '+String(r.status||'').toLowerCase()+'">'+esc(statusLabel(r.status))+'</span></div><p>'+esc(r.client||r.reference||r.cargo||'Solicitação de frete')+'</p><small>'+dateTime(r.requestedAt)+' · '+esc(r.requestedBy||'Comercial')+'</small></div><div class="fr-card-value">'+(best?'<span>Melhor cotação</span><strong>'+money(best.value)+'</strong><small>'+esc(best.provider)+'</small>':(logistics?'<span class="fr-respond-cta"><span>Responder cotação</span><i aria-hidden="true">→</i></span>':'<strong>Aguardando</strong>'))+'</div></button>';
   }
 
   function openRequestModal(){
