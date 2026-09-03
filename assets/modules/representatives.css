@@ -41,3 +41,10 @@
   .fr-grid input{min-height:44px;font-size:16px}
 }
 @media(max-width:430px){.fr-summary{grid-template-columns:1fr}.fr-table tr{grid-template-columns:1fr}.fr-table th:last-child,.fr-table td:last-child{grid-column:auto}}
+
+/* Feedback operacional 02/09 — busca primeiro, listagem sempre abaixo */
+.fr-card{display:block!important}
+.fr-toolbar{display:grid!important;grid-template-columns:minmax(280px,1fr) 180px;align-items:center;width:100%;box-sizing:border-box}
+.fr-table-wrap{display:block!important;width:100%!important;clear:both;margin-top:12px;overflow-x:auto}
+.fr-table{width:100%!important}
+@media(max-width:700px){.fr-toolbar{grid-template-columns:1fr}}
