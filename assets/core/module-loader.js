@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260902-simulator-hotfix-v3';
+  const VERSION='20260902-freight-popup-history-v1';
   const loaded=new Map();
   const defs={
     'simulator-master-data':{js:'simulator-master-data.js'},

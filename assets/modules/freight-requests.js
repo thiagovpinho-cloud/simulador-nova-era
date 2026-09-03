@@ -162,6 +162,20 @@
     return '<div class="fr-history"><h3>Histórico</h3>'+h.map(x=>'<div><span>'+dateTime(x.at)+'</span><b>'+esc(({SOLICITADA:'Solicitada pelo Comercial',EM_COTACAO:'Aberta pela Logística',RESPONDIDA:'Respondida pela Logística',VISUALIZADA_COMERCIAL:'Visualizada pelo Comercial'})[x.type]||x.type)+'</b><small>'+esc(x.by||'')+'</small></div>').join('')+'</div>';
   }
 
+  async function acknowledgeCommercialPopup(r,key){
+    if(r.commercialViewedAt)return true;
+    try{
+      const result=await window.FocadoDataStore.saveDomain('COTACAO_FRETE_COMERCIAL',{requestId:r.id,viewed:{at:Date.now(),by:user()}});
+      if(!result?.ok)throw new Error(result?.error||'Falha ao registrar visualização da cotação');
+      if(result.payload)window.FocadoDataStore.writeLocal(result.payload);
+      return true;
+    }catch(err){
+      sessionStorage.removeItem(key);
+      console.warn('[FocadoFreightRequests] visualização do popup não registrada',err);
+      return false;
+    }
+  }
+
   function popupFor(r,kind){
     const key='fr-popup-'+kind+'-'+r.id+'-'+r.status;
     if(sessionStorage.getItem(key)==='1')return;
@@ -170,6 +184,7 @@
     const title=kind==='logistics'?'Nova cotação solicitada':'Cotação de frete respondida';
     const text=kind==='logistics'?(r.origin+' → '+r.destination):(r.origin+' → '+r.destination+' · '+(bestQuote(r)?money(bestQuote(r).value):'retorno disponível'));
     const el=modal('<div class="fr-notice"><span class="fr-notice-icon">⇄</span><div><span class="fr-eyebrow">'+(kind==='logistics'?'NOVA DEMANDA':'RETORNO DA LOGÍSTICA')+'</span><h2>'+esc(title)+'</h2><p>'+esc(text)+'</p></div></div><div class="fr-modal-actions"><button class="fr-btn secondary" id="frLater">Agora não</button><button class="fr-btn primary" id="frGo">'+(kind==='logistics'?'Executar cotação':'Ver retorno')+'</button></div>');
+    if(kind==='commercial')void acknowledgeCommercialPopup(r,key);
     el.querySelector('#frLater').onclick=closeModal;
     el.querySelector('#frGo').onclick=()=>{closeModal();window.FocadoNavigate?.(route)};
   }
