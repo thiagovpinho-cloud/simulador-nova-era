@@ -6,7 +6,7 @@
   const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:4,maximumFractionDigits:4});
   const fmt=(v,d=3)=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
   const available=x=>Math.max(0,Number(x?.physical||0)-Number(x?.reserved||0)-Number(x?.blocked||0));
-  let filters={q:'',brand:'TODAS',group:'TODOS'};
+  let filters={q:'',brand:'Nova Era',group:'TODOS'};
   const canEdit=()=>['ADMIN','ESTOQUE'].includes(String(window.FocadoAuth?.getRole?.()||'').toUpperCase());
 
   function motherCatalog(){
@@ -33,6 +33,13 @@
   }
 
   async function render(next){
+    if(!next){
+      try{
+        const fromSimulator=sessionStorage.getItem('focado-input-brand-from-simulator');
+        if(['Nova Era','New Green'].includes(fromSimulator||''))filters.brand=fromSimulator;
+        sessionStorage.removeItem('focado-input-brand-from-simulator');
+      }catch(_){}
+    }
     filters={...filters,...(next||{})};
     const el=content();if(!el)return;
     el.innerHTML='<div class="fin-page"><div class="fin-loading">Carregando base-mãe de insumos…</div></div>';
@@ -47,12 +54,14 @@
     );
     const physicalTotal=Object.values(stock).reduce((s,x)=>s+Number(x.physical||0),0);
     el.innerHTML='<div class="fin-page">'+
-      '<div class="fin-head"><div><span>BASE DE INSUMOS</span><h1>Base de Insumos</h1><p>Relação oficial de itens e serviços das planilhas Nova Era e New Green, integrada ao estoque de insumos.</p></div>'+(canEdit()?'<button class="fin-btn primary" id="finNew">+ Cadastrar insumo</button>':'<span class="fin-readonly">Consulta</span>')+'</div>'+
+      '<div class="fin-head"><div><span>BASE DE INSUMOS</span><h1>Base de Insumos'+(filters.brand!=='TODAS'?' — '+esc(filters.brand):'')+'</h1><p>Cada marca mantém sua própria base oficial. Troque a marca abaixo sem misturar preços ou receitas.</p></div>'+(canEdit()?'<button class="fin-btn primary" id="finNew">+ Cadastrar insumo</button>':'<span class="fin-readonly">Consulta</span>')+'</div>'+
       '<div class="fin-kpis"><div><span>Base cadastrada</span><strong>'+catalog.length+'</strong><small>itens ativos</small></div><div><span>Com saldo físico</span><strong>'+Object.values(stock).filter(x=>Number(x.physical||0)>0).length+'</strong><small>itens em estoque</small></div><div><span>Saldo físico total</span><strong>'+fmt(physicalTotal,0)+'</strong><small>unidades de medida somadas apenas como referência</small></div></div>'+
       '<div class="fin-note"><b>Mesma base das planilhas oficiais.</b><span>Código Senir, Código CHB, descrição, medida e preço unitário são mantidos por marca. Itens podem ser adicionados, editados, precificados ou removidos sem misturar com produto acabado.</span></div>'+
+      '<div class="fin-brand-tabs"><button type="button" data-fin-brand="Nova Era" class="'+(filters.brand==='Nova Era'?'active':'')+'">Nova Era</button><button type="button" data-fin-brand="New Green" class="'+(filters.brand==='New Green'?'active':'')+'">New Green</button><button type="button" data-fin-brand="TODAS" class="'+(filters.brand==='TODAS'?'active':'')+'">Todas</button></div>'+
       '<div class="fin-toolbar"><input id="finSearch" placeholder="Buscar código, insumo, grupo ou marca" value="'+esc(filters.q)+'"><select id="finBrand"><option value="TODAS">Todas as marcas</option>'+brands.map(b=>'<option '+(filters.brand===b?'selected':'')+'>'+esc(b)+'</option>').join('')+'</select><select id="finGroup"><option value="TODOS">Todos os grupos</option>'+groups.map(g=>'<option '+(filters.group===g?'selected':'')+'>'+esc(g)+'</option>').join('')+'</select><span>'+rows.length+' item(ns)</span></div>'+
       '<div class="fin-table-wrap">'+table(rows,stock)+'</div></div>';
     if(document.getElementById('finNew'))document.getElementById('finNew').onclick=()=>openEditor(null);
+    document.querySelectorAll('[data-fin-brand]').forEach(b=>b.onclick=()=>render({brand:b.dataset.finBrand}));
     document.getElementById('finSearch').oninput=e=>render({q:e.target.value});
     document.getElementById('finBrand').onchange=e=>render({brand:e.target.value});
     document.getElementById('finGroup').onchange=e=>render({group:e.target.value});
