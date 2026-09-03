@@ -25,8 +25,10 @@
         let current=api.setBrand(b.id);
         for(const item of [...merged.values()].filter(x=>String(x.brand).toLowerCase()===String(b.label).toLowerCase())){
           try{
-            if((current.insumos||[]).some(x=>String(x.code)===String(item.code)))current=api.setInputPrice(item.code,Number(item.price||0));
-            else current=api.addInput({code:item.code,desc:item.name,unit:item.unit,group:item.group,preco:Number(item.price||0)});
+            const existing=(current.insumos||[]).find(x=>String(x.code)===String(item.code));
+            if(existing){
+              if(Math.abs(Number(existing.preco||0)-Number(item.price||0))>1e-9)current=api.setInputPrice(item.code,Number(item.price||0));
+            }else current=api.addInput({code:item.code,desc:item.name,unit:item.unit,group:item.group,preco:Number(item.price||0)});
           }catch(_){}
         }
       }
@@ -36,8 +38,8 @@
   }
 
   function head(){
-    return '<div class="fsim-head"><div><span>COMERCIAL · FORMAÇÃO DE PREÇO</span><h1>Simulador</h1><p>Painel operacional espelhado dos simuladores oficiais Nova Era e New Green.</p></div><div class="fsim-badge">Base oficial · 07/07/2026</div></div>'+
-      '<div class="fsim-note"><b>Arquitetura integrada.</b> Preços vêm da Base de Insumos; receitas definem consumo de produção; o Painel aplica as mesmas regras de custo, impostos, frete, contrato e margem do motor oficial.</div>';
+    const brand=snap?.brands?.find(b=>b.id===snap.activeBrand)?.label||'Nova Era';
+    return '<div class="fsim-sheet-title"><h1>SIMULADOR '+esc(brand.toUpperCase())+' 2026</h1><span>Modelo oficial 07/07/2026</span></div>';
   }
 
   function controls(){
@@ -61,18 +63,15 @@
 
   function summary(){
     const approved=num(snap.totals.margemSem)>=num(snap.marginTarget);
-    return '<div class="fsim-kpis">'+
-      '<div><span>Total sem IPI/ST</span><b>'+money(snap.totals.semImpostos)+'</b><small>Base comercial</small></div>'+
-      '<div><span>Total com IPI/ST</span><b>'+money(snap.totals.comImpostos)+'</b><small>Valor final simulado</small></div>'+
-      '<div><span>Margem sem IPI/ST</span><b>'+pct(snap.totals.margemSem)+'</b><small>Média ponderada</small></div>'+
-      '<div><span>Margem com IPI/ST</span><b>'+pct(snap.totals.margemCom)+'</b><small>Média ponderada</small></div>'+
-      '</div><div class="fsim-note"><b>Status da simulação: '+(approved?'APROVADO':'NEGADO')+'.</b> Critério atual: margem média sem IPI/ST ≥ '+pct(snap.marginTarget)+'.</div>';
+    return '<div class="fsim-sheet-meta"><div><span>ICMS</span><b>'+pct(snap.global.icms)+'</b></div><div><span>COMISSÃO</span><b>'+pct(snap.global.comissao)+'</b></div></div>'+
+      '<div class="fsim-edit-hint">FAVOR APENAS EDITAR AS CÉLULAS EM AZUL</div>'+
+      '<div class="fsim-approval"><div><span>PAINEL DE DADOS E APROVAÇÃO</span><strong class="'+(approved?'ok':'bad')+'">'+(approved?'APROVADO':'NEGADO')+'</strong></div><div><span>MÉDIA PONDERADA</span><b>'+pct(snap.totals.margemSem)+'</b><b>'+pct(snap.totals.margemCom)+'</b></div></div>';
   }
 
   function painel(){
     const showFreight=snap.global.tipoFrete!=='FOB';
     return summary()+
-      '<div class="fsim-card"><div class="fsim-card-head"><div><h2>Painel de formação de preço</h2><p>Estrutura operacional equivalente à aba PAINEL das planilhas oficiais.</p></div></div>'+
+      '<div class="fsim-card fsim-sheet-card"><div class="fsim-card-head"><div><h2>PAINEL</h2><p>Campos, lógica e fórmulas do arquivo oficial.</p></div></div>'+
       '<div class="fsim-table-wrap"><table class="fsim-table fsim-panel-table"><thead><tr>'+
       '<th>NCM</th><th>Descrição técnica</th><th>UND</th><th>Qtd/CX</th><th>ICMS</th><th>Qtd CXS</th>'+
       '<th>Venda CX sem IPI/ST</th><th>Venda UN sem IPI/ST</th>'+(showFreight?'<th>Frete/CX</th>':'')+
@@ -93,7 +92,8 @@
           '<td><b>'+money(withTax)+'</b></td><td>'+money(withTax/units)+'</td><td><b>'+money(num(p.metrics.totalComImpostos))+'</b></td>'+
           '<td><span class="fsim-margin '+(num(p.metrics.margemSem)>=num(snap.marginTarget)?'ok':'bad')+'">'+pct(p.metrics.margemSem)+'</span></td>'+
           '<td>'+pct(p.metrics.margemCom)+'</td></tr>';
-      }).join('')+'</tbody></table></div></div>';
+      }).join('')+'</tbody></table></div>'+
+      '<div class="fsim-cost-summary"><h3>RESUMO DE CUSTOS</h3>'+snap.products.map(p=>'<div><span>'+esc(p.name)+'</span><b>'+money(p.metrics.custoCaixa)+'</b></div>').join('')+'</div></div>';
   }
 
   function receitas(){
