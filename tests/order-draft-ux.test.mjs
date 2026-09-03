@@ -59,6 +59,6 @@ assert.match(css,/\.fo-stage\.draft/);
 
 assert.match(loader,/'order-drafts':\{js:'order-drafts\.js'\}/);
 assert.match(loader,/pedidos:\{css:'orders\.css',js:'orders\.js',deps:\['produtos','order-drafts'\]\}/);
-assert.match(index,/module-loader\.js\?v=20260902-(?:draft-ux|freight-money|ops-ux|ops-data)-v1|20260902-simulator-architecture-v2/);
+assert.match(index,/module-loader\.js\?v=20260902-(?:draft-ux|freight-money|ops-ux|ops-data)-v1|20260902-simulator-(?:architecture-v2|hotfix-v3)/);
 
 console.log('order-draft-ux: ok');
