@@ -17,6 +17,7 @@ const rows=[
 
 const byKey=Object.fromEntries(rows.map(x=>[x.key,Object.freeze(x)]));
 const productMap=Object.freeze({
+  inpm928:'inpm928',barrica10:'barrica10',
   bicarbonato:'bicarbonato',
   inpm46:'inpm46',
   inpm46bact:'inpm46bact',
