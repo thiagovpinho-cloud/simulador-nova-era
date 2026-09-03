@@ -59,6 +59,10 @@ assert.match(css,/\.fo-stage\.draft/);
 
 assert.match(loader,/'order-drafts':\{js:'order-drafts\.js'\}/);
 assert.match(loader,/pedidos:\{css:'orders\.css',js:'orders\.js',deps:\['produtos','order-drafts'\]\}/);
-assert.match(index,/module-loader\.js\?v=(?:20260903-freight-cta-v1|20260902-(?:draft-ux|freight-money|ops-ux|ops-data|freight-popup-history|simulator-parity)-v[12]|20260902-simulator-(?:architecture-v2|hotfix-v3))/);
+assert.match(index,/module-loader\.js\?v=(?:20260903-(?:freight-cta|logistics-cubage)-v1|20260902-(?:draft-ux|freight-money|ops-ux|ops-data|freight-popup-history|simulator-parity)-v[12]|20260902-simulator-(?:architecture-v2|hotfix-v3))/);
 
 console.log('order-draft-ux: ok');
+
+assert.match(orders,/foLogisticsSummary/);
+assert.match(orders,/prepareOrderFreightQuote/);
+assert.match(orders,/logisticsEstimate:lastLogisticsDraft/);
