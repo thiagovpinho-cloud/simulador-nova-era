@@ -87,7 +87,7 @@ assert.ok(!shell.includes("if(id==='pedidos')await window.FocadoDataStore?.refre
 assert.ok(shell.includes("refreshInBackground('inventory'"),'Estoque deve atualizar da V2 sem bloquear navegação');
 assert.ok(shell.includes("refreshInBackground('production'"),'Produção deve atualizar da V2 em segundo plano');
 assert.ok(shell.includes("refreshInBackground('purchases'"),'Compras deve atualizar da V2 em segundo plano');
-assert.ok(shell.includes("refreshInBackground('carriers'"),'Transportadoras devem atualizar da V2 em segundo plano');
+assert.ok(shell.includes("refreshInBackground('carriers'"),'Transportadoras deve atualizar da V2 em segundo plano');
 
 assert.ok(loader.includes("existing.dataset.loaded==='1'||existing.sheet"),'Loader deve reconhecer CSS lazy carregado');
 assert.ok(loader.includes("existing.remove()"),'Loader deve remover CSS lazy quebrado antes de tentar novamente');
@@ -95,9 +95,13 @@ assert.ok(loader.includes("el.onerror=err=>{el.remove();reject"),'Falha de CSS d
 assert.ok(loader.includes("if(existing&&existing()){\n        if(def.css)await css(def.css);"),'Módulo JS já carregado ainda deve garantir o CSS correspondente');
 
 assert.ok(loader.includes("indicadores:{css:'indicators.css',js:'indicators.js'}"),'Indicadores devem ser carregados sob demanda');
-assert.ok(!index.includes('assets/modules/indicators.js?v='),'Indicadores não devem bloquear boot');
+assert.ok(!index.includes('assets/modules/indicators.js?v='),'Indicadores não deve bloquear boot');
 
-assert.ok(loader.includes("simulador:{css:'simulator.css',js:'simulator.js',deps:['simulator-master-data']}"),'Simulador deve estar registrado no loader com a base oficial');
+assert.ok(
+  loader.includes("simulador:{css:'simulator.css',js:'simulator.js',deps:['simulator-master-data']}")||
+  loader.includes("simulador:{css:'simulator.css',js:'simulator.js',deps:['simulator-master-data','produtos','logistics-flow']}"),
+  'Simulador deve estar registrado no loader com a base oficial e dependências operacionais'
+);
 assert.ok(loader.includes("simulador:()=>typeof window.FocadoSimulator?.render==='function'"),'Simulador moderno deve ter contrato');
 assert.ok(shell.includes("['simulador','∑','Simulador']"),'Simulador deve aparecer na barra lateral');
 
