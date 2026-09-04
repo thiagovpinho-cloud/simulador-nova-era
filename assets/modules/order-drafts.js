@@ -2,6 +2,7 @@
   'use strict';
 
   const PANEL_ID='foRecoveredDrafts';
+  const STYLE_ID='foRecoveredDraftsCriticalStyle';
   let observer=null;
   let unsubscribe=null;
   let attachedTo=null;
@@ -17,6 +18,14 @@
   };
   const isDraft=o=>Boolean(o&&o.status==='COMERCIAL'&&!o.commercial?.completedAt);
   const read=()=>window.FocadoDataStore?.readLocal?.()||{};
+
+  function ensureCriticalStyles(){
+    if(document.getElementById(STYLE_ID))return;
+    const style=document.createElement('style');
+    style.id=STYLE_ID;
+    style.textContent='.fod-panel{margin-top:18px;border:1px solid var(--fx-border,#dfe3e8);border-radius:14px;background:#fff;overflow:hidden}.fod-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:18px 20px;border-bottom:1px solid var(--fx-border,#e7e9ed)}.fod-head span{display:block;font-size:11px;font-weight:800;letter-spacing:.08em;color:#64748b}.fod-head h2{margin:4px 0 2px;font-size:18px}.fod-head p{margin:0;color:#64748b;font-size:13px}.fod-head>strong{min-width:34px;height:34px;border-radius:999px;display:grid;place-items:center;background:#f1f5f9;font-size:14px}.fod-list{display:grid}.fod-row{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(120px,.55fr) auto;gap:16px;align-items:center;padding:14px 20px;border-top:1px solid #eef1f4}.fod-row:first-child{border-top:0}.fod-main{display:grid;gap:3px}.fod-main b{font-size:14px}.fod-main small,.fod-value span{color:#64748b;font-size:12px}.fod-badge{display:inline-flex;width:max-content;padding:3px 8px;border-radius:999px;background:#fff7ed;color:#9a3412;font-size:11px;font-weight:800}.fod-value{display:grid;gap:2px;text-align:right}.fod-value strong{font-size:14px}.fod-actions{display:flex;gap:8px}.fod-delete{color:#b42318}@media(max-width:760px){.fod-row{grid-template-columns:1fr}.fod-value{text-align:left}.fod-actions{justify-content:flex-start}.fod-head{padding:16px}.fod-row{padding:14px 16px}}';
+    document.head.appendChild(style);
+  }
 
   function isOrdersPage(content){
     return Boolean(content?.querySelector?.('.fo-page .fo-head h1')?.textContent?.includes('Pedidos Comerciais'));
@@ -116,6 +125,7 @@
   function attach(){
     const content=document.getElementById('fxContent');
     if(!content)return;
+    ensureCriticalStyles();
     if(attachedTo!==content){
       attachedTo=content;
       content.addEventListener('click',onClick);
