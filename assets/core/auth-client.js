@@ -45,7 +45,7 @@
     'bi-config':['ADMIN','FINANCEIRO','ESTOQUE'],
     config:['ADMIN'],
     usuarios:['ADMIN'],
-    'system-health':['ADMIN']
+    'system-health':[]
   };
 
   function apiBase(){
