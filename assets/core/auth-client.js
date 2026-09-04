@@ -42,7 +42,7 @@
     relatorios:['ADMIN','FINANCEIRO'],
     indicadores:['ADMIN','FINANCEIRO'],
     financeiro:['ADMIN','FINANCEIRO'],
-    'bi-config':['ADMIN','FINANCEIRO','ESTOQUE'],
+    'bi-config':[],
     config:['ADMIN'],
     usuarios:['ADMIN'],
     'system-health':[]
