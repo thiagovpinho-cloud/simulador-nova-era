@@ -15,6 +15,7 @@ assert.doesNotMatch(loader,/pedidos:\{[^\n]+order-drafts/,'Rascunhos jamais pode
 assert.match(loader,/if\(name==='pedidos'\)optional\('order-drafts'\)/,'Rascunhos devem carregar apenas como complemento tolerante a falha');
 assert.match(loader,/módulo opcional indisponível/,'Falha opcional deve ser registrada sem derrubar o módulo principal');
 assert.match(loader,/'order-drafts':\(\)=>typeof window\.FocadoOrderDrafts\?\.attach==='function'/);
+assert.match(loader,/20260904-recovery-step1-drafts-v4/,'Versão deve forçar atualização dos assets corrigidos');
 
 assert.match(drafts,/status==='COMERCIAL'/);
 assert.match(drafts,/commercial\?\.completedAt/);
@@ -24,6 +25,9 @@ assert.match(drafts,/data-draft-delete/);
 assert.match(drafts,/saveDomain\?\.\('COMERCIAL',\{deleteOrderId:id\},id\)/);
 assert.match(drafts,/observer\.observe\(content,\{childList:true\}\)/,'Observador deve acompanhar apenas trocas diretas de página, sem subtree pesado');
 assert.doesNotMatch(drafts,/setInterval|setTimeout\([^,]+,\s*[0-9]+\)/,'Rascunhos não podem criar polling recorrente');
+assert.match(drafts,/function ensureCriticalStyles\(\)/,'Módulo deve possuir fallback visual crítico');
+assert.match(drafts,/foRecoveredDraftsCriticalStyle/,'Fallback visual deve ser idempotente');
+assert.match(drafts,/document\.head\.appendChild\(style\)/,'Fallback visual deve ser aplicado no navegador');
 assert.match(css,/\.fod-panel/);
 assert.match(css,/@media\(max-width:760px\)/);
 
