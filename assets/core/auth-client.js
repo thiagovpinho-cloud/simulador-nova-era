@@ -3,6 +3,7 @@
 
   const USER_KEY='focado-auth-user-v1';
   const ROLE_KEY='focado-auth-role-v1';
+  const RETIRED_ROUTES=new Set(['corpo-auditor','system-health']);
 
   const ROLE_LABELS={
     ADMIN:'Administrador',
@@ -22,7 +23,6 @@
     kanban:['ADMIN','DIRETOR','GESTOR','COMERCIAL','PCP','PRODUCAO','ESTOQUE','LOGISTICA','COMPRAS','FINANCEIRO'],
     pendencias:['ADMIN','DIRETOR','GESTOR','COMERCIAL','PCP','PRODUCAO','ESTOQUE','LOGISTICA','COMPRAS','FINANCEIRO'],
     cockpit:['ADMIN','DIRETOR','GESTOR','FINANCEIRO'],
-    'corpo-auditor':['ADMIN'],
     clientes:['ADMIN','DIRETOR','GESTOR','COMERCIAL'],
     representantes:['ADMIN','DIRETOR','GESTOR','COMERCIAL'],
     oportunidades:['ADMIN','DIRETOR','GESTOR','COMERCIAL'],
@@ -51,8 +51,7 @@
     'bi-config':['ADMIN','FINANCEIRO','ESTOQUE'],
     'regras-margem':['ADMIN','FINANCEIRO'],
     config:['ADMIN'],
-    usuarios:['ADMIN'],
-    'system-health':['ADMIN']
+    usuarios:['ADMIN']
   };
 
   function apiBase(){
@@ -83,6 +82,7 @@
   function roleLabel(role){return ROLE_LABELS[String(role||getRole()).toUpperCase()]||String(role||'Usuário')}
 
   function can(route){
+    if(RETIRED_ROUTES.has(String(route||'')))return false;
     const role=getRole();
     if(!role)return false;
     const allowed=ROUTE_ACCESS[route];
@@ -150,5 +150,5 @@
     return null;
   }
 
-  window.FocadoAuth={login,logout,restore,getUser,getRole,roleLabel,can,remoteConfigured,adoptLegacy,clear,ROUTE_ACCESS};
+  window.FocadoAuth={login,logout,restore,getUser,getRole,roleLabel,can,remoteConfigured,adoptLegacy,clear,ROUTE_ACCESS,RETIRED_ROUTES};
 })();
