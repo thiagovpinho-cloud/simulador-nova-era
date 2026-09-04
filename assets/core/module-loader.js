@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260904-recovery-step2-pcp-history-v2';
+  const VERSION='20260904-recovery-boot-slim-v2';
   const loaded=new Map();
   const defs={
     produtos:{css:'products.css',js:'products.js'},
@@ -86,7 +86,7 @@
     if(document.querySelector('script[data-focado-module="'+src+'"]'))return Promise.resolve();
     return new Promise((resolve,reject)=>{
       const el=document.createElement('script');el.src='assets/modules/'+src+'?v='+VERSION;el.defer=true;
-      el.dataset.focadoModule=src;el.onload=resolve;el.onerror=reject;document.body.appendChild(el);
+      el.dataset.focadoModule=src;el.onload=resolve;el.onerror=err=>{el.remove?.();reject(err||new Error('MODULE_JS_LOAD_FAILED:'+src))};document.body.appendChild(el);
     });
   }
   function optional(name){
@@ -120,6 +120,41 @@
     try{return await p}catch(err){loaded.delete(name);throw err}
   }
 
+  const compatibilityOrder=['produtos','fichas','bases','representantes','clientes','production','inventory','purchases','expedicao','logistica','pedidos','kanban','config','usuarios','indicadores','financeiro','order-drafts','pcp-commercial-alerts','pcp-history','pcp'];
+  let compatibilityPromise=null;
+  async function rawLoad(name){
+    const def=defs[name];if(!def||def.alias)return;
+    const tasks=[];
+    if(def.css)tasks.push(css(def.css));
+    if(def.js&&!(contracts[name]&&contracts[name]()))tasks.push(js(def.js));
+    if(tasks.length)await Promise.all(tasks);
+  }
+  async function ensureCompatibility(target){
+    if(!compatibilityPromise){
+      compatibilityPromise=(async()=>{
+        console.warn('[FocadoModules] ativando fallback de compatibilidade sob demanda para',target);
+        for(const name of compatibilityOrder){
+          try{await rawLoad(name)}catch(err){console.warn('[FocadoModules] fallback parcial falhou em',name,err)}
+        }
+        return true;
+      })().catch(err=>{compatibilityPromise=null;throw err});
+    }
+    await compatibilityPromise;
+    verify(target);
+    return true;
+  }
+  async function ensureWithFallback(name){
+    try{return await ensure(name)}catch(primaryError){
+      console.warn('[FocadoModules] lazy-load mínimo falhou; tentando compatibilidade',name,primaryError);
+      try{return await ensureCompatibility(name)}catch(fallbackError){
+        const err=new Error('MODULE_LOAD_FAILED:'+name);
+        err.cause=fallbackError;
+        err.primary=primaryError;
+        throw err;
+      }
+    }
+  }
+
   const lazyIntelligenceActions={fpMRP:'renderMRP',fpurScore:'renderSuppliers',flScore:'renderCarriers'};
   if(typeof document.addEventListener==='function'){
     document.addEventListener('click',async event=>{
@@ -142,5 +177,5 @@
     },true);
   }
 
-  window.FocadoModules=Object.freeze({ensure,version:VERSION,definitions:defs});
+  window.FocadoModules=Object.freeze({ensure:ensureWithFallback,version:VERSION,definitions:defs});
 })();
