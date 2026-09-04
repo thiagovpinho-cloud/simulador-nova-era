@@ -39,7 +39,10 @@
       (tab==='needs'?needsView(ns):tab==='requests'?requestsView(reqs):suppliersView(ops.suppliers||[]))+
       '</div>';
     document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render()});
-    document.getElementById('fpurScore').onclick=()=>window.FocadoIntelligenceUI?.renderSuppliers();
+    document.getElementById('fpurScore').onclick=async()=>{
+      await window.FocadoModules?.ensure?.('cockpit');
+      window.FocadoIntelligenceUI?.renderSuppliers();
+    };
     document.getElementById('fpurNew').onclick=()=>openRequest(null);
     document.getElementById('fpurSupplier').onclick=()=>openSupplier();
     document.querySelectorAll('[data-need]').forEach(b=>b.onclick=()=>openRequest(b.dataset.need));
