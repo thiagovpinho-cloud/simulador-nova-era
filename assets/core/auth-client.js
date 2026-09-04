@@ -19,7 +19,7 @@
     dashboard:['ADMIN','COMERCIAL','PCP','PRODUCAO','ESTOQUE','LOGISTICA','COMPRAS','FINANCEIRO'],
     kanban:['ADMIN','COMERCIAL','PCP','PRODUCAO','ESTOQUE','LOGISTICA','COMPRAS','FINANCEIRO'],
     cockpit:['ADMIN','COMERCIAL','PCP','PRODUCAO','ESTOQUE','LOGISTICA','COMPRAS','FINANCEIRO'],
-    'corpo-auditor':['ADMIN'],
+    'corpo-auditor':[],
     clientes:['ADMIN','COMERCIAL'],
     representantes:['ADMIN','COMERCIAL'],
     oportunidades:['ADMIN','COMERCIAL'],
