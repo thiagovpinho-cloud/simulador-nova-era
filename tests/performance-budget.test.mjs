@@ -6,6 +6,7 @@ const loader=read('assets/core/module-loader.js');
 const bases=read('assets/modules/bases.js');
 const dataStore=read('assets/core/data-store.js');
 const auth=read('assets/core/auth-client.js');
+const deferredIntelligence=read('assets/core/deferred-intelligence.js');
 const modules=['orders','pcp','production','inventory','logistics','purchases','expedition','customers','products','representatives','technical-sheets','bases','intelligence-core','intelligence','kanban'];
 
 assert.ok(index.includes('assets/core/module-loader.js'),'Loader de módulos deve estar no index');
@@ -31,6 +32,15 @@ assert.ok(!index.includes("setTimeout(()=>document.documentElement.classList.rem
 // Guardas estruturais de performance: evitam regressão para padrões já removidos.
 assert.ok(loader.includes('if(deps.length)await Promise.all(deps.map(ensure))'),'Dependências independentes devem carregar em paralelo');
 assert.ok(!loader.includes("for(const dep of def.deps||[])await ensure(dep)"),'Loader não pode voltar a serializar dependências independentes');
+assert.ok(loader.includes("pcp:{css:'pcp.css',js:'pcp.js',deps:['produtos','production','deferred-intelligence']}"),'PCP não deve carregar Cockpit automaticamente');
+assert.ok(loader.includes("purchases:{css:'purchases.css',js:'purchases.js',deps:['deferred-intelligence']}"),'Compras não deve carregar Cockpit automaticamente');
+assert.ok(loader.includes("logistica:{css:'logistics.css',js:'logistics.js',deps:['deferred-intelligence']}"),'Logística não deve carregar Cockpit automaticamente');
+assert.ok(!loader.includes("pcp:{css:'pcp.css',js:'pcp.js',deps:['produtos','production','cockpit']}"),'PCP não pode regredir para dependência eager de Cockpit');
+assert.ok(!loader.includes("purchases:{css:'purchases.css',js:'purchases.js',deps:['cockpit']}"),'Compras não pode regredir para dependência eager de Cockpit');
+assert.ok(!loader.includes("logistica:{css:'logistics.css',js:'logistics.js',deps:['cockpit']}"),'Logística não pode regredir para dependência eager de Cockpit');
+assert.ok(deferredIntelligence.includes("fpMRP:'renderMRP'"),'MRP deve carregar Inteligência apenas no clique');
+assert.ok(deferredIntelligence.includes("fpurScore:'renderSuppliers'"),'Performance de fornecedores deve carregar Inteligência apenas no clique');
+assert.ok(deferredIntelligence.includes("flScore:'renderCarriers'"),'Performance de transportadoras deve carregar Inteligência apenas no clique');
 assert.ok(bases.includes('const changed=[]'),'Bases deve detectar alterações antes de persistir');
 assert.ok(bases.includes('for(const n of changed)'),'Bases deve persistir somente registros modificados');
 assert.ok(bases.includes("if(!changed.length)"),'Bases deve bloquear gravação quando nada mudou');
