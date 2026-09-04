@@ -1,0 +1,92 @@
+name: Deploy Focado Preview
+
+on:
+  push:
+    branches:
+      - focado/enxugamento-seguro
+    paths:
+      - "assets/**"
+      - "worker/**"
+      - "index.html"
+      - "manifest.webmanifest"
+      - "shared/**"
+      - "tests/**"
+      - "package.json"
+      - ".github/workflows/deploy-focado-preview.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: focado-cloudflare-pages-preview
+  cancel-in-progress: true
+
+jobs:
+  validate-and-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout safe branch
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run full test suite
+        run: npm test
+
+      - name: Syntax check frontend modules
+        shell: bash
+        run: |
+          node --check assets/design-system.js
+          node --check assets/app-shell.js
+          node --check assets/core/module-loader.js
+          node --check assets/core/auth-client.js
+          node --check assets/core/data-store.js
+          for f in assets/modules/*.js; do
+            node --check "$f"
+          done
+
+      - name: Install Wrangler
+        working-directory: worker
+        run: npm install --no-audit --no-fund
+
+      - name: Build isolated static package
+        shell: bash
+        run: |
+          rm -rf _site
+          mkdir -p _site
+          cp index.html manifest.webmanifest focado-*.svg _site/
+          cp -R assets _site/assets
+          cp -R shared _site/shared
+          for f in Catalogo_*.pdf Ficha_*.pdf; do
+            [ -f "$f" ] && cp "$f" _site/
+          done
+
+      - name: Deploy Cloudflare Pages preview
+        shell: bash
+        env:
+          CF_TOKEN_RAW: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_RAW: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CF_TOKEN_RAW" | tr -d '\r\n' | xargs)"
+          export CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$CF_ACCOUNT_RAW" | tr -d '\r\n' | xargs)"
+          cd worker
+          npx wrangler pages deploy ../_site --project-name focado --branch focado-enxugamento-seguro --commit-dirty=true
+
+      - name: Smoke test isolated preview
+        shell: bash
+        run: |
+          PREVIEW_URL="https://focado-enxugamento-seguro.focado.pages.dev"
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS --max-time 15 "$PREVIEW_URL/" | grep -q "Focado"; then
+              echo "Preview shell OK: $PREVIEW_URL"
+              curl -fsS --max-time 15 "$PREVIEW_URL/assets/core/module-loader.js" | grep -q "lazyIntelligenceActions"
+              echo "Lazy intelligence loader OK"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Preview smoke test failed: $PREVIEW_URL"
+          exit 1
