@@ -42,47 +42,63 @@ function createHarness({failCssOnce=false}={}){
       queueMicrotask(()=>{
         const src=String(el.src||'');
         if(src.includes('indicators.js'))context.window.FocadoIndicators={render(){}};
+        if(src.includes('products.js'))context.window.FocadoProducts={render(){},getCatalog(){return[]}};
+        if(src.includes('production.js'))context.window.FocadoProduction={render(){}};
+        if(src.includes('pcp.js'))context.window.FocadoPCP={render(){},openOrder(){}};
+        if(src.includes('pcp-history.js'))context.window.FocadoPCPHistory={attach(){}};
         el.onload?.();
       });
-    }}
+    }},
+    addEventListener(){}
   };
   const context=vm.createContext({window:{},document,console,queueMicrotask,Error,Promise});
   vm.runInContext(source,context);
   return {context,links,scripts};
 }
 
-// Primeiro clique deve carregar JS + CSS e deixar contrato pronto.
+// Primeiro clique deve carregar somente o JS/CSS do módulo alvo.
 {
   const h=createHarness();
   await h.context.window.FocadoModules.ensure('indicadores');
   assert.equal(typeof h.context.window.FocadoIndicators.render,'function');
   assert.equal(h.links.filter(x=>x.dataset.focadoModule==='indicators.css').length,1);
   assert.equal(h.scripts.filter(x=>x.dataset.focadoModule==='indicators.js').length,1);
-  assert.ok(h.links.find(x=>x.dataset.focadoModule==='indicators.css')?.sheet||h.links.find(x=>x.dataset.focadoModule==='indicators.css')?.dataset.loaded==='1');
 }
 
-// Se o lazy-load mínimo falhar no primeiro clique, o fallback deve recuperar sem recarregar a página.
+// Falha de rede/CSS deve ser explícita; segunda tentativa limpa deve conseguir recuperar.
 {
   const h=createHarness({failCssOnce:true});
+  await assert.rejects(()=>h.context.window.FocadoModules.ensure('indicadores'));
+  assert.equal(h.links.filter(x=>x.dataset.focadoModule==='indicators.css').length,0,'link CSS quebrado deve ser removido');
   await h.context.window.FocadoModules.ensure('indicadores');
-  assert.equal(typeof h.context.window.FocadoIndicators.render,'function','fallback deve restaurar o contrato do módulo alvo');
-  assert.equal(h.links.filter(x=>x.dataset.focadoModule==='indicators.css').length,1,'CSS quebrado deve ser substituído por uma requisição válida');
-  assert.ok(h.links.find(x=>x.dataset.focadoModule==='indicators.css')?.sheet||h.links.find(x=>x.dataset.focadoModule==='indicators.css')?.dataset.loaded==='1');
+  assert.equal(typeof h.context.window.FocadoIndicators.render,'function');
+  assert.equal(h.links.filter(x=>x.dataset.focadoModule==='indicators.css').length,1);
 }
 
-// CSS pré-carregado deve impedir uma segunda requisição lazy.
+// CSS já presente não pode gerar segunda requisição.
 {
   const h=createHarness();
   const preloaded={tagName:'LINK',dataset:{},href:'assets/modules/indicators.css?v=preloaded',sheet:{},remove(){}};
   h.links.push(preloaded);
   h.context.window.FocadoIndicators={render(){}};
   await h.context.window.FocadoModules.ensure('indicadores');
-  assert.equal(h.links.filter(x=>String(x.href||'').includes('indicators.css')).length,1,'Loader não deve requisitar CSS de Indicadores pela segunda vez');
-  assert.equal(typeof h.context.window.FocadoIndicators.render,'function');
+  assert.equal(h.links.filter(x=>String(x.href||'').includes('indicators.css')).length,1);
 }
 
-assert.match(source,/ensureCompatibility/,'loader deve manter fallback de compatibilidade sob demanda');
-assert.match(source,/compatibilityOrder/,'fallback deve ter ordem explícita e auditável');
-assert.doesNotMatch(source,/compatibilityOrder=\[[^\]]*cockpit/,'fallback operacional não deve puxar Cockpit/Intelligence para o boot ou primeiro clique comum');
+// PCP deve declarar e carregar apenas sua cadeia necessária; histórico é complemento opcional.
+{
+  const h=createHarness();
+  await h.context.window.FocadoModules.ensure('pcp');
+  await Promise.resolve();
+  await Promise.resolve();
+  const names=h.scripts.map(x=>String(x.src||'').split('/').pop().split('?')[0]);
+  for(const required of ['products.js','production.js','pcp.js'])assert.ok(names.includes(required),'PCP deve carregar '+required);
+  const allowed=new Set(['products.js','production.js','pcp.js','pcp-history.js']);
+  assert.ok(names.every(x=>allowed.has(x)),'PCP não pode carregar módulos operacionais alheios: '+names.join(', '));
+  assert.ok(!names.includes('intelligence.js')&&!names.includes('intelligence-core.js'),'PCP comum não pode carregar inteligência');
+}
+
+assert.doesNotMatch(source,/ensureCompatibility|compatibilityOrder|ensureWithFallback/,'loader não pode conter fallback geral que carregue vários módulos');
+assert.match(source,/window\.FocadoModules=Object\.freeze\(\{ensure,version:VERSION,definitions:defs\}\)/,'API pública deve expor o lazy loader estrito');
 
 console.log('module-first-click: ok');
