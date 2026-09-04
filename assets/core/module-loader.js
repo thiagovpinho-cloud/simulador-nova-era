@@ -26,7 +26,7 @@
     inventory:{css:'inventory.css',js:'inventory.js'},
     inputs:{css:'inputs.css',js:'inputs.js',deps:['simulator-master-data']},
     'pcp-commercial-alerts':{css:'pcp-commercial-alerts.css',js:'pcp-commercial-alerts.js'},
-    purchases:{css:'purchases.css',js:'purchases.js',deps:['cockpit']},
+    purchases:{css:'purchases.css',js:'purchases.js'},
     expedicao:{css:'expedition.css',js:'expedition.js'},
     logistica:{css:'logistics.css',js:'logistics.js',deps:['cockpit']},
     entregas:{alias:'logistica'},
