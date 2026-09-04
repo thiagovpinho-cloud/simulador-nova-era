@@ -7,7 +7,7 @@
   let attachedTo=null;
   let enhanceQueued=false;
 
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   const value=o=>(o.items||[]).reduce((sum,item)=>sum+(Number(item.qty)||0)*(Number(item.price)||0),0);
   const dbr=v=>{
@@ -122,13 +122,11 @@
       observer?.disconnect?.();
       if(typeof MutationObserver==='function'){
         observer=new MutationObserver(scheduleEnhance);
-        observer.observe(content,{childList:true,subtree:true});
+        observer.observe(content,{childList:true});
       }
       unsubscribe?.();
       unsubscribe=window.FocadoDataStore?.subscribe?.(scheduleEnhance)||null;
     }
-    // Orders.js renders only after this dependency resolves. Defer one turn so
-    // the page exists before the first enhancement, without blocking navigation.
     setTimeout(scheduleEnhance,0);
   }
 
