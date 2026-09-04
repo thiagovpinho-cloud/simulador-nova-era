@@ -116,7 +116,8 @@
     if(def.alias){await ensure(def.alias);verify(name);return true;}
     if(loaded.has(name))return loaded.get(name);
     const p=(async()=>{
-      for(const dep of def.deps||[])await ensure(dep);
+      const deps=def.deps||[];
+      if(deps.length)await Promise.all(deps.map(ensure));
       const existing=contracts[name];
       if(existing&&existing()){
         if(def.css)await css(def.css);
