@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260904-recovery-step1-drafts-v2';
+  const VERSION='20260904-recovery-step1-drafts-v3';
   const loaded=new Map();
   const defs={
     produtos:{css:'products.css',js:'products.js'},
@@ -12,7 +12,7 @@
     cockpit:{css:'intelligence.css',js:'intelligence.js',deps:['intelligence-core']},
     'corpo-auditor':{alias:'cockpit'},
     'order-drafts':{css:'order-drafts.css',js:'order-drafts.js'},
-    pedidos:{css:'orders.css',js:'orders.js',deps:['produtos','order-drafts']},
+    pedidos:{css:'orders.css',js:'orders.js',deps:['produtos']},
     pcp:{css:'pcp.css',js:'pcp.js',deps:['produtos','production']},
     production:{css:'production.css',js:'production.js',deps:['produtos']},
     inventory:{css:'inventory.css',js:'inventory.js'},
@@ -85,6 +85,9 @@
       el.dataset.focadoModule=src;el.onload=resolve;el.onerror=reject;document.body.appendChild(el);
     });
   }
+  function optional(name){
+    Promise.resolve().then(()=>ensure(name)).catch(err=>console.warn('[FocadoModules] módulo opcional indisponível:',name,err));
+  }
   async function ensure(name){
     let def=defs[name];if(!def)return true;
     if(def.alias){await ensure(def.alias);verify(name);return true;}
@@ -95,10 +98,12 @@
       if(existing&&existing()){
         if(def.css)await css(def.css);
         verify(name);
+        if(name==='pedidos')optional('order-drafts');
         return true;
       }
       await Promise.all([def.css?css(def.css):null,def.js?js(def.js):null].filter(Boolean));
       verify(name);
+      if(name==='pedidos')optional('order-drafts');
       return true;
     })();
     loaded.set(name,p);
