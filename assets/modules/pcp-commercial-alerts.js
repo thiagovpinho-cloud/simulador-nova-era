@@ -7,6 +7,7 @@
   let observer=null;
   let unsubscribe=null;
   let queued=false;
+  let clickBound=false;
 
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const read=()=>window.FocadoDataStore?.readLocal?.()||{};
@@ -100,8 +101,9 @@
   }
   function attach(){
     const content=document.getElementById('fxContent');if(!content)return;
+    if(!clickBound&&typeof document.addEventListener==='function'){document.addEventListener('click',onClick);clickBound=true}
     if(attachedTo!==content){
-      attachedTo=content;content.addEventListener('click',onClick);document.addEventListener('click',onClick);
+      attachedTo=content;
       observer?.disconnect?.();if(typeof MutationObserver==='function'){observer=new MutationObserver(schedule);observer.observe(content,{childList:true})}
       unsubscribe?.();unsubscribe=window.FocadoDataStore?.subscribe?.(schedule)||null;
     }
