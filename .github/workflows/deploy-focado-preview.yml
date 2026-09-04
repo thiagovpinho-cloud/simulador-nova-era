@@ -80,11 +80,14 @@ jobs:
         run: |
           PREVIEW_URL="https://focado-enxugamento-seguro.focado.pages.dev"
           for i in 1 2 3 4 5 6; do
-            if curl -fsS --max-time 15 "$PREVIEW_URL/" | grep -q "Focado"; then
-              echo "Preview shell OK: $PREVIEW_URL"
-              curl -fsS --max-time 15 "$PREVIEW_URL/assets/core/module-loader.js" | grep -q "lazyIntelligenceActions"
-              echo "Lazy intelligence loader OK"
-              exit 0
+            if curl -fsS --max-time 15 "$PREVIEW_URL/" -o /tmp/focado-preview-index.html; then
+              if grep -q "Focado" /tmp/focado-preview-index.html; then
+                echo "Preview shell OK: $PREVIEW_URL"
+                curl -fsS --max-time 15 "$PREVIEW_URL/assets/core/module-loader.js" -o /tmp/focado-preview-loader.js
+                grep -q "lazyIntelligenceActions" /tmp/focado-preview-loader.js
+                echo "Lazy intelligence loader OK"
+                exit 0
+              fi
             fi
             sleep 5
           done
