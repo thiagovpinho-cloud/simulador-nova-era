@@ -40,7 +40,8 @@ function createHarness({failCssOnce=false}={}){
     body:{appendChild(el){
       scripts.push(el);
       queueMicrotask(()=>{
-        if(String(el.src).includes('indicators.js'))context.window.FocadoIndicators={render(){}};
+        const src=String(el.src||'');
+        if(src.includes('indicators.js'))context.window.FocadoIndicators={render(){}};
         el.onload?.();
       });
     }}
@@ -57,24 +58,19 @@ function createHarness({failCssOnce=false}={}){
   assert.equal(typeof h.context.window.FocadoIndicators.render,'function');
   assert.equal(h.links.filter(x=>x.dataset.focadoModule==='indicators.css').length,1);
   assert.equal(h.scripts.filter(x=>x.dataset.focadoModule==='indicators.js').length,1);
-  assert.ok(h.links[0].sheet||h.links[0].dataset.loaded==='1');
+  assert.ok(h.links.find(x=>x.dataset.focadoModule==='indicators.css')?.sheet||h.links.find(x=>x.dataset.focadoModule==='indicators.css')?.dataset.loaded==='1');
 }
 
-// Se o CSS falhar, a primeira tentativa falha e a segunda deve se recuperar sem recarregar a página.
+// Se o lazy-load mínimo falhar no primeiro clique, o fallback deve recuperar sem recarregar a página.
 {
   const h=createHarness({failCssOnce:true});
-  await assert.rejects(()=>h.context.window.FocadoModules.ensure('indicadores'));
-  assert.equal(h.links.filter(x=>x.dataset.focadoModule==='indicators.css').length,0,'link CSS quebrado deve ser removido');
   await h.context.window.FocadoModules.ensure('indicadores');
-  assert.equal(typeof h.context.window.FocadoIndicators.render,'function');
-  assert.equal(h.links.filter(x=>x.dataset.focadoModule==='indicators.css').length,1);
-  assert.ok(h.links[0].sheet||h.links[0].dataset.loaded==='1');
+  assert.equal(typeof h.context.window.FocadoIndicators.render,'function','fallback deve restaurar o contrato do módulo alvo');
+  assert.equal(h.links.filter(x=>x.dataset.focadoModule==='indicators.css').length,1,'CSS quebrado deve ser substituído por uma requisição válida');
+  assert.ok(h.links.find(x=>x.dataset.focadoModule==='indicators.css')?.sheet||h.links.find(x=>x.dataset.focadoModule==='indicators.css')?.dataset.loaded==='1');
 }
 
-console.log('module-first-click: ok');
-
-
-// CSS pré-carregado no index deve impedir uma segunda requisição lazy no primeiro clique.
+// CSS pré-carregado deve impedir uma segunda requisição lazy.
 {
   const h=createHarness();
   const preloaded={tagName:'LINK',dataset:{},href:'assets/modules/indicators.css?v=preloaded',sheet:{},remove(){}};
@@ -84,3 +80,9 @@ console.log('module-first-click: ok');
   assert.equal(h.links.filter(x=>String(x.href||'').includes('indicators.css')).length,1,'Loader não deve requisitar CSS de Indicadores pela segunda vez');
   assert.equal(typeof h.context.window.FocadoIndicators.render,'function');
 }
+
+assert.match(source,/ensureCompatibility/,'loader deve manter fallback de compatibilidade sob demanda');
+assert.match(source,/compatibilityOrder/,'fallback deve ter ordem explícita e auditável');
+assert.doesNotMatch(source,/compatibilityOrder=\[[^\]]*cockpit/,'fallback operacional não deve puxar Cockpit/Intelligence para o boot ou primeiro clique comum');
+
+console.log('module-first-click: ok');
