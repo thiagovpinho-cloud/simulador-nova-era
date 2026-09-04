@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260904-safe-slim-v1';
+  const VERSION='20260904-recovery-step1-drafts-v1';
   const loaded=new Map();
   const defs={
     produtos:{css:'products.css',js:'products.js'},
@@ -11,7 +11,8 @@
     'intelligence-core':{js:'intelligence-core.js'},
     cockpit:{css:'intelligence.css',js:'intelligence.js',deps:['intelligence-core']},
     'corpo-auditor':{alias:'cockpit'},
-    pedidos:{css:'orders.css',js:'orders.js',deps:['produtos']},
+    'order-drafts':{css:'order-drafts.css',js:'order-drafts.js'},
+    pedidos:{css:'orders.css',js:'orders.js',deps:['produtos','order-drafts']},
     pcp:{css:'pcp.css',js:'pcp.js',deps:['produtos','production']},
     production:{css:'production.css',js:'production.js',deps:['produtos']},
     inventory:{css:'inventory.css',js:'inventory.js'},
@@ -35,6 +36,7 @@
     bases:()=>typeof window.FocadoBases?.render==='function',
     representantes:()=>typeof window.FocadoRepresentatives?.render==='function',
     clientes:()=>typeof window.FocadoCustomers?.render==='function',
+    'order-drafts':()=>typeof window.FocadoOrderDrafts?.attach==='function',
     pedidos:()=>typeof window.FocadoOrders?.render==='function'&&typeof window.FocadoOrders?.openOrder==='function',
     pcp:()=>typeof window.FocadoPCP?.render==='function',
     production:()=>typeof window.FocadoProduction?.render==='function',
