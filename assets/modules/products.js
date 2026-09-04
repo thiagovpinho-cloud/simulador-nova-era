@@ -21,7 +21,7 @@
   ];
   const load=()=>window.FocadoDataStore?.readLocal?.()||(()=>{try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(_){return {}}})();
   const save=async ops=>{if(window.FocadoDataStore)return window.FocadoDataStore.save(ops);localStorage.setItem(KEY,JSON.stringify(ops));return {ok:true,mode:'local'}};
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const num=v=>{const n=Number(String(v??'').replace(',','.'));return Number.isFinite(n)?n:0};
   const fmt=(v,d=3)=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
   const engine=()=>window.FocadoLogisticsEngine;
@@ -95,8 +95,10 @@
     modal.querySelectorAll('.fp-log-grid input').forEach(i=>i.oninput=preview);
     document.getElementById('fpSave').onclick=async()=>{
       const code=document.getElementById('fpCode').value.trim(),name=document.getElementById('fpName').value.trim(),b=document.getElementById('fpProductBrand').value,unit=document.getElementById('fpUnit').value;if(!code||!name){alert('Informe código e nome do produto.');return}
-      if(catalog.some(p=>p.id!==editingId&&p.active!==false&&p.code===code&&p.brand===b)){alert('Já existe um produto ativo com este código para esta marca.');return}
-      let p=editingId?catalog.find(x=>x.id===editingId):null;if(!p){p={id:'manual_'+Date.now(),simulatorId:'',source:'manual',active:true,createdAt:Date.now()};catalog.push(p)}
+      let p=editingId?catalog.find(x=>x.id===editingId):null;
+      const identityChanged=!p||String(p.code||'')!==code||String(p.brand||'')!==b;
+      if(identityChanged&&catalog.some(x=>x.id!==editingId&&x.active!==false&&x.code===code&&x.brand===b)){alert('Já existe um produto ativo com este código para esta marca.');return}
+      if(!p){p={id:'manual_'+Date.now(),simulatorId:'',source:'manual',active:true,createdAt:Date.now()};catalog.push(p)}
       p.code=code;p.name=name;p.brand=b;p.unit=unit;p.logistics=collectLogistics();p.updatedAt=Date.now();ops.productCatalog=catalog;await save(ops);modal.classList.add('hidden');render();
     };
   }
