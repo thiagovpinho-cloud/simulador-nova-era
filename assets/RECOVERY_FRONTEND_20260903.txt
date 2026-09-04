@@ -1,0 +1,4 @@
+FOCADO frontend recovery checkpoint
+Source commit: 4903fe0d0e5bf665f68804e833bb86b57f4c9bdf
+Purpose: force validation and Cloudflare Pages redeploy of the last known login-optimized frontend from 2026-08-28.
+Backend/Worker/Neon are intentionally not reverted by this marker.
