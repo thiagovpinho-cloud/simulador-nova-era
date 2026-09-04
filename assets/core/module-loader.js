@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260904-recovery-step1-drafts-v3';
+  const VERSION='20260904-recovery-step1-drafts-v4';
   const loaded=new Map();
   const defs={
     produtos:{css:'products.css',js:'products.js'},
