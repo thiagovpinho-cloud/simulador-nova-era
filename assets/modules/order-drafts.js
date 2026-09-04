@@ -127,7 +127,8 @@
       unsubscribe?.();
       unsubscribe=window.FocadoDataStore?.subscribe?.(scheduleEnhance)||null;
     }
-    setTimeout(scheduleEnhance,0);
+    if(typeof requestAnimationFrame==='function')requestAnimationFrame(scheduleEnhance);
+    else queueMicrotask(scheduleEnhance);
   }
 
   window.FocadoOrderDrafts=Object.freeze({attach,enhance,isDraft});
