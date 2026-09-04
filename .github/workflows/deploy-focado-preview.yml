@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - focado/enxugamento-seguro
+      - focado/recuperacao-funcional-passo-a-passo
     paths:
       - "assets/**"
       - "worker/**"
@@ -18,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: focado-cloudflare-pages-preview
+  group: focado-cloudflare-pages-preview-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -64,21 +65,35 @@ jobs:
             [ -f "$f" ] && cp "$f" _site/
           done
 
+      - name: Select preview alias
+        id: preview
+        shell: bash
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "focado/recuperacao-funcional-passo-a-passo" ]; then
+            echo "branch=focado-recuperacao-funcional" >> "$GITHUB_OUTPUT"
+            echo "url=https://focado-recuperacao-funcional.focado.pages.dev" >> "$GITHUB_OUTPUT"
+          else
+            echo "branch=focado-enxugamento-seguro" >> "$GITHUB_OUTPUT"
+            echo "url=https://focado-enxugamento-seguro.focado.pages.dev" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Deploy Cloudflare Pages preview
         shell: bash
         env:
           CF_TOKEN_RAW: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_RAW: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PREVIEW_BRANCH: ${{ steps.preview.outputs.branch }}
         run: |
           export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CF_TOKEN_RAW" | tr -d '\r\n' | xargs)"
           export CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$CF_ACCOUNT_RAW" | tr -d '\r\n' | xargs)"
           cd worker
-          npx wrangler pages deploy ../_site --project-name focado --branch focado-enxugamento-seguro --commit-dirty=true
+          npx wrangler pages deploy ../_site --project-name focado --branch "$PREVIEW_BRANCH" --commit-dirty=true
 
       - name: Smoke test isolated preview
         shell: bash
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
         run: |
-          PREVIEW_URL="https://focado-enxugamento-seguro.focado.pages.dev"
           for i in 1 2 3 4 5 6; do
             if curl -fsS --max-time 15 "$PREVIEW_URL/" -o /tmp/focado-preview-index.html; then
               if grep -q "Focado" /tmp/focado-preview-index.html; then
@@ -86,6 +101,12 @@ jobs:
                 curl -fsS --max-time 15 "$PREVIEW_URL/assets/core/module-loader.js" -o /tmp/focado-preview-loader.js
                 grep -q "lazyIntelligenceActions" /tmp/focado-preview-loader.js
                 echo "Lazy intelligence loader OK"
+                if [ "${GITHUB_REF_NAME}" = "focado/recuperacao-funcional-passo-a-passo" ]; then
+                  grep -q "order-drafts" /tmp/focado-preview-loader.js
+                  curl -fsS --max-time 15 "$PREVIEW_URL/assets/modules/order-drafts.js" -o /tmp/focado-preview-drafts.js
+                  grep -q "Pedidos ainda não enviados" /tmp/focado-preview-drafts.js
+                  echo "Recovery step 1 drafts module OK"
+                fi
                 exit 0
               fi
             fi
