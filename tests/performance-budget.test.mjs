@@ -18,6 +18,18 @@ for(const route of ['pedidos','pcp','production','inventory','inputs','purchases
 }
 assert.ok(loader.includes('insertBefore(el,ds)'),'CSS lazy deve ser inserido antes do Design System');
 
+// Regra de estabilidade: inteligência pesada nunca participa da abertura operacional.
+assert.ok(loader.includes("pcp:{css:'pcp.css',js:'pcp.js',deps:['produtos','production']}"),'PCP deve carregar sem Cockpit');
+assert.ok(loader.includes("purchases:{css:'purchases.css',js:'purchases.js'}"),'Compras deve carregar sem Cockpit');
+assert.ok(loader.includes("logistica:{css:'logistics.css',js:'logistics.js'}"),'Logística deve carregar sem Cockpit');
+assert.ok(!loader.includes("deps:['produtos','production','cockpit']"),'Cockpit não pode voltar ao boot do PCP');
+assert.ok(!loader.includes("purchases:{css:'purchases.css',js:'purchases.js',deps:['cockpit']}"),'Cockpit não pode voltar ao boot de Compras');
+assert.ok(!loader.includes("logistica:{css:'logistics.css',js:'logistics.js',deps:['cockpit']}"),'Cockpit não pode voltar ao boot de Logística');
+assert.ok(loader.includes("fpMRP:'renderMRP'"),'MRP deve continuar disponível sob demanda');
+assert.ok(loader.includes("fpurScore:'renderSuppliers'"),'Performance de fornecedores deve continuar sob demanda');
+assert.ok(loader.includes("flScore:'renderCarriers'"),'Performance de transportadoras deve continuar sob demanda');
+assert.ok(loader.includes("await ensure('cockpit')"),'Inteligência deve ser carregada somente após ação explícita');
+
 const sizes={};
 for(const file of fs.readdirSync(new URL('../assets/modules/',import.meta.url))){
   if(!file.endsWith('.js'))continue;
