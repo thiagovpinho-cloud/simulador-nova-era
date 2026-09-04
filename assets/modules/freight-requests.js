@@ -1,7 +1,7 @@
 (function(){
   'use strict';
   const $=s=>document.querySelector(s);
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
   const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   const moneyField=v=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const dateTime=v=>v?new Date(Number(v)).toLocaleString('pt-BR'):'—';
@@ -9,6 +9,7 @@
   const user=()=>window.FocadoAuth?.getUser?.()?.name||window.FocadoAuth?.roleLabel?.()||'Usuário';
   const load=()=>window.FocadoDataStore?.readLocal?.()||{};
   const requests=()=>Array.isArray(load().freightRequests)?load().freightRequests:[];
+  const activeCarriers=()=>Array.isArray(load().carriers)?load().carriers.filter(c=>c&&c.active!==false&&String(c.name||'').trim()).slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'pt-BR')):[];
   const statusLabel=s=>({SOLICITADA:'Solicitada',EM_COTACAO:'Em cotação',RESPONDIDA:'Respondida'})[s]||s||'—';
   const canCommercial=()=>['COMERCIAL','ADMIN','DIRETOR','GESTOR'].includes(role());
   const canLogistics=()=>['LOGISTICA','ADMIN'].includes(role());
@@ -22,21 +23,26 @@
   function closeModal(){const el=ensureOverlay();el.hidden=true;el.innerHTML=''}
   function modal(html){const el=ensureOverlay();el.innerHTML='<div class="fr-modal" role="dialog" aria-modal="true">'+html+'</div>';el.hidden=false;el.onclick=e=>{if(e.target===el)closeModal()};return el}
   function content(){return document.getElementById('fxContent')}
+  function syncCommercialNavLabel(){
+    document.querySelectorAll('[data-fx-nav="cotacoes-frete"]').forEach(btn=>{
+      const spans=btn.querySelectorAll('span');
+      if(spans[1])spans[1].textContent='Acompanhar cotações';
+    });
+  }
 
   function render(mode){
     const el=content();if(!el)return;
+    syncCommercialNavLabel();
     const logistics=mode==='logistics'||(role()==='LOGISTICA'&&!canCommercial());
     const rows=requests().slice().sort((a,b)=>Number(b.requestedAt||0)-Number(a.requestedAt||0));
     const pending=rows.filter(r=>['SOLICITADA','EM_COTACAO'].includes(r.status)).length;
     const answered=rows.filter(r=>r.status==='RESPONDIDA').length;
     el.innerHTML='<div class="fr-page">'+
-      '<div class="fr-head"><div><span class="fr-eyebrow">'+(logistics?'LOGÍSTICA':'COMERCIAL')+'</span><h1>'+(logistics?'Cotações recebidas':'Cotação de frete')+'</h1><p>'+(logistics?'Demandas formais enviadas pelo Comercial.':'Canal formal e independente para solicitar preços à Logística.')+'</p></div>'+
-      (!logistics&&canCommercial()?'<button class="fr-btn primary" id="frNew">+ Solicitar cotação</button>':'')+'</div>'+
+      '<div class="fr-head"><div><span class="fr-eyebrow">'+(logistics?'LOGÍSTICA':'COMERCIAL')+'</span><h1>'+(logistics?'Cotações recebidas':'Acompanhar cotações')+'</h1><p>'+(logistics?'Demandas formais enviadas pelo Comercial.':'Acompanhe as solicitações de frete originadas nos Pedidos Comerciais.')+'</p></div></div>'+
       '<div class="fr-kpis"><div><span>Pendentes</span><strong>'+pending+'</strong></div><div><span>Respondidas</span><strong>'+answered+'</strong></div><div><span>Histórico</span><strong>'+rows.length+'</strong></div></div>'+
       '<div class="fr-panel"><div class="fr-panel-head"><h2>Histórico de comportamento de frete</h2><span>'+rows.length+' registro(s)</span></div>'+
       (rows.length?'<div class="fr-list">'+rows.map(r=>card(r,logistics)).join('')+'</div>':'<div class="fr-empty">Nenhuma solicitação registrada ainda.</div>')+
       '</div></div>';
-    $('#frNew')?.addEventListener('click',openRequestModal);
     el.querySelectorAll('[data-fr-open]').forEach(b=>b.onclick=()=>openDetail(b.dataset.frOpen,logistics));
   }
 
@@ -85,7 +91,6 @@
   async function openDetail(id,logistics){
     const r=requests().find(x=>String(x.id)===String(id));if(!r)return;
     if(logistics&&canLogistics())return openLogisticsResponse(r);
-    const best=bestQuote(r);
     const el=modal('<div class="fr-modal-head"><div><span class="fr-eyebrow">SOLICITAÇÃO FORMAL</span><h2>'+esc(r.origin)+' → '+esc(r.destination)+'</h2><p>'+dateTime(r.requestedAt)+' · '+esc(r.requestedBy)+'</p></div><button class="fr-close" id="frClose">×</button></div>'+
       requestSummary(r)+
       (r.status==='RESPONDIDA'?'<div class="fr-response"><h3>Retorno da Logística</h3><div class="fr-quote-grid">'+(r.quotes||[]).slice().sort((a,b)=>a.value-b.value).map((q,i)=>'<div class="fr-quote '+(i===0?'best':'')+'"><span>'+(i===0?'MENOR VALOR':'OPÇÃO '+(i+1))+'</span><b>'+esc(q.provider)+'</b><strong>'+money(q.value)+'</strong><small>'+(q.transitDays?q.transitDays+' dia(s)':'Prazo não informado')+(q.notes?' · '+esc(q.notes):'')+'</small></div>').join('')+'</div>'+(r.responseNotes?'<p>'+esc(r.responseNotes)+'</p>':'')+'</div>':'<div class="fr-wait">Aguardando retorno da Logística.</div>')+
@@ -102,8 +107,13 @@
     return '<div class="fr-summary"><div><span>Cliente / referência</span><b>'+esc(r.client||r.reference||'—')+'</b></div><div><span>Carga</span><b>'+esc(r.cargo||'—')+'</b></div><div><span>Quantidade</span><b>'+esc(r.quantity||'—')+'</b></div><div><span>Data desejada</span><b>'+esc(r.requestedDate||'—')+'</b></div><div class="wide"><span>Mensagem</span><b>'+esc(r.notes||'Sem observação')+'</b></div></div>';
   }
 
+  function carrierOptions(){
+    const rows=activeCarriers();
+    if(!rows.length)return '<option value="">Nenhuma transportadora ativa cadastrada</option>';
+    return '<option value="">Selecione uma transportadora</option>'+rows.map(c=>'<option value="'+esc(c.name)+'">'+esc(c.name)+(c.city?' · '+esc(c.city):'')+'</option>').join('');
+  }
   function quoteRow(i){
-    return '<div class="fr-quote-row" data-quote-row><div class="fr-row-title"><b>Opção '+(i+1)+'</b><button type="button" data-remove>×</button></div><div class="fr-form"><label><span>Prestador *</span><input data-q="provider" placeholder="Transportadora / prestador"></label><label><span>Valor *</span><input data-q="value" inputmode="decimal" placeholder="R$ 0,00"></label><label><span>Prazo (dias)</span><input data-q="days" type="number" min="0"></label><label><span>Coleta prevista</span><input data-q="pickup" type="date"></label><label class="wide"><span>Observação</span><input data-q="notes" placeholder="Condição, veículo, pedágio..."></label></div></div>';
+    return '<div class="fr-quote-row" data-quote-row><div class="fr-row-title"><b>Opção '+(i+1)+'</b><button type="button" data-remove>×</button></div><div class="fr-form"><label><span>Prestador *</span><select data-q="provider">'+carrierOptions()+'</select><small>Transportadoras cadastradas e ativas.</small></label><label><span>Valor *</span><input data-q="value" inputmode="decimal" placeholder="R$ 0,00"></label><label><span>Prazo (dias)</span><input data-q="days" type="number" min="0"></label><label><span>Coleta prevista</span><input data-q="pickup" type="date"></label><label class="wide"><span>Observação</span><input data-q="notes" placeholder="Condição, veículo, pedágio..."></label></div></div>';
   }
   function bindRemove(){
     document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{const rows=document.querySelectorAll('[data-quote-row]');if(rows.length>1)b.closest('[data-quote-row]').remove()});
@@ -146,7 +156,8 @@
       value:parseMoney(row.querySelector('[data-q="value"]').value),transitDays:Number(row.querySelector('[data-q="days"]').value||0),
       pickupEstimate:row.querySelector('[data-q="pickup"]').value,notes:row.querySelector('[data-q="notes"]').value.trim()
     })).filter(x=>x.provider||x.value);
-    if(!quotes.length||quotes.some(x=>!x.provider||!(x.value>0))){alert('Preencha prestador e valor em todas as opções.');return}
+    if(!quotes.length||quotes.some(x=>!x.provider||!(x.value>0))){alert('Selecione a transportadora e informe o valor em todas as opções.');return}
+    if(new Set(quotes.map(x=>x.provider.toLocaleLowerCase('pt-BR'))).size!==quotes.length){alert('A mesma transportadora foi selecionada mais de uma vez.');return}
     const btn=$('#frRespond');btn.disabled=true;btn.textContent='Enviando…';
     try{
       const result=await window.FocadoDataStore.saveDomain('COTACAO_FRETE_LOGISTICA',{requestId:id,response:{quotes,notes:$('#frResponseNotes').value.trim(),respondedAt:Date.now(),respondedBy:user()}});
@@ -193,6 +204,7 @@
   }
 
   function notify(){
+    syncCommercialNavLabel();
     const rows=requests();
     if(canLogistics()){
       const r=rows.find(x=>x.status==='SOLICITADA'&&!x.logisticsViewedAt);if(r){popupFor(r,'logistics');return}
