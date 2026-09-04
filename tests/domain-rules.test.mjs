@@ -18,7 +18,7 @@ const expectError=(fn,code)=>{
   assert.equal(caught.message,code);
 };
 
-assert.equal(RULES_VERSION,'2026.08.28.4');
+assert.equal(RULES_VERSION,'2026.08.28.6');
 assert.equal(DOMAIN_PERMISSION.PCP,'pcp.write');
 assert.equal(DOMAIN_PERMISSION.LOGISTICA,'logistics.write');
 assert.equal(FLOW.COMERCIAL.to,'PCP');
@@ -57,6 +57,13 @@ assert.equal(commercialState.orders[0].secret,undefined);
 assert.equal(commercialState.orders[0].items[0].qty,12);
 assert.equal(commercialState.orders[0].items[0].price,30);
 assert.equal(commercialState.orders[0].items[0].secret,undefined);
+
+// Comercial: exclusão segura permitida apenas para rascunho COMERCIAL.
+const deleteDraftState={orders:[{id:'del1',number:'PED-DEL',status:'COMERCIAL',items:[]}]};
+applyDomain('COMERCIAL',deleteDraftState,{changes:{deleteOrderId:'del1'}});
+assert.equal(deleteDraftState.orders.length,0);
+const deleteLockedState={orders:[{id:'del2',number:'PED-LOCK',status:'PCP',items:[]}]};
+expectError(()=>applyDomain('COMERCIAL',deleteLockedState,{changes:{deleteOrderId:'del2'}}),'ORDER_DELETE_BLOCKED_AFTER_COMMERCIAL');
 
 // PCP: reserva total.
 const reserveState={

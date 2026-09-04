@@ -21,3 +21,26 @@ O assistente só deve informar que uma mudança está pronta para teste quando:
 - não houver falha conhecida aberta relacionada à alteração.
 
 Este gate existe para reduzir retrabalho e impedir publicação de mudanças não validadas.
+
+
+## Regra adicional — validação no ambiente publicado
+
+Para qualquer módulo/tela alterado:
+- CI verde não é suficiente.
+- Após o deploy, deve existir smoke test contra `https://focado.pages.dev`.
+- O teste deve confirmar que os arquivos publicados respondem, que o contrato do módulo existe e que a página publicada referencia a revisão correta.
+- Para problemas de boot/primeiro paint, o HTML publicado deve ser inspecionado para garantir ausência de texto residual como `\\n`.
+- O usuário só recebe "pode testar" depois do smoke test publicado passar.
+
+
+## Teste de Fogo
+
+O Teste de Fogo é o ensaio máximo de aceitação do Focado. Ele deve simular:
+- 100 funcionários distribuídos pelos perfis reais;
+- 30 pedidos em diferentes estágios;
+- usuários de múltiplas faixas etárias;
+- auditoria funcional e de rastreabilidade;
+- revisão de Produto, UX, Engenharia, Dados e Segurança;
+- um diretor que entra no Cockpit Executivo antes de uma reunião e precisa localizar rapidamente faturamento bruto, faturamento líquido, margem, OTIF, meta x realizado, share por marca, ranking de SKUs e atrasos.
+
+O Teste de Fogo integra a suíte obrigatória de validação e deve reprovar a entrega se qualquer dado executivo essencial estiver indisponível ou sem rastreabilidade.

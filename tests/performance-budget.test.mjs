@@ -6,17 +6,21 @@ const loader=read('assets/core/module-loader.js');
 const modules=['orders','pcp','production','inventory','logistics','purchases','expedition','customers','products','representatives','system-health','technical-sheets','bases','intelligence-core','intelligence','kanban'];
 
 assert.ok(index.includes('assets/core/module-loader.js'),'Loader de módulos deve estar no index');
+
+// Boot deve carregar somente o núcleo. Áreas operacionais entram sob demanda.
 for(const m of modules){
-  const preloaded=['orders','pcp','production','inventory','logistics','purchases','expedition','customers','products','representatives','system-health','intelligence-core','intelligence','kanban'].includes(m);
-  if(preloaded){
-    const expected=['inventory','orders','production'].includes(m)?'assets/modules/'+m+'.js?v=':'assets/modules/'+m+'.js?v=20260827-static-v1';
-    assert.ok(index.includes(expected),'Módulo ativo deve ser pré-carregado: '+m);
+  assert.ok(!index.includes('assets/modules/'+m+'.js?v='),'Módulo não deve ser carregado antes do login: '+m);
+  if(!['intelligence-core'].includes(m)){
+    assert.ok(!index.includes('assets/modules/'+m+'.css?v='),'CSS de módulo não deve ser carregado antes da navegação: '+m);
   }
 }
-for(const route of ['pedidos','pcp','production','inventory','inputs','purchases','expedicao','logistica','entregas','transportadoras','kanban','system-health','cockpit','corpo-auditor']){
+for(const route of ['simulador','pedidos','pcp','production','inventory','inputs','purchases','expedicao','logistica','entregas','transportadoras','kanban','system-health','cockpit','corpo-auditor']){
   assert.ok(loader.includes(route+':')||loader.includes("'"+route+"':"),'Rota ausente no lazy loader: '+route);
 }
 assert.ok(loader.includes('insertBefore(el,ds)'),'CSS lazy deve ser inserido antes do Design System');
+assert.ok(index.includes('https://focado-api.thiagovpinho.workers.dev'),'Boot deve antecipar conexão com a API');
+assert.ok(index.includes("DOMContentLoaded"),'Login deve poder aparecer assim que o DOM estiver pronto');
+assert.ok(!index.includes("setTimeout(()=>document.documentElement.classList.remove('focado-booting'),8000)"),'Splash legado de 8s não pode voltar');
 
 const sizes={};
 for(const file of fs.readdirSync(new URL('../assets/modules/',import.meta.url))){

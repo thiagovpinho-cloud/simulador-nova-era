@@ -3,7 +3,7 @@ import { db } from './_lib/db.js';
 import { requireSession } from './_lib/auth.js';
 import { hashPassword } from './_lib/password.js';
 
-const ROLES=new Set(['ADMIN','COMERCIAL','PCP','PRODUCAO','ESTOQUE','LOGISTICA','COMPRAS','FINANCEIRO']);
+const ROLES=new Set(['ADMIN','DIRETOR','GESTOR','COMERCIAL','PCP','PRODUCAO','ESTOQUE','LOGISTICA','COMPRAS','FINANCEIRO']);
 
 function parseBody(req){
   return typeof req.body==='string'?JSON.parse(req.body||'{}'):(req.body||{});

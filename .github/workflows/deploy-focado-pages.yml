@@ -59,6 +59,7 @@ jobs:
           fi
 
       - name: Deploy Pages
+        id: deploy_pages
         shell: bash
         env:
           CF_TOKEN_RAW: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -67,4 +68,91 @@ jobs:
           export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CF_TOKEN_RAW" | tr -d '\r\n' | xargs)"
           export CLOUDFLARE_ACCOUNT_ID="$(printf '%s' "$CF_ACCOUNT_RAW" | tr -d '\r\n' | xargs)"
           cd worker
-          npx wrangler pages deploy ../_site --project-name focado --branch main --commit-dirty=true
+          npx wrangler pages deploy ../_site --project-name focado --branch main --commit-dirty=true | tee /tmp/pages-deploy.log
+          DEPLOY_URL="$(grep -oE 'https://[a-z0-9]+\.focado\.pages\.dev' /tmp/pages-deploy.log | tail -1)"
+          test -n "$DEPLOY_URL"
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test published Focado
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="${{ steps.deploy_pages.outputs.url }}"
+          test -n "$BASE"
+
+          # 1) Smoke da revisão recém-publicada (URL imutável do deploy)
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/" -o /tmp/focado-index.html
+          grep -q "assets/core/module-loader.js" /tmp/focado-index.html
+          grep -q "assets/app-shell.js" /tmp/focado-index.html
+          # Fase 5: módulos operacionais não podem voltar a bloquear o boot.
+          ! grep -q "assets/modules/orders.js" /tmp/focado-index.html
+          ! grep -q "assets/modules/simulator.js" /tmp/focado-index.html
+          grep -q "focado-api.thiagovpinho.workers.dev" /tmp/focado-index.html
+
+          # 2) Validar artefatos críticos pelo caminho real, sem acoplar o smoke a querystrings de versão.
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/core/module-loader.js" -o /tmp/module-loader.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/app-shell.js" -o /tmp/app-shell.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/pendencias.js" -o /tmp/pendencias.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/pendencias.css" -o /tmp/pendencias.css
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/simulator.js" -o /tmp/simulator.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/margin-rules.js" -o /tmp/margin-rules.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/orders.js" -o /tmp/orders.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/customers.js" -o /tmp/customers.js
+          curl -fsS --retry 6 --retry-delay 3 "$BASE/assets/modules/representatives.js" -o /tmp/representatives.js
+
+          grep -q "pendencias:{css:'pendencias.css',js:'pendencias.js'}" /tmp/module-loader.js
+          grep -q "Central de Pendências" /tmp/pendencias.js
+          grep -q "COCKPIT 360º DO PEDIDO" /tmp/pendencias.js
+          grep -q "window.FocadoPendencias" /tmp/pendencias.js
+          grep -q ".fp360-backdrop" /tmp/pendencias.css
+          grep -q "Central de Pendências" /tmp/app-shell.js
+          grep -q "if(id==='pendencias')" /tmp/app-shell.js
+          grep -q "SEU TRABALHO AGORA" /tmp/app-shell.js
+          grep -q "fx-journey-context" /tmp/app-shell.js
+          grep -q "ESTOQUE:'inventory'" /tmp/pendencias.js
+          grep -q "function friendlyError" /tmp/pendencias.js
+
+          # 3) Preservar smoke das funções de negócio legadas essenciais.
+          grep -q "window.FocadoSimulator={render}" /tmp/simulator.js
+          grep -q "Cadastrar insumo" /tmp/simulator.js
+          grep -q "Manual por caixa" /tmp/simulator.js
+          grep -q "window.FocadoMarginRules={render}" /tmp/margin-rules.js
+          grep -q "Custo do Produto" /tmp/margin-rules.js
+          grep -q "updateProfitability" /tmp/orders.js
+          grep -q "quoteOrder" /tmp/orders.js
+          grep -q "lookupCnpj(value)" /tmp/customers.js
+          grep -q "CNPJ localizado. Dados cadastrais preenchidos automaticamente." /tmp/customers.js
+          grep -q "Nome fantasia" /tmp/representatives.js
+
+          python - <<'PY'
+          from pathlib import Path
+          html=Path('/tmp/focado-index.html').read_text(errors='replace')
+          head=html.split('</head>',1)[0]
+          assert r'\n' not in head, 'literal \\n detected in published <head>'
+          assert 'window.FocadoLegacySimulator' in html, 'pricing adapter missing from published HTML'
+          assert 'focado-booting' in html, 'boot splash class missing from published HTML'
+          assert 'focado-brand.svg?v=20260828-boot' in html, 'boot splash logo missing from published HTML'
+          print('immutable-deploy-smoke: ok')
+          PY
+
+          # 4) O alias de produção só é aceito quando servir a nova Central de Pendências.
+          PROD="https://focado.pages.dev"
+          READY=0
+          for i in {1..36}; do
+            if curl -fsS --retry 2 --retry-delay 2 "$PROD/assets/core/module-loader.js?release=${GITHUB_SHA}" -o /tmp/focado-prod-loader.js \
+              && grep -q "pendencias:{css:'pendencias.css',js:'pendencias.js'}" /tmp/focado-prod-loader.js; then
+              READY=1
+              echo "Production alias is serving the integrated workflow release."
+              break
+            fi
+            echo "Waiting for production alias... attempt $i/36"
+            sleep 5
+          done
+          test "$READY" = "1"
+
+          curl -fsS --retry 6 --retry-delay 3 "$PROD/assets/modules/pendencias.js?release=${GITHUB_SHA}" -o /tmp/focado-prod-pendencias.js
+          grep -q "COCKPIT 360º DO PEDIDO" /tmp/focado-prod-pendencias.js
+          grep -q "/api/workflow" /tmp/focado-prod-pendencias.js
+          grep -q "ESTOQUE:'inventory'" /tmp/focado-prod-pendencias.js
+          grep -q "function friendlyError" /tmp/focado-prod-pendencias.js
+          echo "published-smoke: ok"

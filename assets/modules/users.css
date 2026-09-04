@@ -22,3 +22,11 @@
 .fu-toast{position:fixed;right:20px;bottom:20px;z-index:3000;padding:11px 14px;border-radius:10px;color:#fff;font-size:12px;font-weight:700;transform:translateY(20px);opacity:0;transition:.18s}.fu-toast.show{transform:none;opacity:1}.fu-toast.ok{background:#17663f}.fu-toast.error{background:#a73d36}
 @media(max-width:900px){.fu-grid{grid-template-columns:1fr}.fu-actions{grid-template-columns:1fr 1fr;margin-left:0}.fu-actions label{grid-column:1/-1}}
 @media(max-width:560px){.fu-two{grid-template-columns:1fr}.fu-panel-head{flex-direction:column}.fu-search{max-width:none}.fu-actions{grid-template-columns:1fr}.fu-user-main{align-items:flex-start}.fu-user-info small{line-height:1.4}.fu-status{margin-left:auto}}
+/* Usuários — Mobile UX v3 */
+@media(max-width:700px){
+  .fu-grid{grid-template-columns:1fr}.fu-panel{padding:14px;border-radius:16px}.fu-panel-head{flex-direction:column}.fu-panel-head h2{font-size:15px}.fu-panel-head p{font-size:11px;line-height:1.4}
+  .fu-form input,.fu-form select,.fu-actions select,.fu-search{min-height:44px;font-size:16px}.fu-two{grid-template-columns:1fr}
+  .fu-role{grid-template-columns:1fr;padding:11px}.fu-role-code{width:max-content}.fu-user{padding:13px 0}.fu-user-main{align-items:flex-start}
+  .fu-actions{grid-template-columns:1fr;margin-left:0}.fu-actions label{grid-column:auto}.fu-primary,.fu-secondary,.fu-danger,.fu-success{min-height:44px}
+  .fu-toast{left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));text-align:center}
+}

@@ -67,3 +67,32 @@ assert.equal(bySku.summary.soldBoxes,23);
 assert.equal(bySku.kpis.brand_share.rows.length,2);
 
 console.log('BI Phase 2 analytics OK');
+
+
+const marginRulesState={
+  orders:[{
+    id:'mr1',number:'MR-001',status:'ENTREGUE',brand:'Nova Era',client:'Cliente Margem',orderDate:'2026-08-10',
+    items:[{code:'SKU-M',name:'Produto Margem',qty:10,price:100}],
+    logistics:{deliveryConfirmed:true,actualDeliveryDate:'2026-08-10'}
+  }],
+  skuCosts:[{sku:'SKU-M',effective_from:'2026-08-01',unit_variable_cost:30}],
+  financialFacts:[{
+    order_id:'mr1',invoice_number:'NF-M1',invoice_date:'2026-08-10',invoice_status:'EMITIDA',
+    icms:100,pis:20,cofins:40,ipi:50,st:30,freight_allocated:40,commission:20,contract:10,
+    discounts:0,returns:0,bonuses:0
+  }],
+  marginRules:{
+    product_cost:'CUSTO',icms:'CUSTO',pis:'CUSTO',cofins:'CUSTO',
+    ipi:'MARGEM',st:'MARGEM',freight:'CUSTO',commission:'MARGEM',contract:'MARGEM'
+  }
+};
+const marginAnalytics=buildBiAnalytics(marginRulesState,{});
+assert.equal(marginAnalytics.summary.recognizedGrossRevenue,1080,'Bruto deve incluir IPI e ST');
+assert.equal(marginAnalytics.summary.netRevenue,580,'Líquido deve abater somente componentes classificados como CUSTO');
+assert.ok(Math.abs(marginAnalytics.summary.contributionMargin-(580/1080))<1e-12);
+assert.equal(marginAnalytics.kpis.net_revenue.rules.ipi,'MARGEM');
+assert.equal(marginAnalytics.kpis.net_revenue.rules.icms,'CUSTO');
+
+marginRulesState.marginRules.ipi='CUSTO';
+const changedRule=buildBiAnalytics(marginRulesState,{});
+assert.equal(changedRule.summary.netRevenue,530,'Trocar IPI para CUSTO deve reduzir o líquido exatamente pelo IPI');

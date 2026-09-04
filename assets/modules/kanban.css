@@ -9,3 +9,15 @@
 .fk-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}.fk-tag{border-radius:999px;padding:3px 6px;font-size:7.8px;font-weight:800}.fk-tag.base{background:#eef3ff;color:#5169b5}.fk-tag.prod{background:#fff0e4;color:#c45e12}.fk-tag.stock{background:#eaf2ff;color:#2d66c8}.fk-tag.ok{background:#e8f6ef;color:#08785b}.fk-tag.warn{background:#fff0e4;color:#c45e12}.fk-tag.bad{background:#fdeced;color:#c7333a}
 .fk-empty{padding:18px 8px;text-align:center;color:var(--fx-muted);font-size:9px}
 @media(max-width:1100px){.fk-summary{grid-template-columns:repeat(3,1fr)}}@media(max-width:700px){.fk-summary{grid-template-columns:repeat(2,1fr)}.fk-head{align-items:flex-start;flex-direction:column}.fk-board{grid-template-columns:repeat(5,260px)}}
+/* Kanban — Mobile UX v3 */
+@media(max-width:700px){
+  .fk-head{align-items:flex-start;flex-direction:column}.fk-head h1{font-size:24px}.fk-head p{font-size:12px;line-height:1.4}
+  .fk-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}.fk-actions .fk-btn{min-height:44px;font-size:11px}
+  .fk-summary{grid-template-columns:1fr 1fr;gap:8px}.fk-stat{padding:12px}.fk-stat span{font-size:10px}.fk-stat strong{font-size:20px}
+  .fk-toolbar{padding:9px}.fk-search,.fk-select{width:100%;min-width:0;min-height:44px;font-size:16px}
+  .fk-board{grid-template-columns:repeat(5,min(82vw,310px));gap:10px;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;padding-bottom:10px}
+  .fk-col{min-height:420px;scroll-snap-align:start;padding:10px;border-radius:16px}
+  .fk-col-head b{font-size:11px}.fk-card{padding:12px;border-radius:14px}.fk-order,.fk-client{font-size:11px}.fk-muted{font-size:9.5px}.fk-value{font-size:10px}
+  .fk-tags{gap:6px}.fk-tag{font-size:8.5px;padding:4px 7px}
+}
+@media(max-width:430px){.fk-summary{grid-template-columns:1fr}.fk-board{grid-template-columns:repeat(5,88vw)}}

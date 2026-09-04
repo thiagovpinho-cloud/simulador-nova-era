@@ -1,4 +1,4 @@
-export const RULES_VERSION='2026.08.28.4';
+export const RULES_VERSION='2026.08.28.6';
 
 export const DOMAIN_PERMISSION=Object.freeze({
   COMERCIAL:'orders.write',
@@ -47,7 +47,8 @@ function applyCommercial(state,body){
       status:'COMERCIAL',
       createdAt:Number(src.createdAt||Date.now()),
       brand:String(src.brand||'Nova Era'),
-      client:String(src.client||''),cnpj:String(src.cnpj||''),representative:String(src.representative||''),
+      customerId:String(src.customerId||''),client:String(src.client||''),cnpj:String(src.cnpj||''),
+      representativeId:String(src.representativeId||''),representative:String(src.representative||''),
       salesChannel:String(src.salesChannel||'REPRESENTANTE'),salesJustification:String(src.salesJustification||''),
       city:String(src.city||''),uf:String(src.uf||src.state||''),cep:String(src.cep||''),bairro:String(src.bairro||''),
       email:String(src.email||''),phone:String(src.phone||''),orderDate:String(src.orderDate||''),
@@ -57,6 +58,7 @@ function applyCommercial(state,body){
       commercial:{completedAt:null,completedBy:null},
       pcp:{deliveryBase:'',productionDate:'',availableDate:'',separated:false,scheduledQty:0,autoScheduled:false},
       logistics:{freightValue:'',pickupDate:'',deliveryDate:'',carrier:''},
+      freightQuote:src.freightQuote&&typeof src.freightQuote==='object'?structuredClone(src.freightQuote):null,
       items:(src.items||[]).map(i=>({
         id:String(i.id||i.code||i.productId||i.name||('item_'+Math.random().toString(36).slice(2,8))),
         productId:String(i.productId||''),code:String(i.code||''),name:String(i.name||''),
@@ -69,11 +71,20 @@ function applyCommercial(state,body){
     return;
   }
 
+  if(changes.deleteOrderId){
+    const id=String(changes.deleteOrderId);
+    const target=state.orders.find(o=>String(o.id)===id);
+    if(!target)throw Object.assign(new Error('ORDER_NOT_FOUND'),{status:404});
+    if(target.status!=='COMERCIAL')throw Object.assign(new Error('ORDER_DELETE_BLOCKED_AFTER_COMMERCIAL'),{status:422});
+    state.orders=state.orders.filter(o=>String(o.id)!==id);
+    return;
+  }
+
   const o=getOrder(state,body.orderId);
   if(!o)throw Object.assign(new Error('ORDER_NOT_FOUND'),{status:404});
   Object.assign(o,pick(changes,[
-    'client','cnpj','city','state','uf','orderDate','suggestedPickupDate','suggestedPickup','freightType','observation','notes','brand',
-    'representative','salesChannel','salesJustification','requestedDeliveryDate','paymentTerms',
+    'customerId','client','cnpj','city','state','uf','orderDate','suggestedPickupDate','suggestedPickup','freightType','observation','notes','brand',
+    'representativeId','representative','salesChannel','salesJustification','requestedDeliveryDate','paymentTerms',
     'logisticsBudget','deliveryAddress','email','phone','cep','bairro'
   ]));
   if(Array.isArray(changes.items)){
@@ -88,6 +99,29 @@ function applyCommercial(state,body){
     o.commercial={...(o.commercial||{}),...pick(changes.commercial,['completedAt','completedBy'])};
   }
   if(changes.lastCorrection&&typeof changes.lastCorrection==='object')o.lastCorrection=structuredClone(changes.lastCorrection);
+  if(changes.freightQuoteRequest&&typeof changes.freightQuoteRequest==='object'){
+    const q=changes.freightQuoteRequest;
+    const notes=String(q.notes||'').trim();
+    o.freightQuote={
+      id:String(q.id||o.freightQuote?.id||('fq_'+Date.now())),
+      status:'SOLICITADA',
+      requestedAt:Number(q.requestedAt||Date.now()),
+      requestedBy:String(q.requestedBy||'Comercial'),
+      notes,
+      commercialViewedAt:null,
+      respondedAt:null,
+      respondedBy:'',
+      quotes:[],
+      history:[
+        {at:Number(q.requestedAt||Date.now()),type:'SOLICITADA',by:String(q.requestedBy||'Comercial'),notes},
+        ...((o.freightQuote?.history||[]).slice(0,49))
+      ]
+    };
+  }
+  if(changes.freightQuoteViewed&&o.freightQuote?.status==='RESPONDIDA'){
+    o.freightQuote.commercialViewedAt=Number(changes.freightQuoteViewed.at||Date.now());
+    o.freightQuote.commercialViewedBy=String(changes.freightQuoteViewed.by||'Comercial');
+  }
   if(changes.event&&typeof changes.event==='object'){
     o.events=Array.isArray(o.events)?o.events:[];
     o.events.unshift(structuredClone(changes.event));
@@ -197,6 +231,43 @@ function applyLogistics(state,body){
     'freightValue','pickupDate','deliveryDate','carrier','carrierId','trackingCode','vehicle','driver','notes',
     'deliveryConfirmed','deliveredOnTime','actualDeliveryDate','deliveryDelayReason','deliveryConfirmedAt','deliveryConfirmedBy'
   ]));
+
+  if(body.changes?.freightQuoteStart&&o.freightQuote?.status==='SOLICITADA'){
+    o.freightQuote.status='EM_COTACAO';
+    o.freightQuote.startedAt=Number(body.changes.freightQuoteStart.at||Date.now());
+    o.freightQuote.startedBy=String(body.changes.freightQuoteStart.by||'Logística');
+    o.freightQuote.history=[
+      {at:o.freightQuote.startedAt,type:'EM_COTACAO',by:o.freightQuote.startedBy},
+      ...((o.freightQuote.history||[]).slice(0,49))
+    ];
+  }
+
+  if(body.changes?.freightQuoteResponse&&typeof body.changes.freightQuoteResponse==='object'){
+    if(!o.freightQuote||!['SOLICITADA','EM_COTACAO','RESPONDIDA'].includes(o.freightQuote.status)){
+      throw Object.assign(new Error('FREIGHT_QUOTE_REQUEST_REQUIRED'),{status:422});
+    }
+    const response=body.changes.freightQuoteResponse;
+    const quotes=(Array.isArray(response.quotes)?response.quotes:[]).map((q,index)=>({
+      id:String(q.id||('fqopt_'+Date.now()+'_'+index)),
+      provider:String(q.provider||'').trim(),
+      value:Number(q.value||0),
+      transitDays:Math.max(0,Number(q.transitDays||0)),
+      pickupEstimate:String(q.pickupEstimate||''),
+      notes:String(q.notes||'').trim()
+    })).filter(q=>q.provider&&q.value>0);
+    if(!quotes.length)throw Object.assign(new Error('FREIGHT_QUOTE_OPTION_REQUIRED'),{status:422});
+    const at=Number(response.respondedAt||Date.now()),by=String(response.respondedBy||'Logística');
+    o.freightQuote.status='RESPONDIDA';
+    o.freightQuote.respondedAt=at;
+    o.freightQuote.respondedBy=by;
+    o.freightQuote.commercialViewedAt=null;
+    o.freightQuote.quotes=quotes;
+    o.freightQuote.responseNotes=String(response.notes||'').trim();
+    o.freightQuote.history=[
+      {at,type:'RESPONDIDA',by,count:quotes.length},
+      ...((o.freightQuote.history||[]).slice(0,49))
+    ];
+  }
 }
 
 function applyInventory(state,body){
@@ -376,6 +447,19 @@ function applyFinance(state,body){
     };
   }
 
+  if(c.marginRules&&typeof c.marginRules==='object'){
+    const keys=['product_cost','icms','pis','cofins','ipi','st','freight','commission','contract'];
+    const previous=state.marginRules||{};
+    const next={};
+    for(const key of keys){
+      const value=String(c.marginRules[key]??previous[key]??'CUSTO').toUpperCase();
+      if(!['CUSTO','MARGEM'].includes(value))throw Object.assign(new Error('INVALID_MARGIN_RULE'),{status:422,key});
+      next[key]=value;
+    }
+    next.updatedAt=Date.now();
+    state.marginRules=next;
+  }
+
   if(c.monthlyTarget&&typeof c.monthlyTarget==='object'){
     const t=structuredClone(c.monthlyTarget);
     if(!/^\d{4}-\d{2}$/.test(String(t.period||'')))throw Object.assign(new Error('INVALID_TARGET_PERIOD'),{status:422});
@@ -392,7 +476,7 @@ function applyFinance(state,body){
     const f=structuredClone(c.financialFact);
     if(!f.order_id)throw Object.assign(new Error('FINANCIAL_FACT_ORDER_REQUIRED'),{status:422});
     if(!getOrder(state,f.order_id))throw Object.assign(new Error('ORDER_NOT_FOUND'),{status:404});
-    for(const k of ['taxes','discounts','returns','bonuses','commission','freight_allocated'])f[k]=Math.max(0,Number(f[k]||0));
+    for(const k of ['taxes','discounts','returns','bonuses','commission','freight_allocated','icms','pis','cofins','ipi','st','contract'])f[k]=Math.max(0,Number(f[k]||0));
     f.invoice_number=String(f.invoice_number||'').trim();
     f.invoice_date=String(f.invoice_date||'').slice(0,10);
     f.invoice_status=String(f.invoice_status||'').trim().toUpperCase();
@@ -418,9 +502,19 @@ function applyCustomers(state,body){
   state.customers=Array.isArray(state.customers)?state.customers:[];
   if(c.customer&&typeof c.customer==='object'){
     const incoming=structuredClone(c.customer);
-    const idx=state.customers.findIndex(x=>String(x.id)===String(incoming.id));
-    if(idx>=0)state.customers[idx]=incoming;
-    else state.customers.unshift(incoming);
+    const norm=v=>String(v||'').replace(/\D/g,'');
+    let idx=state.customers.findIndex(x=>String(x.id)===String(incoming.id));
+    if(idx<0&&norm(incoming.cnpj)){
+      const matches=state.customers
+        .map((x,i)=>({x,i}))
+        .filter(({x})=>norm(x.cnpj)===norm(incoming.cnpj))
+        .sort((a,b)=>Number(b.x.updatedAt||b.x.createdAt||0)-Number(a.x.updatedAt||a.x.createdAt||0));
+      if(matches.length)idx=matches[0].i;
+    }
+    if(idx>=0){
+      incoming.id=state.customers[idx].id||incoming.id;
+      state.customers[idx]={...state.customers[idx],...incoming};
+    }else state.customers.unshift(incoming);
   }
 }
 

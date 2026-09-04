@@ -3,6 +3,7 @@ import { requireSession, hasPermission } from './_lib/auth.js';
 import { readWorkspace, writeWorkspace } from './_lib/store.js';
 import { db } from './_lib/db.js';
 import { applyTransitionSideEffects, transitionRule, validateTransition } from '../shared/domain-rules.js';
+import { refreshWorkflowState } from '../shared/workflow-state.js';
 
 const WORKSPACE='default';
 
@@ -37,6 +38,7 @@ export default async function handler(req,res){
     order.status=rule.to;
     order.events=Array.isArray(order.events)?order.events:[];
     order.events.unshift({at:Date.now(),type:'STATUS_TRANSITION',from,to:rule.to,user:session.name||session.email});
+    refreshWorkflowState(state);
 
     const saved=await writeWorkspace(WORKSPACE,state,revision);
     const sql=db();

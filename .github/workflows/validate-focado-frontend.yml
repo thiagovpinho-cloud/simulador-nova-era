@@ -3,7 +3,7 @@ name: Validate Focado Frontend
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, 'focado/**']
     paths:
       - "assets/**"
       - "worker/**"

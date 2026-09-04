@@ -35,3 +35,83 @@
 
 .fo-field span::after{content:""}
 .fo-field-required>span::after{content:" *";color:#bd3439}
+
+
+.fo-price-hint{display:block;margin-top:4px;font-size:7.8px;color:#6e7b75}
+.fo-margin-cell{min-width:145px}.fo-margin-cell small{display:block;margin-top:4px;font-size:7.6px;color:#718078;line-height:1.3}.fo-margin{display:inline-flex;align-items:center;border-radius:999px;padding:4px 7px;font-size:8.5px;font-weight:900}.fo-margin.ok{background:#e8f6ef;color:#08704f}.fo-margin.warn{background:#fff5dc;color:#95600a}.fo-margin.bad{background:#fff0ef;color:#a0443e}.fo-margin.pending{background:#f1f4f2;color:#75817b}
+.fo-order-profit{display:flex;align-items:flex-end;justify-content:flex-end;gap:24px;padding-top:12px}.fo-order-profit>div:first-child{display:flex;flex-direction:column;align-items:flex-end}.fo-order-profit span{font-size:9px;color:var(--fx-muted)}.fo-order-profit strong{font-size:18px}.fo-order-profit strong.ok{color:#08704f}.fo-order-profit strong.bad{color:#a0443e}.fo-order-profit small{font-size:8px;color:var(--fx-muted);margin-top:2px}
+@media(max-width:700px){.fo-order-profit{align-items:stretch;flex-direction:column;gap:10px}.fo-order-profit>div:first-child{align-items:flex-start}.fo-total{justify-content:space-between}}
+
+.fo-table td .fo-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.fo-table [data-fo-edit]{background:#0b6a51;color:#fff;border-color:#0b6a51}
+.fo-table [data-fo-edit]:hover{filter:brightness(.96)}
+
+.fo-table .fo-delete-order{background:#fff;color:#a33;border-color:#d9a7a7}
+.fo-table .fo-delete-order:hover{background:#fff3f3;border-color:#c77}
+.fo-table td .fo-actions{justify-content:flex-end;flex-wrap:nowrap}
+
+/* Pedidos — mobile-first presentation */
+@media(max-width:700px){
+  .fo-page{gap:12px}
+  .fo-head h1{font-size:24px}
+  .fo-head p{font-size:12px;line-height:1.4}
+  .fo-head .fo-actions{position:sticky;bottom:8px;z-index:2;background:rgba(244,247,245,.94);backdrop-filter:blur(10px);padding:8px;border-radius:14px;box-shadow:0 8px 24px rgba(17,43,33,.1)}
+  .fo-actions .fo-btn{min-height:44px;font-size:12px}
+  .fo-summary{grid-template-columns:1fr 1fr;gap:8px}
+  .fo-stat{padding:12px}
+  .fo-stat span{font-size:10px}.fo-stat strong{font-size:20px}.fo-stat small{font-size:9px}
+  .fo-toolbar{padding:9px;gap:8px}
+  .fo-search,.fo-select{width:100%;min-width:0;font-size:16px;min-height:44px}
+  .fo-table-wrap{border:0;background:transparent;overflow:visible}
+  .fo-table{min-width:0;display:block}
+  .fo-table thead{display:none}
+  .fo-table tbody{display:flex;flex-direction:column;gap:10px}
+  .fo-table tr{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;background:#fff;border:1px solid var(--fx-border);border-radius:16px;padding:14px;box-shadow:0 5px 18px rgba(17,43,33,.045)}
+  .fo-table td{display:block;border:0!important;padding:0!important;font-size:11px;min-width:0}
+  .fo-table td::before{display:block;font-size:8px;font-weight:800;letter-spacing:.45px;text-transform:uppercase;color:var(--fx-muted);margin-bottom:3px}
+  .fo-table td:nth-child(1)::before{content:"Pedido"}.fo-table td:nth-child(2)::before{content:"Cliente"}.fo-table td:nth-child(3)::before{content:"CNPJ"}.fo-table td:nth-child(4)::before{content:"Representante"}.fo-table td:nth-child(5)::before{content:"Data"}.fo-table td:nth-child(6)::before{content:"Itens"}.fo-table td:nth-child(7)::before{content:"Valor"}.fo-table td:nth-child(8)::before{content:"Status"}.fo-table td:nth-child(9)::before{content:"Previsão"}
+  .fo-table td:last-child{grid-column:1/-1}
+  .fo-table td:last-child::before{content:"Ações"}
+  .fo-table td .fo-actions{justify-content:stretch;display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+  .fo-table td .fo-actions .fo-open{min-height:42px;padding:9px 6px;font-size:10px}
+  .fo-card{padding:14px;border-radius:16px}
+  .fo-card h2{font-size:15px}
+  .fo-card-head{align-items:flex-start;flex-direction:column}
+  .fo-card-head p{font-size:10px;line-height:1.4;margin:0 0 8px}
+  .fo-fields{grid-template-columns:1fr!important;gap:12px}
+  .fo-field span{font-size:10px}
+  .fo-field input,.fo-field select,.fo-card textarea{min-height:44px;font-size:16px;padding:10px 11px}
+  .fo-card textarea{min-height:100px}
+  .fo-items-wrap{overflow:auto;-webkit-overflow-scrolling:touch}
+  .fo-items{min-width:680px}
+  .fo-flowline{scroll-snap-type:x proximity}
+  .fo-flowline span{scroll-snap-align:start;min-height:36px;display:inline-flex;align-items:center}
+}
+@media(max-width:430px){
+  .fo-summary{grid-template-columns:1fr}
+  .fo-table tr{grid-template-columns:1fr}
+  .fo-table td:last-child{grid-column:auto}
+}
+
+
+/* Cotação de frete — Comercial ↔ Logística */
+.fo-freight-card{border-color:#dfe9e4;background:linear-gradient(180deg,#fff,#fbfdfc)}
+.fo-freight-chip{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;background:#f0f3f1;color:#607068;font-size:9px;font-weight:800;white-space:nowrap}
+.fo-freight-chip.solicitada{background:#fff3e4;color:#a25f12}
+.fo-freight-chip.em_cotacao{background:#eaf2ff;color:#2d66c8}
+.fo-freight-chip.respondida{background:#e8f6ef;color:#08785b}
+.fo-freight-meta{display:flex;gap:14px;flex-wrap:wrap;margin:8px 0 12px;color:var(--fx-muted);font-size:9.5px}
+.fo-freight-response{border:1px solid #dbe9e2;background:#f6fbf8;border-radius:13px;padding:13px;margin:10px 0 14px}
+.fo-freight-response>b{display:block;font-size:11px;color:#0b6f53}
+.fo-freight-response>span{display:block;margin-top:3px;font-size:9.5px;color:var(--fx-muted)}
+.fo-freight-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:9px;margin-top:12px}
+.fo-freight-option{border:1px solid var(--fx-border);background:#fff;border-radius:12px;padding:11px}
+.fo-freight-option.best{border-color:#b9dfcf;background:#f3fbf7}
+.fo-freight-option span{display:block;font-size:8px;font-weight:900;letter-spacing:.6px;color:var(--fx-muted)}
+.fo-freight-option b{display:block;font-size:10px;margin-top:3px}
+.fo-freight-option strong{display:block;font-size:18px;margin-top:8px;color:#163c30}
+.fo-freight-option small{display:block;margin-top:4px;color:var(--fx-muted);font-size:8.5px;line-height:1.4}
+@media(max-width:700px){
+  .fo-freight-options{grid-template-columns:1fr}
+  .fo-freight-chip{white-space:normal}
+}

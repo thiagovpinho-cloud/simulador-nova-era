@@ -1,6 +1,7 @@
 import pg from "pg";
 import { DOMAIN_PERMISSION, FLOW, RULES_VERSION, applyDomain, applyTransitionSideEffects, getOrder, validateTransition } from "../../shared/domain-rules.js";
 import { buildBiAnalytics } from "../../shared/bi-analytics.js";
+import { refreshWorkflowState, workflowForOrder } from "../../shared/workflow-state.js";
 import { ensurePlatformV2, syncPlatformV2, appendChange, loginThrottle, auditSnapshot, readDomainV2, consistencyV2, passwordPolicy } from "./platform-v2.js";
 const { Client } = pg;
 
@@ -362,6 +363,34 @@ async function route(request,env){
       const analytics=buildBiAnalytics(row?.payload||{},filters);
       return json({...analytics,workspaceKey:WORKSPACE,revision:row?.revision||0});
     }
+    if(path==="/workflow"&&request.method==="GET"){
+      await requireSession(request,db,"workspace.read");
+      const row=await readWorkspace(db,false);
+      const state=structuredClone(row?.payload||{});
+      const snapshot=refreshWorkflowState(state);
+      const orderId=String(url.searchParams.get("orderId")||"").trim();
+      if(orderId){
+        const workflow=workflowForOrder(state,orderId);
+        if(!workflow)return json({error:"ORDER_NOT_FOUND"},404);
+        return json({
+          version:snapshot.version,
+          revision:row?.revision||0,
+          updatedAt:snapshot.updatedAt,
+          workflow
+        });
+      }
+      return json({
+        version:snapshot.version,
+        revision:row?.revision||0,
+        updatedAt:snapshot.updatedAt,
+        workQueue:snapshot.workQueue,
+        reactions:snapshot.reactions||[],
+        automation:snapshot.automation||null,
+        automationState:state.workflowAutomationState||null,
+        byOrder:snapshot.byOrder
+      });
+    }
+
     if(path==="/state"&&request.method==="GET"){
       await requireSession(request,db,"workspace.read");
       const row=await readWorkspace(db,false);
@@ -394,6 +423,7 @@ async function route(request,env){
         }
         const before=auditSnapshot(state,domain,body.orderId);
         applyDomain(domain,state,body);
+        refreshWorkflowState(state);
         const after=auditSnapshot(state,domain,body.orderId);
         const saved=await writeWorkspace(db,state,revision);
         await syncPlatformV2(db,saved.payload);
@@ -419,6 +449,7 @@ async function route(request,env){
         const from=order.status;
         applyTransitionSideEffects(order,from);
         order.status=rule.to;order.events=Array.isArray(order.events)?order.events:[];
+        refreshWorkflowState(state);
         order.events.unshift({at:Date.now(),type:"STATUS_TRANSITION",from,to:rule.to,user:s.name||s.email});
         const saved=await writeWorkspace(db,state,revision);
         await syncPlatformV2(db,saved.payload);

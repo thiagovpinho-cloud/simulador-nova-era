@@ -6,6 +6,8 @@
 
   const ROLE_LABELS={
     ADMIN:'Administrador',
+    DIRETOR:'Diretor',
+    GESTOR:'Gestor',
     COMERCIAL:'Comercial',
     PCP:'PCP',
     PRODUCAO:'Produção',
@@ -16,14 +18,16 @@
   };
 
   const ROUTE_ACCESS={
-    dashboard:['ADMIN','COMERCIAL','PCP','PRODUCAO','ESTOQUE','LOGISTICA','COMPRAS','FINANCEIRO'],
-    kanban:['ADMIN','COMERCIAL','PCP','PRODUCAO','ESTOQUE','LOGISTICA','COMPRAS','FINANCEIRO'],
-    cockpit:['ADMIN','COMERCIAL','PCP','PRODUCAO','ESTOQUE','LOGISTICA','COMPRAS','FINANCEIRO'],
+    dashboard:['ADMIN','DIRETOR','GESTOR','COMERCIAL','PCP','PRODUCAO','ESTOQUE','LOGISTICA','COMPRAS','FINANCEIRO'],
+    kanban:['ADMIN','DIRETOR','GESTOR','COMERCIAL','PCP','PRODUCAO','ESTOQUE','LOGISTICA','COMPRAS','FINANCEIRO'],
+    pendencias:['ADMIN','DIRETOR','GESTOR','COMERCIAL','PCP','PRODUCAO','ESTOQUE','LOGISTICA','COMPRAS','FINANCEIRO'],
+    cockpit:['ADMIN','DIRETOR','GESTOR','FINANCEIRO'],
     'corpo-auditor':['ADMIN'],
-    clientes:['ADMIN','COMERCIAL'],
-    representantes:['ADMIN','COMERCIAL'],
-    oportunidades:['ADMIN','COMERCIAL'],
-    pedidos:['ADMIN','COMERCIAL'],
+    clientes:['ADMIN','DIRETOR','GESTOR','COMERCIAL'],
+    representantes:['ADMIN','DIRETOR','GESTOR','COMERCIAL'],
+    oportunidades:['ADMIN','DIRETOR','GESTOR','COMERCIAL'],
+    pedidos:['ADMIN','DIRETOR','GESTOR','COMERCIAL'],
+    simulador:['ADMIN','DIRETOR','GESTOR','COMERCIAL','FINANCEIRO'],
     fichas:['ADMIN','COMERCIAL','PCP','PRODUCAO'],
     pcp:['ADMIN','PCP'],
     production:['ADMIN','PCP','PRODUCAO'],
@@ -43,6 +47,7 @@
     indicadores:['ADMIN','FINANCEIRO'],
     financeiro:['ADMIN','FINANCEIRO'],
     'bi-config':['ADMIN','FINANCEIRO','ESTOQUE'],
+    'regras-margem':['ADMIN','FINANCEIRO'],
     config:['ADMIN'],
     usuarios:['ADMIN'],
     'system-health':['ADMIN']

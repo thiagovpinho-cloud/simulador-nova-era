@@ -3,6 +3,7 @@ import { requireSession } from './_lib/auth.js';
 import { readWorkspace, writeWorkspace } from './_lib/store.js';
 import { db } from './_lib/db.js';
 import { DOMAIN_PERMISSION, applyDomain } from '../shared/domain-rules.js';
+import { refreshWorkflowState } from '../shared/workflow-state.js';
 
 const WORKSPACE='default';
 
@@ -18,6 +19,9 @@ export default async function handler(req,res){
     if(!permission)return res.status(400).json({error:'INVALID_DOMAIN'});
 
     const session=await requireSession(req,res,permission);if(!session)return;
+    if(domain==='COMERCIAL'&&body?.changes?.deleteOrderId&&!['ADMIN','DIRETOR','GESTOR'].includes(String(session.role||'').toUpperCase())){
+      return res.status(403).json({error:'FORBIDDEN_DELETE_ORDER'});
+    }
     const row=await readWorkspace(WORKSPACE);
     const state=structuredClone(row?.payload||{});
     const revision=row?.revision||0;
@@ -27,6 +31,7 @@ export default async function handler(req,res){
     }
 
     applyDomain(domain,state,body);
+    refreshWorkflowState(state);
     const saved=await writeWorkspace(WORKSPACE,state,revision);
 
     const sql=db();

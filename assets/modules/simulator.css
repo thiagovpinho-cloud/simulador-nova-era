@@ -1,0 +1,46 @@
+.fsim-page{max-width:1320px;margin:0 auto;padding:26px}
+.fsim-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:16px}.fsim-head span{font-size:11px;font-weight:800;letter-spacing:.08em;color:#0a7b5c}.fsim-head h1{font-size:32px;margin:7px 0}.fsim-head p{margin:0;color:#66736d;max-width:760px}.fsim-badge{background:#eaf6f1;color:#0b6f55;border:1px solid #cfe9df;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:700}
+.fsim-note{background:#fff8e8;border:1px solid #f2dfad;border-radius:14px;padding:13px 15px;color:#675a35;font-size:13px;margin-bottom:16px}
+.fsim-controls{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:12px;background:#fff;border:1px solid #e2e8e5;border-radius:16px;padding:14px;margin-bottom:14px}.fsim-controls label>span{display:block;font-size:11px;font-weight:700;color:#65726c;margin-bottom:6px}.fsim-controls select,.fsim-controls input{width:100%;border:1px solid #dbe4df;border-radius:10px;padding:10px 11px;background:#fafcfb}.fsim-inline{display:flex;align-items:center;gap:6px}.fsim-inline i{font-style:normal;color:#6a756f;font-size:12px}
+.fsim-tabs{display:flex;gap:8px;margin:0 0 14px}.fsim-tabs button{border:1px solid #dce5e0;background:#fff;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}.fsim-tabs button.active{background:#0b7358;color:#fff;border-color:#0b7358}
+.fsim-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}.fsim-kpis>div{background:#fff;border:1px solid #e1e8e4;border-radius:15px;padding:15px}.fsim-kpis span,.fsim-kpis small{display:block;color:#718078;font-size:11px}.fsim-kpis b{display:block;font-size:22px;margin:5px 0;color:#10241d}
+.fsim-card{background:#fff;border:1px solid #e1e8e4;border-radius:16px;padding:16px;margin-bottom:14px}.fsim-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}.fsim-card-head h2{margin:0 0 4px;font-size:17px}.fsim-card-head p{margin:0;color:#6c7872;font-size:12px}.fsim-card-head.split select{min-width:300px;border:1px solid #dbe4df;border-radius:10px;padding:9px}
+.fsim-table-wrap{overflow:auto}.fsim-table{width:100%;border-collapse:collapse;font-size:12px}.fsim-table th{text-align:left;color:#6b7771;font-size:10px;text-transform:uppercase;letter-spacing:.04em;background:#f7faf8;padding:10px;border-bottom:1px solid #e2e8e5}.fsim-table td{padding:10px;border-bottom:1px solid #edf1ef;vertical-align:middle}.fsim-table td small{display:block;color:#89938e;margin-top:2px}.fsim-money-input{display:flex;align-items:center;border:1px solid #dce5e0;border-radius:9px;overflow:hidden;min-width:120px;background:#fff}.fsim-money-input span{padding:0 8px;color:#66736d;font-size:11px}.fsim-money-input input{width:100%;border:0;outline:0;padding:8px;text-align:right}.fsim-money-input.wide{max-width:180px}
+.fsim-margin{display:inline-flex;border-radius:999px;padding:5px 8px;font-weight:800}.fsim-margin.ok{background:#e8f6ef;color:#08704f}.fsim-margin.bad{background:#fff0ef;color:#a4413d}
+.fsim-stack{display:flex;flex-direction:column;gap:14px}.fsim-composition-summary{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px}.fsim-composition-summary>div{background:#f7faf8;border-radius:11px;padding:10px}.fsim-composition-summary span{display:block;font-size:10px;color:#748079}.fsim-composition-summary b{display:block;margin-top:4px;font-size:14px}
+.fsim-loading,.fsim-error,.fsim-empty{padding:40px;text-align:center;color:#6c7872}.fsim-error{display:flex;flex-direction:column;gap:6px}
+@media(max-width:980px){.fsim-controls{grid-template-columns:repeat(2,1fr)}.fsim-kpis{grid-template-columns:repeat(2,1fr)}.fsim-composition-summary{grid-template-columns:repeat(3,1fr)}}
+
+.fsim-freight-note{margin:0 0 14px;padding:11px 13px;border:1px solid #d9e7e0;border-radius:12px;background:#f3f8f5;color:#506158;font-size:12px}
+.fsim-input-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;background:#fff;border:1px solid #e1e8e4;border-radius:16px;padding:15px 16px;margin-bottom:14px}.fsim-input-toolbar h2{margin:0 0 4px;font-size:17px}.fsim-input-toolbar p{margin:0;color:#6c7872;font-size:12px}.fsim-input-toolbar button{border:0;background:#0b7358;color:#fff;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}
+.fsim-custom-tag{display:inline-flex;margin-left:6px;padding:2px 6px;border-radius:999px;background:#eaf6f1;color:#0b7358;font-size:9px;font-weight:800;vertical-align:middle}
+.fsim-cell-input{width:100%;min-width:82px;border:1px solid #dce5e0;border-radius:8px;padding:7px 8px;background:#fff;font:inherit}.fsim-unit{min-width:68px;text-transform:uppercase}.fsim-percent-input{display:flex;align-items:center;gap:5px}.fsim-percent-input span{font-size:11px;color:#67756e}
+.fsim-modal{position:fixed;inset:0;z-index:2147483000;background:rgba(3,28,22,.48);display:grid;place-items:center;padding:20px}.fsim-modal-card{width:min(720px,96vw);background:#fff;border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.22);padding:18px}.fsim-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:15px}.fsim-modal-head span{font-size:10px;font-weight:800;color:#0b7358;letter-spacing:.07em}.fsim-modal-head h2{margin:4px 0 0}.fsim-modal-head button{border:0;background:#f2f5f3;border-radius:9px;width:34px;height:34px;font-size:20px;cursor:pointer}.fsim-modal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.fsim-modal-grid label.wide{grid-column:span 2}.fsim-modal-grid label>span{display:block;font-size:11px;font-weight:700;color:#67746d;margin-bottom:5px}.fsim-modal-grid input,.fsim-modal-grid select{width:100%;border:1px solid #dce5e0;border-radius:9px;padding:10px;background:#fff}.fsim-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.fsim-modal-actions button{border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}.fsim-modal-actions .secondary{border:1px solid #dce5e0;background:#fff}.fsim-modal-actions .primary{border:1px solid #0b7358;background:#0b7358;color:#fff}
+@media(max-width:700px){.fsim-input-toolbar{align-items:flex-start;flex-direction:column}.fsim-modal-grid{grid-template-columns:1fr}.fsim-modal-grid label.wide{grid-column:span 1}}
+
+.fsim-input-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fsim-input-toolbar .fsim-input-actions .secondary{background:#fff;color:#0b7358;border:1px solid #b9d5ca}
+.fsim-input-toolbar .fsim-input-actions button:disabled{opacity:.6;cursor:wait}
+.fsim-money-input.locked{background:#f4f7f5;border-color:#e3e9e6}
+.fsim-money-input.locked input{background:#f4f7f5;color:#53615b;cursor:not-allowed}
+.fsim-money-input.editing{border-color:#0b7358;box-shadow:0 0 0 2px rgba(11,115,88,.08)}
+
+/* Simulador — mobile-first presentation */
+@media(max-width:700px){
+  .fsim-page{padding:10px 0 56px}
+  .fsim-head{flex-direction:column;gap:10px}.fsim-head h1{font-size:26px;margin:4px 0}.fsim-head p{font-size:12px;line-height:1.45}.fsim-badge{font-size:10px}
+  .fsim-note{font-size:11px;line-height:1.45;padding:12px}
+  .fsim-controls{grid-template-columns:1fr;padding:12px;gap:10px}
+  .fsim-controls select,.fsim-controls input{min-height:44px;font-size:16px}
+  .fsim-tabs{overflow:auto;scroll-snap-type:x proximity;padding-bottom:2px}.fsim-tabs button{min-height:42px;white-space:nowrap;scroll-snap-align:start}
+  .fsim-kpis{grid-template-columns:1fr 1fr;gap:8px}.fsim-kpis>div{padding:12px}.fsim-kpis b{font-size:19px}
+  .fsim-card{padding:13px;border-radius:15px}.fsim-card-head{flex-direction:column}.fsim-card-head.split select{width:100%;min-width:0;min-height:44px;font-size:16px}
+  .fsim-table-wrap{margin:0 -4px;padding:0 4px;-webkit-overflow-scrolling:touch}
+  .fsim-table{font-size:11px}.fsim-table th{font-size:8px;white-space:nowrap}.fsim-table td{padding:9px}
+  .fsim-money-input input,.fsim-cell-input{font-size:16px;min-height:40px}
+  .fsim-input-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}
+  .fsim-input-toolbar .fsim-input-actions button{min-height:44px}
+  .fsim-composition-summary{grid-template-columns:1fr 1fr}
+  .fsim-modal{align-items:end;padding:12px}.fsim-modal-card{width:100%;border-radius:20px 20px 0 0;max-height:90dvh;overflow:auto;padding-bottom:max(18px,env(safe-area-inset-bottom))}
+}
+@media(max-width:430px){.fsim-kpis,.fsim-composition-summary{grid-template-columns:1fr}}

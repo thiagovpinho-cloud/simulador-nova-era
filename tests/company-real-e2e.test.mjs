@@ -37,6 +37,10 @@ assert.ok(people.some(x=>x.age===65)&&people.some(x=>x.age===46));
 
 applyDomain('BASES',state,{changes:{base:{name:'SENIR',capacityPerDay:100,active:true,effectiveDate:'2026-08-01'}}});
 applyDomain('FINANCEIRO',state,{changes:{monthlyTarget:{period:'2026-08',scope_type:'COMPANY',scope_id:'ALL',target_revenue:2000,target_boxes:50,target_margin:0.25}}});
+applyDomain('FINANCEIRO',state,{changes:{marginRules:{
+  product_cost:'CUSTO',icms:'CUSTO',pis:'CUSTO',cofins:'CUSTO',
+  ipi:'MARGEM',st:'MARGEM',freight:'CUSTO',commission:'CUSTO',contract:'MARGEM'
+}}});
 applyDomain('FINANCEIRO',state,{changes:{skuCost:{sku:'AL70',effective_from:'2026-08-01',unit_variable_cost:15}}});
 applyDomain('FINANCEIRO',state,{changes:{skuCost:{sku:'GEL70',effective_from:'2026-08-01',unit_variable_cost:20}}});
 applyDomain('ESTOQUE',state,{changes:{inventoryPolicy:{sku:'AL70',minimum_stock:5,reorder_point:10,safety_stock:5}}});
@@ -124,20 +128,22 @@ assert.ok(Object.values(state.inventory).every(x=>Number(x.physical)>=0&&Number(
 // Financeiro alimenta fatos reais usados pelo BI.
 applyDomain('FINANCEIRO',state,{changes:{financialFact:{
   order_id:'o1',invoice_number:'NF-1001',invoice_date:'2026-08-20',invoice_status:'EMITIDA',
-  taxes:60,discounts:10,returns:0,bonuses:0,commission:20,freight_allocated:50
+  taxes:0,icms:40,pis:10,cofins:20,ipi:30,st:20,contract:10,
+  discounts:10,returns:0,bonuses:0,commission:20,freight_allocated:50
 }}});
 applyDomain('FINANCEIRO',state,{changes:{financialFact:{
   order_id:'o2',invoice_number:'NF-1002',invoice_date:'2026-08-24',invoice_status:'EMITIDA',
-  taxes:60,discounts:0,returns:0,bonuses:0,commission:30,freight_allocated:60
+  taxes:0,icms:40,pis:10,cofins:20,ipi:30,st:20,contract:10,
+  discounts:0,returns:0,bonuses:0,commission:30,freight_allocated:60
 }}});
 
 const bi=buildBiAnalytics(state,{from:'2026-08-01',to:'2026-08-31',asOf:'2026-08-31'});
 assert.equal(bi.summary.soldBoxes,35);
-assert.equal(bi.summary.recognizedGrossRevenue,1200);
-assert.equal(bi.summary.netRevenue,1070);
-assert.ok(Math.abs(bi.summary.contributionMargin-(310/1070))<1e-10);
+assert.equal(bi.summary.recognizedGrossRevenue,1300);
+assert.equal(bi.summary.netRevenue,390);
+assert.ok(Math.abs(bi.summary.contributionMargin-(390/1300))<1e-10);
 assert.equal(bi.summary.otif,0.5);
-assert.equal(bi.summary.targetAchievement,0.6);
+assert.equal(bi.summary.targetAchievement,0.65);
 assert.equal(bi.kpis.inventory_risk.value,2);
 assert.equal(bi.kpis.production_load.rows.length,1);
 assert.equal(bi.kpis.production_load.rows[0].scheduledQty,15);
@@ -154,9 +160,9 @@ const acceptance={
   productionConsumesInputs:state.stockMovements.some(m=>m.type==='CONSUMO_PRODUCAO')&&state.inputInventory.ETANOL.physical===650,
   stockReservationAndDispatch:state.stockMovements.filter(m=>m.type==='SAIDA_PEDIDO').length===2,
   logisticsCompletion:state.orders.every(o=>o.status==='ENTREGUE'),
-  financeFeedsBi:bi.summary.netRevenue===1070,
+  financeFeedsBi:bi.summary.netRevenue===390,
   otifReflectsLateDelivery:bi.summary.otif===0.5,
-  targetComparison:bi.summary.targetAchievement===0.6,
+  targetComparison:bi.summary.targetAchievement===0.65,
   noNegativeStock:Object.values(state.inventory).every(x=>Number(x.physical)>=0&&Number(x.reserved)>=0)
 };
 assert.ok(Object.values(acceptance).every(Boolean));

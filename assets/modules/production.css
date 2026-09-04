@@ -10,3 +10,19 @@
 .fpr-order{font-weight:800;color:#075f48}.fpr-client{font-weight:700}.fpr-muted{font-size:8.7px;color:var(--fx-muted);margin-top:2px}.fpr-chip{display:inline-flex;border-radius:999px;padding:4px 7px;font-size:8.5px;font-weight:800}.fpr-chip.ready{background:#e8f6ef;color:#08785b}.fpr-chip.wait{background:#fff0e4;color:#c45e12}.fpr-chip.block{background:#fdeced;color:#c7333a}
 .fpr-open{border:1px solid var(--fx-border);background:#fff;border-radius:8px;padding:6px 9px;font-size:9px;font-weight:700;color:#075f48;cursor:pointer}.fpr-empty{padding:40px 20px;text-align:center;color:var(--fx-muted);font-size:11px}
 @media(max-width:900px){.fpr-kpis{grid-template-columns:repeat(2,1fr)}.fpr-grid{grid-template-columns:1fr}.fpr-head{align-items:flex-start;flex-direction:column}}
+/* Produção — Mobile UX v3 */
+@media(max-width:700px){
+  .fpr-head{align-items:flex-start;flex-direction:column}.fpr-head h1{font-size:24px}.fpr-head p{font-size:12px;line-height:1.4}
+  .fpr-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}.fpr-actions .fpr-btn{min-height:44px;font-size:11px}
+  .fpr-kpis{grid-template-columns:1fr 1fr;gap:8px}.fpr-kpi{padding:12px}.fpr-kpi span{font-size:10px}.fpr-kpi strong{font-size:20px}
+  .fpr-grid{grid-template-columns:1fr}.fpr-panel{padding:13px;border-radius:15px}.fpr-panel h2{font-size:15px}
+  .fpr-toolbar{padding:9px}.fpr-search,.fpr-select{width:100%;min-width:0;min-height:44px;font-size:16px}
+  .fpr-table-wrap{border:0;background:transparent;overflow:visible}.fpr-table{display:block;min-width:0}.fpr-table thead{display:none}
+  .fpr-table tbody{display:flex;flex-direction:column;gap:10px}
+  .fpr-table tr{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;background:#fff;border:1px solid var(--fx-border);border-radius:16px;padding:14px;box-shadow:0 5px 18px rgba(17,43,33,.045)}
+  .fpr-table td{display:block;border:0!important;padding:0!important;font-size:11px;min-width:0;overflow-wrap:anywhere}
+  .fpr-table td::before{display:block;font-size:8px;font-weight:800;letter-spacing:.45px;text-transform:uppercase;color:var(--fx-muted);margin-bottom:3px}
+  .fpr-table td:nth-child(1)::before{content:"Pedido"}.fpr-table td:nth-child(2)::before{content:"Cliente"}.fpr-table td:nth-child(3)::before{content:"Base"}.fpr-table td:nth-child(4)::before{content:"Quantidade"}.fpr-table td:nth-child(5)::before{content:"Status"}.fpr-table td:nth-child(6)::before{content:"Previsão"}
+  .fpr-table td:last-child{grid-column:1/-1}.fpr-table td:last-child::before{content:"Ação"}.fpr-open{width:100%;min-height:42px;font-size:10px}
+}
+@media(max-width:430px){.fpr-kpis{grid-template-columns:1fr}.fpr-table tr{grid-template-columns:1fr}.fpr-table td:last-child{grid-column:auto}}

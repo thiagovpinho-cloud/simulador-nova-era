@@ -12,3 +12,28 @@
 .fi-open{border:1px solid var(--fx-green);background:var(--fx-green);border-radius:8px;padding:6px 9px;font-size:9px;font-weight:700;color:#fff;cursor:pointer}.fi-empty{padding:40px 20px;text-align:center;color:var(--fx-muted);font-size:11px}
 @media(max-width:1000px){.fi-kpis{grid-template-columns:repeat(3,1fr)}.fi-grid{grid-template-columns:1fr}}@media(max-width:700px){.fi-kpis{grid-template-columns:repeat(2,1fr)}.fi-head{align-items:flex-start;flex-direction:column}}
 .fi-field{display:flex;flex-direction:column;gap:6px}.fi-field span{font-size:9px;font-weight:800;color:var(--fx-muted);text-transform:uppercase;letter-spacing:.35px}.fi-field input,.fi-field select,.fi-field textarea,.fi-textarea{width:100%;box-sizing:border-box;border:1px solid var(--fx-border);border-radius:9px;background:#fff;padding:9px 10px;font:inherit;font-size:10.5px;color:var(--fx-text);outline:0}.fi-field input:focus,.fi-field select:focus,.fi-field textarea:focus,.fi-textarea:focus{border-color:var(--fx-green);box-shadow:0 0 0 3px rgba(11,126,93,.08)}.fi-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.fi-span-2{grid-column:span 2}.fi-note{font-size:9.5px;color:var(--fx-muted);margin:-4px 0 12px}.fi-table input,.fi-table select{border:1px solid var(--fx-border);border-radius:8px;padding:7px 8px;font:inherit;font-size:10px;background:#fff}.fi-table input{max-width:130px}@media(max-width:700px){.fi-form-grid{grid-template-columns:1fr}.fi-span-2{grid-column:span 1}}
+/* Estoque — Mobile UX v2 */
+@media(max-width:700px){
+  .fi-head{align-items:flex-start;flex-direction:column}.fi-head h1{font-size:24px}.fi-head p{font-size:12px;line-height:1.4}
+  .fi-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}.fi-actions .fi-btn{min-height:44px;font-size:11px}
+  .fi-kpis{grid-template-columns:1fr 1fr;gap:8px}.fi-kpi{padding:12px}.fi-kpi span{font-size:10px}.fi-kpi strong{font-size:20px}
+  .fi-tabs{overflow:auto;flex-wrap:nowrap;padding-bottom:2px;scroll-snap-type:x proximity}.fi-tab{white-space:nowrap;min-height:42px;scroll-snap-align:start}
+  .fi-toolbar{padding:9px}.fi-search,.fi-select{width:100%;min-width:0;min-height:44px;font-size:16px}
+  .fi-grid{grid-template-columns:1fr}
+  .fi-panel{padding:13px;border-radius:15px}.fi-panel h2{font-size:15px}
+  .fi-alert{padding:11px 0}.fi-alert b{font-size:10.5px}.fi-alert small{font-size:9.5px}
+  .fi-table-wrap{border:0;background:transparent;overflow:visible}
+  .fi-table{display:block;min-width:0}
+  .fi-table thead{display:none}
+  .fi-table tbody{display:flex;flex-direction:column;gap:10px}
+  .fi-table tr{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;background:#fff;border:1px solid var(--fx-border);border-radius:16px;padding:14px;box-shadow:0 5px 18px rgba(17,43,33,.045)}
+  .fi-table td{display:block;border:0!important;padding:0!important;font-size:11px;min-width:0;overflow-wrap:anywhere}
+  .fi-table td::before{display:block;font-size:8px;font-weight:800;letter-spacing:.45px;text-transform:uppercase;color:var(--fx-muted);margin-bottom:3px}
+  .fi-table td:nth-child(1)::before{content:"Item"}.fi-table td:nth-child(2)::before{content:"Físico"}.fi-table td:nth-child(3)::before{content:"Reservado"}.fi-table td:nth-child(4)::before{content:"Bloqueado"}.fi-table td:nth-child(5)::before{content:"Disponível"}.fi-table td:nth-child(6)::before{content:"Status"}
+  .fi-table td:last-child{grid-column:1/-1}.fi-table td:last-child::before{content:"Ação"}
+  .fi-open{width:100%;min-height:42px;font-size:10px}
+  .fi-form-grid{grid-template-columns:1fr!important}.fi-span-2{grid-column:auto}
+  .fi-field span{font-size:10px}.fi-field input,.fi-field select,.fi-field textarea,.fi-textarea{min-height:44px;font-size:16px}
+  .fi-table input,.fi-table select{max-width:none;width:100%;min-height:40px;font-size:16px}
+}
+@media(max-width:430px){.fi-kpis{grid-template-columns:1fr}.fi-table tr{grid-template-columns:1fr}.fi-table td:last-child{grid-column:auto}}

@@ -1,8 +1,10 @@
 (function(){
   'use strict';
-  const VERSION='20260828-final-v3';
+  const VERSION='20260902-mobile-redesign-v1';
   const loaded=new Map();
   const defs={
+    simulador:{css:'simulator.css',js:'simulator.js'},
+    'regras-margem':{css:'margin-rules.css',js:'margin-rules.js'},
     produtos:{css:'products.css',js:'products.js'},
     fichas:{css:'technical-sheets.css',js:'technical-sheets.js'},
     bases:{css:'bases.css',js:'bases.js'},
@@ -10,15 +12,17 @@
     clientes:{css:'customers.css',js:'customers.js'},
     'intelligence-core':{js:'intelligence-core.js'},
     cockpit:{css:'intelligence.css',js:'intelligence.js',deps:['intelligence-core']},
+    pendencias:{css:'pendencias.css',js:'pendencias.js'},
     'corpo-auditor':{alias:'cockpit'},
-    pedidos:{css:'orders.css',js:'orders.js',deps:['produtos']},
+    'freight-quotes':{js:'freight-quotes.js'},
+    pedidos:{css:'orders.css',js:'orders.js',deps:['produtos','freight-quotes']},
     pcp:{css:'pcp.css',js:'pcp.js',deps:['produtos','production','cockpit']},
     production:{css:'production.css',js:'production.js',deps:['produtos']},
     inventory:{css:'inventory.css',js:'inventory.js'},
     inputs:{alias:'inventory'},
     purchases:{css:'purchases.css',js:'purchases.js',deps:['cockpit']},
     expedicao:{css:'expedition.css',js:'expedition.js'},
-    logistica:{css:'logistics.css',js:'logistics.js',deps:['cockpit']},
+    logistica:{css:'logistics.css',js:'logistics.js',deps:['cockpit','freight-quotes']},
     entregas:{alias:'logistica'},
     transportadoras:{alias:'logistica'},
     kanban:{css:'kanban.css',js:'kanban.js',deps:['pedidos']},
@@ -30,11 +34,14 @@
     financeiro:{css:'finance.css',js:'finance.js'}
   };
   const contracts={
+    simulador:()=>typeof window.FocadoSimulator?.render==='function',
+    'regras-margem':()=>typeof window.FocadoMarginRules?.render==='function',
     produtos:()=>typeof window.FocadoProducts?.render==='function',
     fichas:()=>typeof window.FocadoTechnicalSheets?.render==='function',
     bases:()=>typeof window.FocadoBases?.render==='function',
     representantes:()=>typeof window.FocadoRepresentatives?.render==='function',
     clientes:()=>typeof window.FocadoCustomers?.render==='function',
+    'freight-quotes':()=>typeof window.FocadoFreightQuotes?.commercialCard==='function'&&typeof window.FocadoFreightQuotes?.logisticsPanel==='function',
     pedidos:()=>typeof window.FocadoOrders?.render==='function'&&typeof window.FocadoOrders?.openOrder==='function',
     pcp:()=>typeof window.FocadoPCP?.render==='function',
     production:()=>typeof window.FocadoProduction?.render==='function',
@@ -44,6 +51,7 @@
     logistica:()=>typeof window.FocadoLogistics?.render==='function',
     kanban:()=>typeof window.FocadoKanban?.render==='function',
     cockpit:()=>typeof window.FocadoIntelligenceUI?.renderCockpit==='function',
+    pendencias:()=>typeof window.FocadoPendencias?.render==='function',
     'corpo-auditor':()=>typeof window.FocadoIntelligenceUI?.renderAuditor==='function',
     'system-health':()=>typeof window.FocadoSystemHealth?.render==='function',
     config:()=>typeof window.FocadoSettings?.render==='function',

@@ -9,3 +9,51 @@
 .fc-empty{padding:30px;text-align:center;color:var(--fx-muted)}
 .fc-card{background:#fff;border:1px solid var(--fx-border);border-radius:16px;padding:20px;box-shadow:0 4px 18px rgba(30,65,50,.035)}.fc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.fc-field{display:flex;flex-direction:column;gap:6px}.fc-field.wide{grid-column:span 2}.fc-field span{font-size:9px;font-weight:800;color:var(--fx-muted);text-transform:uppercase;letter-spacing:.35px}.fc-field input,.fc-field select,.fc-field textarea{width:100%;box-sizing:border-box;border:1px solid var(--fx-border);border-radius:9px;background:#fbfcfb;padding:9px 10px;font:inherit;font-size:10.5px;outline:0}.fc-field textarea{min-height:80px;resize:vertical}.fc-field input:focus,.fc-field select:focus,.fc-field textarea:focus{border-color:var(--fx-green);box-shadow:0 0 0 3px rgba(11,126,93,.08);background:#fff}
 @media(max-width:760px){.fc-page{padding:18px 14px 60px}.fc-head{flex-direction:column}.fc-grid{grid-template-columns:1fr}.fc-field.wide{grid-column:span 1}.fc-toolbar{flex-wrap:wrap}.fc-search-wrap{width:100%}}
+.fc-cnpj-wrap{display:flex;gap:7px;align-items:stretch}.fc-cnpj-wrap input{flex:1;min-width:0}.fc-cnpj-wrap button{border:1px solid #0b7358;background:#eaf6f1;color:#075d48;border-radius:9px;padding:0 11px;font-size:9px;font-weight:800;cursor:pointer}.fc-cnpj-wrap button:disabled{opacity:.55;cursor:wait}.fc-cnpj-status{display:block;min-height:14px;font-size:8px;color:var(--fx-muted)}.fc-cnpj-status.ok{color:#08704f}.fc-cnpj-status.bad{color:#a0443e}.fc-table td small{display:block;margin-top:2px;color:#7a8780;font-size:8px}
+@media(max-width:560px){.fc-cnpj-wrap{flex-direction:column}.fc-cnpj-wrap button{min-height:38px}}
+
+.fc-rep-hint{display:block;min-height:13px;font-size:8px;color:var(--fx-muted)}
+
+.fc-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.fc-btn.secondary{background:#fff;color:#0b6a51;border:1px solid #0b6a51}
+.fc-btn.secondary:hover{background:#eaf6f1}
+
+/* alinhamento final das ações de clientes */
+.fc-table th:last-child,.fc-table td:last-child{width:150px;text-align:right}
+.fc-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:nowrap}
+.fc-actions .fc-btn{display:inline-flex;align-items:center;justify-content:center;min-width:68px;height:38px;padding:0 14px;line-height:1;white-space:nowrap}
+
+/* Clientes — mobile-first presentation */
+@media(max-width:700px){
+  .fc-page{padding:10px 0 56px}
+  .fc-head{gap:12px;margin-bottom:14px}
+  .fc-head h1{font-size:24px}
+  .fc-head p{font-size:12px;line-height:1.4}
+  .fc-head .fc-btn{min-height:44px;width:100%;font-size:12px}
+  .fc-toolbar{padding:9px;gap:8px}
+  .fc-search-wrap{width:100%;min-height:44px}
+  .fc-search-wrap input{font-size:16px}
+  .fc-muted{font-size:10px}
+  .fc-table-wrap{border:0;background:transparent;overflow:visible}
+  .fc-table{min-width:0;display:block}
+  .fc-table thead{display:none}
+  .fc-table tbody{display:flex;flex-direction:column;gap:10px}
+  .fc-table tr{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;background:#fff;border:1px solid var(--fx-border);border-radius:16px;padding:14px;box-shadow:0 5px 18px rgba(17,43,33,.045)}
+  .fc-table td{display:block;border:0!important;padding:0!important;font-size:11px;min-width:0;overflow-wrap:anywhere}
+  .fc-table td::before{display:block;font-size:8px;font-weight:800;letter-spacing:.45px;text-transform:uppercase;color:var(--fx-muted);margin-bottom:3px}
+  .fc-table td:nth-child(1)::before{content:"Cliente"}.fc-table td:nth-child(2)::before{content:"CNPJ"}.fc-table td:nth-child(3)::before{content:"E-mail"}.fc-table td:nth-child(4)::before{content:"Telefone"}.fc-table td:nth-child(5)::before{content:"Cidade / UF"}.fc-table td:nth-child(6)::before{content:"Endereço"}.fc-table td:nth-child(7)::before{content:"Representante"}.fc-table td:nth-child(8)::before{content:"Status"}
+  .fc-table th:last-child,.fc-table td:last-child{width:auto;text-align:left;grid-column:1/-1}
+  .fc-table td:last-child::before{content:"Ações"}
+  .fc-actions{justify-content:stretch;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .fc-actions .fc-btn{height:42px;min-width:0;font-size:10px}
+  .fc-card{padding:14px;border-radius:16px}
+  .fc-grid{grid-template-columns:1fr!important;gap:12px}
+  .fc-field.wide{grid-column:auto}
+  .fc-field span{font-size:10px}
+  .fc-field input,.fc-field select,.fc-field textarea{min-height:44px;font-size:16px;padding:10px 11px}
+  .fc-field textarea{min-height:100px}
+}
+@media(max-width:430px){
+  .fc-table tr{grid-template-columns:1fr}
+  .fc-table th:last-child,.fc-table td:last-child{grid-column:auto}
+}

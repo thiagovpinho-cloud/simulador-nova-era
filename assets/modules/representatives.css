@@ -8,3 +8,36 @@
 .fr-percent-wrap strong{padding:0 10px 0 6px;font-size:11px;color:#52665e}
 .fr-commission-hint{font-size:8px;color:var(--fx-muted)}
 @media(max-width:700px){.fr-doc-field{grid-column:auto}}
+
+.fr-table td small{display:block;margin-top:2px;color:var(--fx-muted);font-size:8px}
+
+/* ações visuais de representantes */
+.fr-table th:last-child,.fr-table td:last-child{width:160px;text-align:right}
+.fr-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:nowrap}
+.fr-row-actions button{border:1px solid var(--fx-green);background:var(--fx-green);color:#fff;border-radius:9px;min-width:70px;height:34px;padding:0 12px;font-size:8.5px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:1}
+.fr-row-actions button[data-toggle]{background:#fff;color:#08785b}
+.fr-row-actions button:hover{filter:brightness(.97)}
+
+/* Representantes — mobile-first presentation */
+@media(max-width:700px){
+  .fr-head h1{font-size:24px}.fr-head p{font-size:12px;line-height:1.4}
+  .fr-head .fr-btn{width:100%;min-height:44px;font-size:12px}
+  .fr-summary{grid-template-columns:1fr 1fr}
+  .fr-toolbar input,.fr-toolbar select{width:100%;min-width:0;min-height:44px;font-size:16px}
+  .fr-table-wrap{overflow:visible}
+  .fr-table{min-width:0;display:block}
+  .fr-table thead{display:none}
+  .fr-table tbody{display:flex;flex-direction:column;gap:10px}
+  .fr-table tr{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;background:#fff;border:1px solid var(--fx-border);border-radius:16px;padding:14px}
+  .fr-table td{display:block;border:0!important;padding:0!important;font-size:11px;min-width:0;overflow-wrap:anywhere}
+  .fr-table td::before{display:block;font-size:8px;font-weight:800;letter-spacing:.45px;text-transform:uppercase;color:var(--fx-muted);margin-bottom:3px}
+  .fr-table td:nth-child(1)::before{content:"Nome"}.fr-table td:nth-child(2)::before{content:"CPF/CNPJ"}.fr-table td:nth-child(3)::before{content:"Telefone"}.fr-table td:nth-child(4)::before{content:"E-mail"}.fr-table td:nth-child(5)::before{content:"Cidade/UF"}.fr-table td:nth-child(6)::before{content:"Comissão"}.fr-table td:nth-child(7)::before{content:"Status"}
+  .fr-table th:last-child,.fr-table td:last-child{width:auto;text-align:left;grid-column:1/-1}
+  .fr-table td:last-child::before{content:"Ações"}
+  .fr-row-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;justify-content:stretch}
+  .fr-row-actions button{min-width:0;height:42px;font-size:10px}
+  .fr-modal{position:fixed;padding:12px;align-items:flex-end}
+  .fr-modal-card{border-radius:20px 20px 0 0;padding:16px max(14px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));max-height:90dvh;overflow:auto}
+  .fr-grid input{min-height:44px;font-size:16px}
+}
+@media(max-width:430px){.fr-summary{grid-template-columns:1fr}.fr-table tr{grid-template-columns:1fr}.fr-table th:last-child,.fr-table td:last-child{grid-column:auto}}
