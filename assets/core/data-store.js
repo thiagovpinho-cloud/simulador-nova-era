@@ -141,8 +141,11 @@
         method:'POST',
         body:JSON.stringify({orderId,expectedStatus:currentOrder?.status||null})
       });
-      const fresh=body?.payload||current;
-      if(body?.payload) writeLocal(fresh);
+      if(body?.payload){
+        writeLocal(body.payload);
+        return {mode:'remote',ok:true,...body,payload:body.payload};
+      }
+      const fresh=await load();
       return {mode:'remote',ok:true,...body,payload:fresh};
     }catch(err){
       if(err.status===409){
@@ -203,7 +206,7 @@
     window.dispatchEvent(new CustomEvent('focado:data-updated',{detail}));
   }
   function subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn)}
-  async function hydrateLocalCache(){const state=await load();writeLocal(state);return state}
+  async function hydrateLocalCache(){return await load()}
 
   window.FocadoDataStore={
     readLocal,writeLocal,load,save,saveDomain,transitionOrder,getDomainV2,refreshDomainV2,getV2Consistency,getSecurityHealth,subscribe,getConfig,setConfig,setSessionToken,getSessionToken,isRemoteReady,hydrateLocalCache,
