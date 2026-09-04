@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260903-logistics-visibility-v2';
+  const VERSION='20260903-freight-followup-v3';
   const loaded=new Map();
   const defs={
     'simulator-master-data':{js:'simulator-master-data.js'},
