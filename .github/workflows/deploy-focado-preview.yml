@@ -68,15 +68,7 @@ jobs:
           done
           if [ "${GITHUB_REF_NAME}" = "focado/recuperacao-funcional-passo-a-passo" ]; then
             node scripts/slim-preview-index.mjs _site/index.html _site/index.html
-            grep -q "FOCADO_BOOT_SLIM_V1" _site/index.html
-            if grep -Eq '<script[^>]+src=["'"']assets/modules/' _site/index.html; then
-              echo "ERRO: módulo operacional ainda presente no boot do preview"
-              exit 1
-            fi
-            if grep -Eq '<link[^>]+href=["'"']assets/modules/' _site/index.html; then
-              echo "ERRO: CSS operacional ainda presente no boot do preview"
-              exit 1
-            fi
+            node --input-type=module -e "import fs from 'node:fs'; const h=fs.readFileSync('_site/index.html','utf8'); if(!h.includes('FOCADO_BOOT_SLIM_V1')) throw new Error('BOOT_SLIM_MARKER_MISSING'); if(/<script\\b(?=[^>]*\\bsrc=[\"']assets\\/modules\\/)/i.test(h)) throw new Error('BOOT_JS_MODULE_FOUND'); if(/<link\\b(?=[^>]*\\bhref=[\"']assets\\/modules\\/)/i.test(h)) throw new Error('BOOT_CSS_MODULE_FOUND');"
           fi
 
       - name: Select preview alias
@@ -116,15 +108,7 @@ jobs:
                 grep -q "lazyIntelligenceActions" /tmp/focado-preview-loader.js
                 echo "Lazy intelligence loader OK"
                 if [ "${GITHUB_REF_NAME}" = "focado/recuperacao-funcional-passo-a-passo" ]; then
-                  grep -q "FOCADO_BOOT_SLIM_V1" /tmp/focado-preview-index.html
-                  if grep -Eq '<script[^>]+src=["'"']assets/modules/' /tmp/focado-preview-index.html; then
-                    echo "Preview voltou a pré-carregar JS operacional"
-                    exit 1
-                  fi
-                  if grep -Eq '<link[^>]+href=["'"']assets/modules/' /tmp/focado-preview-index.html; then
-                    echo "Preview voltou a pré-carregar CSS operacional"
-                    exit 1
-                  fi
+                  node --input-type=module -e "import fs from 'node:fs'; const h=fs.readFileSync('/tmp/focado-preview-index.html','utf8'); if(!h.includes('FOCADO_BOOT_SLIM_V1')) throw new Error('DEPLOY_BOOT_SLIM_MARKER_MISSING'); if(/<script\\b(?=[^>]*\\bsrc=[\"']assets\\/modules\\/)/i.test(h)) throw new Error('DEPLOY_BOOT_JS_MODULE_FOUND'); if(/<link\\b(?=[^>]*\\bhref=[\"']assets\\/modules\\/)/i.test(h)) throw new Error('DEPLOY_BOOT_CSS_MODULE_FOUND');"
                   curl -fsS --max-time 15 "$PREVIEW_URL/assets/modules/orders.js" -o /tmp/focado-preview-orders.js
                   grep -q "FocadoOrders" /tmp/focado-preview-orders.js
                   curl -fsS --max-time 15 "$PREVIEW_URL/assets/modules/pcp.js" -o /tmp/focado-preview-pcp.js
