@@ -5,8 +5,9 @@
   let observer=null;
   let unsubscribe=null;
   let attachedTo=null;
+  let enhanceQueued=false;
 
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
   const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   const value=o=>(o.items||[]).reduce((sum,item)=>sum+(Number(item.qty)||0)*(Number(item.price)||0),0);
   const dbr=v=>{
@@ -21,7 +22,14 @@
     return Boolean(content?.querySelector?.('.fo-page .fo-head h1')?.textContent?.includes('Pedidos Comerciais'));
   }
 
-  function renderPanel(drafts){
+  function signature(drafts){
+    return drafts.map(o=>[
+      String(o.id||''),String(o.number||''),String(o.client||''),String(o.orderDate||''),
+      String((o.items||[]).length),String(value(o)),String(o.updatedAt||o.createdAt||'')
+    ].join('|')).join('||');
+  }
+
+  function renderPanel(drafts,sig){
     const rows=drafts.length
       ? '<div class="fod-list">'+drafts.map(o=>
           '<div class="fod-row" data-draft-id="'+esc(o.id)+'">'+
@@ -31,18 +39,20 @@
           '</div>'
         ).join('')+'</div>'
       : '<div class="fo-empty compact">Nenhum rascunho salvo.</div>';
-    return '<section class="fod-panel" id="'+PANEL_ID+'"><div class="fod-head"><div><span>RASCUNHOS</span><h2>Pedidos ainda não enviados</h2><p>Rascunhos ficam fora do fluxo oficial até você finalizar e enviar ao PCP.</p></div><strong>'+drafts.length+'</strong></div>'+rows+'</section>';
+    return '<section class="fod-panel" id="'+PANEL_ID+'" data-draft-signature="'+esc(sig)+'"><div class="fod-head"><div><span>RASCUNHOS</span><h2>Pedidos ainda não enviados</h2><p>Rascunhos ficam fora do fluxo oficial até você finalizar e enviar ao PCP.</p></div><strong>'+drafts.length+'</strong></div>'+rows+'</section>';
   }
 
   function hideDraftsFromOfficialTable(content,draftIds){
     content.querySelectorAll?.('.fo-table-wrap [data-fo-open]').forEach(button=>{
       const row=button.closest?.('tr');
       if(!row)return;
-      row.hidden=draftIds.has(String(button.dataset.foOpen||''));
+      const shouldHide=draftIds.has(String(button.dataset.foOpen||''));
+      if(row.hidden!==shouldHide)row.hidden=shouldHide;
     });
   }
 
   function enhance(){
+    enhanceQueued=false;
     const content=document.getElementById('fxContent');
     if(!content||!isOrdersPage(content))return;
 
@@ -52,8 +62,17 @@
 
     const anchor=content.querySelector('.fo-table-wrap');
     if(!anchor)return;
-    content.querySelector('#'+PANEL_ID)?.remove();
-    anchor.insertAdjacentHTML('afterend',renderPanel(drafts));
+    const sig=signature(drafts);
+    const existing=content.querySelector('#'+PANEL_ID);
+    if(existing?.dataset?.draftSignature===sig)return;
+    existing?.remove();
+    anchor.insertAdjacentHTML('afterend',renderPanel(drafts,sig));
+  }
+
+  function scheduleEnhance(){
+    if(enhanceQueued)return;
+    enhanceQueued=true;
+    queueMicrotask(enhance);
   }
 
   async function removeDraft(id,button){
@@ -96,20 +115,24 @@
 
   function attach(){
     const content=document.getElementById('fxContent');
-    if(!content||attachedTo===content){enhance();return;}
-    attachedTo=content;
-    content.addEventListener('click',onClick);
-    if(typeof MutationObserver==='function'){
+    if(!content)return;
+    if(attachedTo!==content){
+      attachedTo=content;
+      content.addEventListener('click',onClick);
       observer?.disconnect?.();
-      observer=new MutationObserver(()=>queueMicrotask(enhance));
-      observer.observe(content,{childList:true});
+      if(typeof MutationObserver==='function'){
+        observer=new MutationObserver(scheduleEnhance);
+        observer.observe(content,{childList:true,subtree:true});
+      }
+      unsubscribe?.();
+      unsubscribe=window.FocadoDataStore?.subscribe?.(scheduleEnhance)||null;
     }
-    unsubscribe?.();
-    unsubscribe=window.FocadoDataStore?.subscribe?.(()=>queueMicrotask(enhance))||null;
-    enhance();
+    // Orders.js renders only after this dependency resolves. Defer one turn so
+    // the page exists before the first enhancement, without blocking navigation.
+    setTimeout(scheduleEnhance,0);
   }
 
   window.FocadoOrderDrafts=Object.freeze({attach,enhance,isDraft});
-  if(document.readyState==='loading'&&document.addEventListener)document.addEventListener('DOMContentLoaded',attach,{once:true});
+  if(document.readyState==='loading'&&typeof document.addEventListener==='function')document.addEventListener('DOMContentLoaded',attach,{once:true});
   else attach();
 })();
