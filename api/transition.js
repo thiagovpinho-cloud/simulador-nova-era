@@ -50,7 +50,14 @@ export default async function handler(req,res){
       )
     `;
     res.setHeader('ETag','"'+saved.revision+'"');
-    return res.status(200).json({ok:true,orderId:order.id,from,to:rule.to,revision:saved.revision});
+    return res.status(200).json({
+      ok:true,
+      orderId:order.id,
+      from,
+      to:rule.to,
+      revision:saved.revision,
+      payload:saved.payload
+    });
   }catch(err){
     if(err.code==='REVISION_CONFLICT')return res.status(409).json({error:err.code,currentRevision:err.currentRevision});
     console.error('[transition]',err);
