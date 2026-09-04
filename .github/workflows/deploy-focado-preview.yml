@@ -100,36 +100,43 @@ jobs:
         env:
           PREVIEW_URL: ${{ steps.preview.outputs.url }}
         run: |
-          for i in 1 2 3 4 5 6; do
-            if curl -fsS --max-time 15 "$PREVIEW_URL/" -o /tmp/focado-preview-index.html; then
-              if grep -q "Focado" /tmp/focado-preview-index.html; then
-                echo "Preview shell OK: $PREVIEW_URL"
-                if [ "${GITHUB_REF_NAME}" = "focado/recuperacao-funcional-passo-a-passo" ]; then
-                  node --input-type=module -e "import fs from 'node:fs'; const h=fs.readFileSync('/tmp/focado-preview-index.html','utf8'); const sha=process.env.GITHUB_SHA; if(!h.includes('FOCADO_BOOT_SLIM_V2')) throw new Error('DEPLOY_BOOT_SLIM_MARKER_MISSING'); if(/<script\\b(?=[^>]*\\bsrc=[\"']assets\\/modules\\/)/i.test(h)) throw new Error('DEPLOY_BOOT_JS_MODULE_FOUND'); if(/<link\\b(?=[^>]*\\bhref=[\"']assets\\/modules\\/)/i.test(h)) throw new Error('DEPLOY_BOOT_CSS_MODULE_FOUND'); for(const a of ['assets/core/data-store.js','assets/core/auth-client.js','assets/core/module-loader.js','assets/app-shell.js','assets/design-system.css','assets/design-system.js']) if(!h.includes(a+'?v='+sha)) throw new Error('DEPLOY_RUNTIME_VERSION_MISSING:'+a);"
-                  curl -fsS --max-time 15 "$PREVIEW_URL/assets/core/module-loader.js?v=${GITHUB_SHA}" -o /tmp/focado-preview-loader.js
-                  grep -q "20260904-recovery-boot-slim-v3" /tmp/focado-preview-loader.js
-                  grep -q "lazyIntelligenceActions" /tmp/focado-preview-loader.js
-                  if grep -Eq "ensureCompatibility|compatibilityOrder|ensureWithFallback" /tmp/focado-preview-loader.js; then
-                    echo "Loader publicado ainda contém fallback geral"
-                    exit 1
-                  fi
-                  curl -fsS --max-time 15 "$PREVIEW_URL/assets/modules/orders.js" -o /tmp/focado-preview-orders.js
-                  grep -q "FocadoOrders" /tmp/focado-preview-orders.js
-                  curl -fsS --max-time 15 "$PREVIEW_URL/assets/modules/pcp.js" -o /tmp/focado-preview-pcp.js
-                  grep -q "FocadoPCP" /tmp/focado-preview-pcp.js
-                  curl -fsS --max-time 15 "$PREVIEW_URL/assets/modules/order-drafts.js" -o /tmp/focado-preview-drafts.js
-                  grep -q "Pedidos ainda não enviados" /tmp/focado-preview-drafts.js
-                  curl -fsS --max-time 15 "$PREVIEW_URL/assets/modules/pcp-history.js" -o /tmp/focado-preview-pcp-history.js
-                  grep -q "Últimos 10 pedidos processados" /tmp/focado-preview-pcp-history.js
-                  echo "Boot slim V2 + runtime por SHA + lazy loader estrito OK"
-                else
-                  curl -fsS --max-time 15 "$PREVIEW_URL/assets/core/module-loader.js" -o /tmp/focado-preview-loader.js
-                  grep -q "lazyIntelligenceActions" /tmp/focado-preview-loader.js
-                fi
-                exit 0
-              fi
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            echo "Smoke attempt $i/12"
+            if ! curl -fsS --max-time 15 -H 'Cache-Control: no-cache' "$PREVIEW_URL/?deploy=${GITHUB_SHA}&attempt=$i" -o /tmp/focado-preview-index.html; then
+              sleep 5
+              continue
             fi
-            sleep 5
+            if ! grep -q "Focado" /tmp/focado-preview-index.html; then
+              sleep 5
+              continue
+            fi
+            if [ "${GITHUB_REF_NAME}" = "focado/recuperacao-funcional-passo-a-passo" ]; then
+              if ! node --input-type=module -e "import fs from 'node:fs'; const h=fs.readFileSync('/tmp/focado-preview-index.html','utf8'); const sha=process.env.GITHUB_SHA; if(!h.includes('FOCADO_BOOT_SLIM_V2')) process.exit(2); if(/<script\\b(?=[^>]*\\bsrc=[\"']assets\\/modules\\/)/i.test(h)) process.exit(3); if(/<link\\b(?=[^>]*\\bhref=[\"']assets\\/modules\\/)/i.test(h)) process.exit(4); for(const a of ['assets/core/data-store.js','assets/core/auth-client.js','assets/core/module-loader.js','assets/app-shell.js','assets/design-system.css','assets/design-system.js']) if(!h.includes(a+'?v='+sha)) process.exit(5);"; then
+                echo "Preview alias ainda não aponta para o deploy ${GITHUB_SHA}; aguardando propagação."
+                sleep 5
+                continue
+              fi
+              curl -fsS --max-time 15 -H 'Cache-Control: no-cache' "$PREVIEW_URL/assets/core/module-loader.js?v=${GITHUB_SHA}" -o /tmp/focado-preview-loader.js
+              grep -q "20260904-recovery-boot-slim-v3" /tmp/focado-preview-loader.js
+              grep -q "lazyIntelligenceActions" /tmp/focado-preview-loader.js
+              if grep -Eq "ensureCompatibility|compatibilityOrder|ensureWithFallback" /tmp/focado-preview-loader.js; then
+                echo "Loader publicado ainda contém fallback geral"
+                exit 1
+              fi
+              curl -fsS --max-time 15 "$PREVIEW_URL/assets/modules/orders.js" -o /tmp/focado-preview-orders.js
+              grep -q "FocadoOrders" /tmp/focado-preview-orders.js
+              curl -fsS --max-time 15 "$PREVIEW_URL/assets/modules/pcp.js" -o /tmp/focado-preview-pcp.js
+              grep -q "FocadoPCP" /tmp/focado-preview-pcp.js
+              curl -fsS --max-time 15 "$PREVIEW_URL/assets/modules/order-drafts.js" -o /tmp/focado-preview-drafts.js
+              grep -q "Pedidos ainda não enviados" /tmp/focado-preview-drafts.js
+              curl -fsS --max-time 15 "$PREVIEW_URL/assets/modules/pcp-history.js" -o /tmp/focado-preview-pcp-history.js
+              grep -q "Últimos 10 pedidos processados" /tmp/focado-preview-pcp-history.js
+              echo "Boot slim V2 + runtime por SHA + lazy loader estrito OK"
+            else
+              curl -fsS --max-time 15 "$PREVIEW_URL/assets/core/module-loader.js" -o /tmp/focado-preview-loader.js
+              grep -q "lazyIntelligenceActions" /tmp/focado-preview-loader.js
+            fi
+            exit 0
           done
-          echo "Preview smoke test failed: $PREVIEW_URL"
+          echo "Preview alias não convergiu para o deploy esperado: $PREVIEW_URL"
           exit 1
