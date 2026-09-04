@@ -1,3 +1,14 @@
+/* RECOVERY_BOOT_GUARD_20260904
+   O legado permanece preservado no index durante a extração, mas não pode aparecer
+   no primeiro paint do shell moderno. Remover este guard apenas quando o simulador
+   estiver isolado em módulo próprio. */
+body > header,
+body > .summary{
+  visibility:hidden !important;
+  pointer-events:none !important;
+}
+#focadoShell{visibility:visible !important}
+
 :root{
   --fx-bg:#f4f7f5;--fx-surface:#fff;--fx-sidebar:#033c31;--fx-sidebar2:#022b24;
   --fx-green:#08785b;--fx-green2:#0d936b;--fx-text:#17211c;--fx-muted:#758079;
