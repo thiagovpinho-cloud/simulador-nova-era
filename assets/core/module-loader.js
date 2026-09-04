@@ -76,14 +76,9 @@
     financeiro:()=>typeof window.FocadoFinance?.render==='function'
   };
   function syncFreightNavCopy(){
-    let tries=0;
-    const tick=()=>{
-      const menu=document.querySelector('.fx-menu');
-      if(!menu){if(tries++<100)setTimeout(tick,50);return}
-      const apply=()=>menu.querySelectorAll('[data-fx-nav="cotacoes-frete"]').forEach(btn=>{const spans=btn.querySelectorAll('span');if(spans[1])spans[1].textContent='Acompanhar cotações'});
-      apply();new MutationObserver(apply).observe(menu,{childList:true,subtree:true});
-    };
-    tick();
+    const menu=document.querySelector?.('.fx-menu');if(!menu)return;
+    const apply=()=>menu.querySelectorAll('[data-fx-nav="cotacoes-frete"]').forEach(btn=>{const spans=btn.querySelectorAll('span');if(spans[1])spans[1].textContent='Acompanhar cotações'});
+    apply();if(typeof MutationObserver==='function')new MutationObserver(apply).observe(menu,{childList:true,subtree:true});
   }
   function verify(name){
     const key=defs[name]?.alias||name;
@@ -135,6 +130,6 @@
     loaded.set(name,p);
     try{return await p}catch(err){loaded.delete(name);throw err}
   }
-  syncFreightNavCopy();
+  if(document.readyState==='loading'&&document.addEventListener)document.addEventListener('DOMContentLoaded',syncFreightNavCopy,{once:true});else syncFreightNavCopy();
   window.FocadoModules=Object.freeze({ensure,version:VERSION,definitions:defs});
 })();
