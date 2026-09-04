@@ -11,6 +11,7 @@ on:
       - "index.html"
       - "manifest.webmanifest"
       - "shared/**"
+      - "scripts/**"
       - "tests/**"
       - "package.json"
       - ".github/workflows/deploy-focado-preview.yml"
@@ -45,6 +46,7 @@ jobs:
           node --check assets/core/module-loader.js
           node --check assets/core/auth-client.js
           node --check assets/core/data-store.js
+          node --check scripts/slim-preview-index.mjs
           for f in assets/modules/*.js; do
             node --check "$f"
           done
@@ -64,6 +66,18 @@ jobs:
           for f in Catalogo_*.pdf Ficha_*.pdf; do
             [ -f "$f" ] && cp "$f" _site/
           done
+          if [ "${GITHUB_REF_NAME}" = "focado/recuperacao-funcional-passo-a-passo" ]; then
+            node scripts/slim-preview-index.mjs _site/index.html _site/index.html
+            grep -q "FOCADO_BOOT_SLIM_V1" _site/index.html
+            if grep -Eq '<script[^>]+src=["'"']assets/modules/' _site/index.html; then
+              echo "ERRO: módulo operacional ainda presente no boot do preview"
+              exit 1
+            fi
+            if grep -Eq '<link[^>]+href=["'"']assets/modules/' _site/index.html; then
+              echo "ERRO: CSS operacional ainda presente no boot do preview"
+              exit 1
+            fi
+          fi
 
       - name: Select preview alias
         id: preview
@@ -102,10 +116,24 @@ jobs:
                 grep -q "lazyIntelligenceActions" /tmp/focado-preview-loader.js
                 echo "Lazy intelligence loader OK"
                 if [ "${GITHUB_REF_NAME}" = "focado/recuperacao-funcional-passo-a-passo" ]; then
-                  grep -q "order-drafts" /tmp/focado-preview-loader.js
+                  grep -q "FOCADO_BOOT_SLIM_V1" /tmp/focado-preview-index.html
+                  if grep -Eq '<script[^>]+src=["'"']assets/modules/' /tmp/focado-preview-index.html; then
+                    echo "Preview voltou a pré-carregar JS operacional"
+                    exit 1
+                  fi
+                  if grep -Eq '<link[^>]+href=["'"']assets/modules/' /tmp/focado-preview-index.html; then
+                    echo "Preview voltou a pré-carregar CSS operacional"
+                    exit 1
+                  fi
+                  curl -fsS --max-time 15 "$PREVIEW_URL/assets/modules/orders.js" -o /tmp/focado-preview-orders.js
+                  grep -q "FocadoOrders" /tmp/focado-preview-orders.js
+                  curl -fsS --max-time 15 "$PREVIEW_URL/assets/modules/pcp.js" -o /tmp/focado-preview-pcp.js
+                  grep -q "FocadoPCP" /tmp/focado-preview-pcp.js
                   curl -fsS --max-time 15 "$PREVIEW_URL/assets/modules/order-drafts.js" -o /tmp/focado-preview-drafts.js
                   grep -q "Pedidos ainda não enviados" /tmp/focado-preview-drafts.js
-                  echo "Recovery step 1 drafts module OK"
+                  curl -fsS --max-time 15 "$PREVIEW_URL/assets/modules/pcp-history.js" -o /tmp/focado-preview-pcp-history.js
+                  grep -q "Últimos 10 pedidos processados" /tmp/focado-preview-pcp-history.js
+                  echo "Boot slim + módulos sob demanda OK"
                 fi
                 exit 0
               fi
