@@ -111,4 +111,6 @@
   }
 
   window.FocadoPCPCommercialAlerts=Object.freeze({attach,enhance,alertForOrder});
+  if(document.readyState==='loading'&&typeof document.addEventListener==='function')document.addEventListener('DOMContentLoaded',attach,{once:true});
+  else attach();
 })();
