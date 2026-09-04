@@ -25,7 +25,7 @@ assert.ok(index.includes("DOMContentLoaded"),'Login deve poder aparecer assim qu
 assert.ok(!index.includes("setTimeout(()=>document.documentElement.classList.remove('focado-booting'),8000)"),'Splash legado de 8s não pode voltar');
 
 // Guardas estruturais de performance: evitam regressão para padrões já removidos.
-assert.ok(loader.includes("await Promise.all((def.deps||[]).map(dep=>ensure(dep)))"),'Dependências independentes devem carregar em paralelo');
+assert.ok(loader.includes('if(deps.length)await Promise.all(deps.map(ensure))'),'Dependências independentes devem carregar em paralelo');
 assert.ok(!loader.includes("for(const dep of def.deps||[])await ensure(dep)"),'Loader não pode voltar a serializar dependências independentes');
 assert.ok(bases.includes('const changed=[]'),'Bases deve detectar alterações antes de persistir');
 assert.ok(bases.includes('for(const n of changed)'),'Bases deve persistir somente registros modificados');
