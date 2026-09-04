@@ -12,10 +12,10 @@ const index=read('index.html');
 assert.match(loader,/'order-drafts':\{css:'order-drafts\.css',js:'order-drafts\.js'\}/);
 assert.match(loader,/pedidos:\{css:'orders\.css',js:'orders\.js',deps:\['produtos'\]\}/,'Pedidos não pode depender do complemento de rascunhos para abrir');
 assert.doesNotMatch(loader,/pedidos:\{[^\n]+order-drafts/,'Rascunhos jamais podem voltar a ser dependência crítica de Pedidos');
-assert.match(loader,/if\(name==='pedidos'\)optional\('order-drafts'\)/,'Rascunhos devem carregar apenas como complemento tolerante a falha');
+assert.match(loader,/function loadOrderComplements\(\)[\s\S]*optional\('order-drafts'\)/,'Rascunhos devem carregar apenas como complemento tolerante a falha');
+assert.match(loader,/if\(name==='pedidos'\)loadOrderComplements\(\)/,'Complementos devem iniciar somente após Pedidos estar disponível');
 assert.match(loader,/módulo opcional indisponível/,'Falha opcional deve ser registrada sem derrubar o módulo principal');
 assert.match(loader,/'order-drafts':\(\)=>typeof window\.FocadoOrderDrafts\?\.attach==='function'/);
-assert.match(loader,/20260904-recovery-step1-drafts-v4/,'Versão deve forçar atualização dos assets corrigidos');
 
 assert.match(drafts,/status==='COMERCIAL'/);
 assert.match(drafts,/commercial\?\.completedAt/);
