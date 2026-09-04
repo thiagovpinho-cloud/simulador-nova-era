@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260904-recovery-step2-pcp-alerts-v1';
+  const VERSION='20260904-recovery-step2-pcp-history-v1';
   const loaded=new Map();
   const defs={
     produtos:{css:'products.css',js:'products.js'},
@@ -13,6 +13,7 @@
     'corpo-auditor':{alias:'cockpit'},
     'order-drafts':{css:'order-drafts.css',js:'order-drafts.js'},
     'pcp-commercial-alerts':{css:'pcp-commercial-alerts.css',js:'pcp-commercial-alerts.js'},
+    'pcp-history':{css:'pcp-history.css',js:'pcp-history.js'},
     pedidos:{css:'orders.css',js:'orders.js',deps:['produtos']},
     pcp:{css:'pcp.css',js:'pcp.js',deps:['produtos','production']},
     production:{css:'production.css',js:'production.js',deps:['produtos']},
@@ -39,6 +40,7 @@
     clientes:()=>typeof window.FocadoCustomers?.render==='function',
     'order-drafts':()=>typeof window.FocadoOrderDrafts?.attach==='function',
     'pcp-commercial-alerts':()=>typeof window.FocadoPCPCommercialAlerts?.attach==='function',
+    'pcp-history':()=>typeof window.FocadoPCPHistory?.attach==='function',
     pedidos:()=>typeof window.FocadoOrders?.render==='function'&&typeof window.FocadoOrders?.openOrder==='function',
     pcp:()=>typeof window.FocadoPCP?.render==='function',
     production:()=>typeof window.FocadoProduction?.render==='function',
@@ -105,11 +107,13 @@
         if(def.css)await css(def.css);
         verify(name);
         if(name==='pedidos')loadOrderComplements();
+        if(name==='pcp')optional('pcp-history');
         return true;
       }
       await Promise.all([def.css?css(def.css):null,def.js?js(def.js):null].filter(Boolean));
       verify(name);
       if(name==='pedidos')loadOrderComplements();
+      if(name==='pcp')optional('pcp-history');
       return true;
     })();
     loaded.set(name,p);
