@@ -13,7 +13,7 @@ assert.match(loader,/'pcp-history':\{css:'pcp-history\.css',js:'pcp-history\.js'
 assert.match(loader,/'pcp-history':\(\)=>typeof window\.FocadoPCPHistory\?\.attach==='function'/);
 assert.match(loader,/if\(name==='pcp'\)optional\('pcp-history'\)/,'Histórico PCP deve ser complemento opcional');
 assert.doesNotMatch(loader,/pcp:\{[^\n]+pcp-history/,'Histórico PCP não pode ser dependência crítica');
-assert.match(loader,/20260904-recovery-step2-pcp-history-v2/);
+assert.match(loader,/const VERSION='[^']+'/,'Loader deve manter versionamento de cache sem acoplar teste a um rótulo específico');
 
 assert.match(history,/\['LOGISTICA','ENTREGUE'\]/,'Histórico deve usar pedidos já processados');
 assert.match(history,/slice\(0,10\)/,'Histórico deve limitar aos últimos 10');
