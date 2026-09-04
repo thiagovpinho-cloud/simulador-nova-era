@@ -5,6 +5,7 @@ const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const loader=read('assets/core/module-loader.js');
 const drafts=read('assets/modules/order-drafts.js');
 const css=read('assets/modules/order-drafts.css');
+const shellCss=read('assets/app-shell.css');
 const orders=read('assets/modules/orders.js');
 const index=read('index.html');
 
@@ -28,6 +29,11 @@ assert.match(css,/@media\(max-width:760px\)/);
 
 assert.match(orders,/Salvar rascunho/,'Salvar rascunho já existente deve permanecer no formulário estável');
 assert.match(orders,/Finalizar Comercial → PCP/,'Envio ao PCP deve permanecer explícito e separado do rascunho');
+
+assert.match(shellCss,/RECOVERY_BOOT_GUARD_20260904/,'Guard visual temporário do legado deve permanecer durante a extração');
+assert.match(shellCss,/body > header,[\s\S]*body > \.summary\{[\s\S]*visibility:hidden !important/,'Header e resumo legados não podem aparecer no primeiro paint');
+assert.match(shellCss,/#focadoShell\{visibility:visible !important\}/,'Guard do legado não pode esconder o shell moderno');
+assert.match(index,/Simulador de Precificação/,'Nesta etapa o simulador legado deve permanecer preservado até extração modular segura');
 
 const boot=index.slice(0,index.indexOf('module-loader.js')+2000);
 assert.doesNotMatch(boot,/order-drafts\.js|order-drafts\.css/,'Rascunhos não podem entrar no boot inicial; devem carregar apenas via módulo Pedidos');
