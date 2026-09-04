@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260904-recovery-step1-drafts-v4';
+  const VERSION='20260904-recovery-step2-pcp-alerts-v1';
   const loaded=new Map();
   const defs={
     produtos:{css:'products.css',js:'products.js'},
@@ -12,6 +12,7 @@
     cockpit:{css:'intelligence.css',js:'intelligence.js',deps:['intelligence-core']},
     'corpo-auditor':{alias:'cockpit'},
     'order-drafts':{css:'order-drafts.css',js:'order-drafts.js'},
+    'pcp-commercial-alerts':{css:'pcp-commercial-alerts.css',js:'pcp-commercial-alerts.js'},
     pedidos:{css:'orders.css',js:'orders.js',deps:['produtos']},
     pcp:{css:'pcp.css',js:'pcp.js',deps:['produtos','production']},
     production:{css:'production.css',js:'production.js',deps:['produtos']},
@@ -37,6 +38,7 @@
     representantes:()=>typeof window.FocadoRepresentatives?.render==='function',
     clientes:()=>typeof window.FocadoCustomers?.render==='function',
     'order-drafts':()=>typeof window.FocadoOrderDrafts?.attach==='function',
+    'pcp-commercial-alerts':()=>typeof window.FocadoPCPCommercialAlerts?.attach==='function',
     pedidos:()=>typeof window.FocadoOrders?.render==='function'&&typeof window.FocadoOrders?.openOrder==='function',
     pcp:()=>typeof window.FocadoPCP?.render==='function',
     production:()=>typeof window.FocadoProduction?.render==='function',
@@ -88,6 +90,10 @@
   function optional(name){
     Promise.resolve().then(()=>ensure(name)).catch(err=>console.warn('[FocadoModules] módulo opcional indisponível:',name,err));
   }
+  function loadOrderComplements(){
+    optional('order-drafts');
+    optional('pcp-commercial-alerts');
+  }
   async function ensure(name){
     let def=defs[name];if(!def)return true;
     if(def.alias){await ensure(def.alias);verify(name);return true;}
@@ -98,23 +104,19 @@
       if(existing&&existing()){
         if(def.css)await css(def.css);
         verify(name);
-        if(name==='pedidos')optional('order-drafts');
+        if(name==='pedidos')loadOrderComplements();
         return true;
       }
       await Promise.all([def.css?css(def.css):null,def.js?js(def.js):null].filter(Boolean));
       verify(name);
-      if(name==='pedidos')optional('order-drafts');
+      if(name==='pedidos')loadOrderComplements();
       return true;
     })();
     loaded.set(name,p);
     try{return await p}catch(err){loaded.delete(name);throw err}
   }
 
-  const lazyIntelligenceActions={
-    fpMRP:'renderMRP',
-    fpurScore:'renderSuppliers',
-    flScore:'renderCarriers'
-  };
+  const lazyIntelligenceActions={fpMRP:'renderMRP',fpurScore:'renderSuppliers',flScore:'renderCarriers'};
   if(typeof document.addEventListener==='function'){
     document.addEventListener('click',async event=>{
       const target=event.target?.closest?.('#fpMRP,#fpurScore,#flScore');
@@ -122,9 +124,7 @@
       if(window.FocadoIntelligenceUI)return;
       const action=lazyIntelligenceActions[target.id];
       if(!action)return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      target.disabled=true;
+      event.preventDefault();event.stopImmediatePropagation();target.disabled=true;
       try{
         await ensure('cockpit');
         const fn=window.FocadoIntelligenceUI?.[action];
