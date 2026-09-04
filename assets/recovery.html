@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Recuperando Focado</title>
+<style>
+html,body{margin:0;min-height:100%;font-family:Arial,sans-serif;background:#032f25;color:#fff}body{display:grid;place-items:center;min-height:100vh}.box{width:min(520px,88vw);background:#fff;color:#173b30;border-radius:18px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.35)}h1{margin:0 0 10px;font-size:24px}p{line-height:1.5;color:#53665f}.status{margin-top:18px;padding:12px;border-radius:10px;background:#eef7f3;font-weight:700;color:#08785b}.bad{background:#fff0ee;color:#a23c35}
+</style>
+</head>
+<body>
+<div class="box"><h1>Recuperando o Focado</h1><p>Esta rotina limpa somente dados locais da instalação e força a atualização dos arquivos críticos. Os dados oficiais no servidor não são apagados.</p><div class="status" id="status">Iniciando recuperação…</div></div>
+<script>
+(async()=>{
+  const status=document.getElementById('status');
+  const say=t=>status.textContent=t;
+  try{
+    say('1/4 · Limpando sessão e cache operacional local…');
+    try{
+      localStorage.removeItem('focado-operacoes-v2');
+      localStorage.removeItem('focado-data-config-v2');
+      sessionStorage.removeItem('focado-api-session-token');
+      sessionStorage.removeItem('focado-auth-user-v1');
+      sessionStorage.removeItem('focado-auth-role-v1');
+      sessionStorage.removeItem('nova-era-role');
+      sessionStorage.removeItem('nova-era-role-label');
+      sessionStorage.removeItem('nova-era-login-time');
+      sessionStorage.removeItem('nova-era-in-app');
+      sessionStorage.removeItem('nova-era-modern-shell');
+    }catch(_){}
+
+    say('2/4 · Limpando caches da aplicação…');
+    try{
+      if('caches' in window){
+        const names=await caches.keys();
+        await Promise.all(names.map(n=>caches.delete(n)));
+      }
+      if('serviceWorker' in navigator){
+        const regs=await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r=>r.unregister()));
+      }
+    }catch(_){}
+
+    say('3/4 · Recarregando arquivos críticos…');
+    const assets=[
+      '/assets/core/data-store.js?v=20260828-stage2-v1',
+      '/assets/core/auth-client.js?v=20260902-freight-center-v1',
+      '/assets/core/module-loader.js?v=20260903-freight-cta-v1',
+      '/assets/app-shell.js?v=20260902-ops-data-v1'
+    ];
+    for(const url of assets){
+      const res=await fetch(url,{cache:'reload',credentials:'same-origin'});
+      if(!res.ok)throw new Error('Falha ao atualizar '+url+' ('+res.status+')');
+      await res.text();
+    }
+    await fetch('/?recovery-preload='+Date.now(),{cache:'reload',credentials:'same-origin'}).catch(()=>{});
+
+    say('4/4 · Recuperação concluída. Abrindo login limpo…');
+    setTimeout(()=>location.replace('/?recovered='+Date.now()),500);
+  }catch(err){
+    status.classList.add('bad');
+    status.textContent='Falha na recuperação: '+(err&&err.message?err.message:String(err));
+  }
+})();
+</script>
+</body>
+</html>
