@@ -3,6 +3,8 @@ import fs from 'node:fs';
 const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const index=read('index.html');
 const loader=read('assets/core/module-loader.js');
+const bases=read('assets/modules/bases.js');
+const dataStore=read('assets/core/data-store.js');
 const modules=['orders','pcp','production','inventory','logistics','purchases','expedition','customers','products','representatives','system-health','technical-sheets','bases','intelligence-core','intelligence','kanban'];
 
 assert.ok(index.includes('assets/core/module-loader.js'),'Loader de módulos deve estar no index');
@@ -22,6 +24,14 @@ assert.ok(index.includes('https://focado-api.thiagovpinho.workers.dev'),'Boot de
 assert.ok(index.includes("DOMContentLoaded"),'Login deve poder aparecer assim que o DOM estiver pronto');
 assert.ok(!index.includes("setTimeout(()=>document.documentElement.classList.remove('focado-booting'),8000)"),'Splash legado de 8s não pode voltar');
 
+// Guardas estruturais de performance: evitam regressão para padrões já removidos.
+assert.ok(loader.includes("await Promise.all((def.deps||[]).map(dep=>ensure(dep)))"),'Dependências independentes devem carregar em paralelo');
+assert.ok(!loader.includes("for(const dep of def.deps||[])await ensure(dep)"),'Loader não pode voltar a serializar dependências independentes');
+assert.ok(bases.includes('const changed=[]'),'Bases deve detectar alterações antes de persistir');
+assert.ok(bases.includes('for(const n of changed)'),'Bases deve persistir somente registros modificados');
+assert.ok(bases.includes("if(!changed.length)"),'Bases deve bloquear gravação quando nada mudou');
+assert.ok(!dataStore.includes('async function hydrateLocalCache(){const state=await load();writeLocal(state);return state}'),'Hidratação não pode voltar a serializar o mesmo estado duas vezes');
+
 const sizes={};
 for(const file of fs.readdirSync(new URL('../assets/modules/',import.meta.url))){
   if(!file.endsWith('.js'))continue;
@@ -31,4 +41,3 @@ for(const [file,size] of Object.entries(sizes))assert.ok(size<=50000,file+' exce
 assert.ok(Buffer.byteLength(index,'utf8')<=365000,'index.html excedeu orçamento transitório de 365 KB');
 
 console.log('performance-budget: ok');
-
