@@ -23,6 +23,8 @@
     kanban:['ADMIN','DIRETOR','GESTOR','COMERCIAL','PCP','PRODUCAO','ESTOQUE','LOGISTICA','COMPRAS','FINANCEIRO'],
     pendencias:['ADMIN','DIRETOR','GESTOR','COMERCIAL','PCP','PRODUCAO','ESTOQUE','LOGISTICA','COMPRAS','FINANCEIRO'],
     cockpit:['ADMIN','DIRETOR','GESTOR','FINANCEIRO'],
+    'corpo-auditor':['ADMIN'],
+    'system-health':['ADMIN'],
     clientes:['ADMIN','DIRETOR','GESTOR','COMERCIAL'],
     representantes:['ADMIN','DIRETOR','GESTOR','COMERCIAL'],
     oportunidades:['ADMIN','DIRETOR','GESTOR','COMERCIAL'],
