@@ -3,6 +3,7 @@
 
   const USER_KEY='focado-auth-user-v1';
   const ROLE_KEY='focado-auth-role-v1';
+  const OPS_CACHE_KEY='focado-operacoes-v2';
 
   const ROLE_LABELS={
     ADMIN:'Administrador',
@@ -101,6 +102,12 @@
     if(!res.ok)return {ok:false,mode:'remote',status:res.status,code:body.error||'LOGIN_FAILED'};
     window.FocadoDataStore?.setSessionToken?.(body.token);
     saveUser(body.user);
+
+    // Recovery guard: the installed PWA may retain a stale/corrupted operational cache
+    // even after the application code is rolled back. The server workspace is authoritative,
+    // so discard only this local mirror before the synchronous dashboard render.
+    try{localStorage.removeItem(OPS_CACHE_KEY)}catch(_){}
+
     window.dispatchEvent(new CustomEvent('focado:auth-changed',{detail:{user:body.user}}));
     Promise.resolve(window.FocadoDataStore?.hydrateLocalCache?.())
       .then(()=>window.dispatchEvent(new CustomEvent('focado:cache-hydrated',{detail:{user:body.user}})))
