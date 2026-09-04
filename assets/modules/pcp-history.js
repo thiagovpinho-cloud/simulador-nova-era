@@ -72,4 +72,6 @@
     if(typeof requestAnimationFrame==='function')requestAnimationFrame(schedule);else queueMicrotask(schedule);
   }
   window.FocadoPCPHistory=Object.freeze({attach,enhance,rows});
+  if(document.readyState==='loading'&&typeof document.addEventListener==='function')document.addEventListener('DOMContentLoaded',attach,{once:true});
+  else attach();
 })();
