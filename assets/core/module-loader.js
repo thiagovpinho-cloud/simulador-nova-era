@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260904-recovery-step2-pcp-history-v1';
+  const VERSION='20260904-recovery-step2-pcp-history-v2';
   const loaded=new Map();
   const defs={
     produtos:{css:'products.css',js:'products.js'},
