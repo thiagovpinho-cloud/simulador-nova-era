@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260903-logistics-visibility-v2';
+  const VERSION='20260903-freight-followup-v3';
   const loaded=new Map();
   const defs={
     'simulator-master-data':{js:'simulator-master-data.js'},
@@ -75,6 +75,11 @@
     'bi-config':()=>typeof window.FocadoBIConfig?.render==='function',
     financeiro:()=>typeof window.FocadoFinance?.render==='function'
   };
+  function syncFreightNavCopy(){
+    const menu=document.querySelector?.('.fx-menu');if(!menu)return;
+    const apply=()=>menu.querySelectorAll('[data-fx-nav="cotacoes-frete"]').forEach(btn=>{const spans=btn.querySelectorAll('span');if(spans[1])spans[1].textContent='Acompanhar cotações'});
+    apply();if(typeof MutationObserver==='function')new MutationObserver(apply).observe(menu,{childList:true,subtree:true});
+  }
   function verify(name){
     const key=defs[name]?.alias||name;
     const fn=contracts[name]||contracts[key];
@@ -125,5 +130,6 @@
     loaded.set(name,p);
     try{return await p}catch(err){loaded.delete(name);throw err}
   }
+  if(document.readyState==='loading'&&document.addEventListener)document.addEventListener('DOMContentLoaded',syncFreightNavCopy,{once:true});else syncFreightNavCopy();
   window.FocadoModules=Object.freeze({ensure,version:VERSION,definitions:defs});
 })();
