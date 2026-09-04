@@ -141,7 +141,8 @@
         method:'POST',
         body:JSON.stringify({orderId,expectedStatus:currentOrder?.status||null})
       });
-      const fresh=await load();
+      const fresh=body?.payload||current;
+      if(body?.payload) writeLocal(fresh);
       return {mode:'remote',ok:true,...body,payload:fresh};
     }catch(err){
       if(err.status===409){
