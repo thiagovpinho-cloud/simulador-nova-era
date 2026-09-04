@@ -5,7 +5,8 @@ const index=read('index.html');
 const loader=read('assets/core/module-loader.js');
 const bases=read('assets/modules/bases.js');
 const dataStore=read('assets/core/data-store.js');
-const modules=['orders','pcp','production','inventory','logistics','purchases','expedition','customers','products','representatives','system-health','technical-sheets','bases','intelligence-core','intelligence','kanban'];
+const auth=read('assets/core/auth-client.js');
+const modules=['orders','pcp','production','inventory','logistics','purchases','expedition','customers','products','representatives','technical-sheets','bases','intelligence-core','intelligence','kanban'];
 
 assert.ok(index.includes('assets/core/module-loader.js'),'Loader de módulos deve estar no index');
 
@@ -16,9 +17,12 @@ for(const m of modules){
     assert.ok(!index.includes('assets/modules/'+m+'.css?v='),'CSS de módulo não deve ser carregado antes da navegação: '+m);
   }
 }
-for(const route of ['simulador','pedidos','pcp','production','inventory','inputs','purchases','expedicao','logistica','entregas','transportadoras','kanban','system-health','cockpit','corpo-auditor']){
+for(const route of ['simulador','pedidos','pcp','production','inventory','inputs','purchases','expedicao','logistica','entregas','transportadoras','kanban','cockpit']){
   assert.ok(loader.includes(route+':')||loader.includes("'"+route+"':"),'Rota ausente no lazy loader: '+route);
 }
+assert.ok(!loader.includes("'corpo-auditor':"),'Corpo Auditor aposentado não deve voltar ao loader');
+assert.ok(!loader.includes("'system-health':"),'Saúde & Auditoria aposentada não deve voltar ao loader');
+assert.ok(auth.includes("RETIRED_ROUTES=new Set(['corpo-auditor','system-health'])"),'Rotas aposentadas devem permanecer bloqueadas na navegação');
 assert.ok(loader.includes('insertBefore(el,ds)'),'CSS lazy deve ser inserido antes do Design System');
 assert.ok(index.includes('https://focado-api.thiagovpinho.workers.dev'),'Boot deve antecipar conexão com a API');
 assert.ok(index.includes("DOMContentLoaded"),'Login deve poder aparecer assim que o DOM estiver pronto');
