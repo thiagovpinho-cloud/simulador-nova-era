@@ -13,9 +13,9 @@ const specs={
     forbidden:['production.js','pcp.js','purchases.js','logistics.js','intelligence.js','intelligence-core.js']
   },
   production:{
-    selector:'.fprod-page',
+    selector:'.fpr-page',
     title:'Produção',
-    body:/Produção|programa|capacidade/i,
+    body:/Solicitações de produção|Nenhuma solicitação de produção encontrada|solicitação\(ões\)/i,
     required:['products.js','production.js'],
     forbidden:['pcp.js','purchases.js','logistics.js','intelligence.js','intelligence-core.js']
   },
