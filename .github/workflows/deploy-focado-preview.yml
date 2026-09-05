@@ -88,6 +88,7 @@ jobs:
           done
           node scripts/browser-route-smoke.mjs http://127.0.0.1:4173
           node scripts/browser-operational-route-smoke.mjs http://127.0.0.1:4173 pedidos
+          node scripts/browser-operational-route-smoke.mjs http://127.0.0.1:4173 production
 
       - name: Select preview alias
         id: preview
