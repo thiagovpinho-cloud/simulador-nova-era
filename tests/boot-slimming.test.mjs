@@ -10,9 +10,12 @@ const slim=result.html;
 
 assert.ok(result.scriptsRemoved>=10,'O build deve retirar os scripts estáticos dos módulos operacionais');
 assert.ok(result.stylesRemoved>=10,'O build deve retirar os estilos estáticos dos módulos operacionais');
+assert.equal(result.legacyOpsBlocksRemoved,1,'O build moderno deve retirar exatamente um motor operacional legado duplicado');
+assert.doesNotMatch(slim,/FOCADO_OPS_V6_START|FOCADO_OPS_V6_END/,'O motor operacional legado não pode executar no build moderno');
+assert.match(slim,/FOCADO_OPS_V6_DISABLED_IN_MODERN_BUILD/,'Build deve deixar marcador auditável da exclusão do legado');
 assert.doesNotMatch(slim,/<script\b(?=[^>]*\bsrc=["']assets\/modules\/)/i,'Nenhum módulo operacional pode executar no boot do preview');
 assert.doesNotMatch(slim,/<link\b(?=[^>]*\bhref=["']assets\/modules\/)/i,'CSS de módulos operacionais também deve carregar sob demanda');
-assert.match(slim,/FOCADO_BOOT_SLIM_V2/,'Build leve deve deixar marcador auditável V2');
+assert.match(slim,/FOCADO_BOOT_SLIM_V3/,'Build leve deve deixar marcador auditável V3');
 
 const runtimeAssets=[
   'assets/core/data-store.js',
@@ -36,4 +39,4 @@ for(const route of ['pedidos','pcp','production','inventory','purchases','expedi
 assert.doesNotMatch(loader,/ensureCompatibility|compatibilityOrder|ensureWithFallback/,'Boot leve não pode depender de fallback geral');
 assert.ok(Buffer.byteLength(slim)<Buffer.byteLength(index),'Build leve precisa ser menor que o index de origem');
 
-console.log(`boot-slimming: ok (${result.scriptsRemoved} scripts, ${result.stylesRemoved} styles, runtime ${runtimeVersion})`);
+console.log(`boot-slimming: ok (${result.scriptsRemoved} scripts, ${result.stylesRemoved} styles, ${result.legacyOpsBlocksRemoved} legacy ops, runtime ${runtimeVersion})`);
