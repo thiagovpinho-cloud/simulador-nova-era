@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const VERSION='20260904-recovery-boot-slim-v3';
+  const VERSION='20260905-recovery-boot-slim-v4';
   const loaded=new Map();
   const defs={
     produtos:{css:'products.css',js:'products.js'},
@@ -74,18 +74,23 @@
       existing.remove();
     }
     return new Promise((resolve,reject)=>{
-      const el=document.createElement('link');el.rel='stylesheet';el.href='assets/modules/'+href+'?v='+VERSION;
+      const el=document.createElement('link');
+      el.rel='stylesheet';
+      el.href='assets/modules/'+href+'?v='+VERSION;
       el.dataset.focadoModule=href;
       el.onload=()=>{el.dataset.loaded='1';resolve()};
       el.onerror=err=>{el.remove();reject(err||new Error('MODULE_CSS_LOAD_FAILED:'+href))};
       const ds=document.querySelector('link[href*="assets/design-system.css"]');
-      if(ds)document.head.insertBefore(el,ds);else document.head.appendChild(el);
+      if(ds&&ds.parentNode===document.head)document.head.insertBefore(el,ds);
+      else document.head.appendChild(el);
     });
   }
   function js(src){
     if(document.querySelector('script[data-focado-module="'+src+'"]'))return Promise.resolve();
     return new Promise((resolve,reject)=>{
-      const el=document.createElement('script');el.src='assets/modules/'+src+'?v='+VERSION;el.defer=true;
+      const el=document.createElement('script');
+      el.src='assets/modules/'+src+'?v='+VERSION;
+      el.defer=true;
       el.dataset.focadoModule=src;
       el.onload=resolve;
       el.onerror=err=>{el.remove?.();reject(err||new Error('MODULE_JS_LOAD_FAILED:'+src))};
