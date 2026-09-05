@@ -48,6 +48,7 @@ jobs:
           node --check assets/core/data-store.js
           node --check scripts/slim-preview-index.mjs
           node --check scripts/browser-route-smoke.mjs
+          node --check scripts/browser-operational-route-smoke.mjs
           for f in assets/modules/*.js; do
             node --check "$f"
           done
@@ -72,7 +73,7 @@ jobs:
             node --input-type=module -e "import fs from 'node:fs'; const h=fs.readFileSync('_site/index.html','utf8'); const sha=process.env.GITHUB_SHA; if(!h.includes('FOCADO_BOOT_SLIM_V3')) throw new Error('BOOT_SLIM_MARKER_MISSING'); if(!h.includes('FOCADO_OPS_V6_DISABLED_IN_MODERN_BUILD')) throw new Error('LEGACY_OPS_DISABLE_MARKER_MISSING'); if(/FOCADO_OPS_V6_START|FOCADO_OPS_V6_END/.test(h)) throw new Error('LEGACY_OPS_BLOCK_STILL_PRESENT'); if(/<script\\b(?=[^>]*\\bsrc=[\"']assets\\/modules\\/)/i.test(h)) throw new Error('BOOT_JS_MODULE_FOUND'); if(/<link\\b(?=[^>]*\\bhref=[\"']assets\\/modules\\/)/i.test(h)) throw new Error('BOOT_CSS_MODULE_FOUND'); for(const a of ['assets/core/data-store.js','assets/core/auth-client.js','assets/core/module-loader.js','assets/app-shell.js','assets/design-system.css','assets/design-system.js']) if(!h.includes(a+'?v='+sha)) throw new Error('RUNTIME_VERSION_MISSING:'+a);"
           fi
 
-      - name: Real browser PCP first-click gate
+      - name: Real browser operational first-click gates
         if: github.ref_name == 'focado/recuperacao-funcional-passo-a-passo'
         shell: bash
         run: |
@@ -86,6 +87,7 @@ jobs:
             sleep 1
           done
           node scripts/browser-route-smoke.mjs http://127.0.0.1:4173
+          node scripts/browser-operational-route-smoke.mjs http://127.0.0.1:4173 pedidos
 
       - name: Select preview alias
         id: preview
