@@ -8,7 +8,7 @@ const specs={
   pedidos:{selector:'.fo-page',title:'Pedidos Comerciais',body:/Registro oficial do pedido|Nenhum pedido encontrado|pedido\(s\)/,required:['products.js','orders.js'],forbidden:['production.js','pcp.js','purchases.js','logistics.js','intelligence.js','intelligence-core.js']},
   production:{selector:'.fpr-page',title:'Produção',body:/Solicitações de produção|Nenhuma solicitação de produção encontrada|solicitação\(ões\)/i,required:['products.js','production.js'],forbidden:['pcp.js','purchases.js','logistics.js','intelligence.js','intelligence-core.js']},
   inventory:{selector:'.fi-page',title:'Estoque',body:/Saldo de produto acabado|Ainda não há saldo de produtos acabados|produto\(s\) com saldo cadastrado/i,required:['inventory.js'],forbidden:['pcp.js','production.js','purchases.js','logistics.js','intelligence.js','intelligence-core.js']},
-  purchases:{selector:'.fpur-page',title:'Compras',body:/Compras|reposição|fornecedor/i,required:['purchases.js'],forbidden:['pcp.js','production.js','logistics.js','intelligence.js','intelligence-core.js']},
+  purchases:{selector:'.fds-page',title:'Compras',body:/Necessidades de matéria-prima|Nenhuma necessidade de compra pendente|fornecedores ativos/i,required:['purchases.js'],forbidden:['pcp.js','production.js','logistics.js','intelligence.js','intelligence-core.js']},
   logistica:{selector:'.fl-page',title:'Logística',body:/Logística|frete|transport/i,required:['logistics.js'],forbidden:['pcp.js','production.js','purchases.js','intelligence.js','intelligence-core.js']},
   expedicao:{selector:'.fexp-page',title:'Expedição',body:/Expedição|despacho|entrega/i,required:['expedition.js'],forbidden:['pcp.js','production.js','purchases.js','logistics.js','intelligence.js','intelligence-core.js']}
 };
