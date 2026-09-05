@@ -69,7 +69,7 @@ jobs:
           done
           if [ "${GITHUB_REF_NAME}" = "focado/recuperacao-funcional-passo-a-passo" ]; then
             node scripts/slim-preview-index.mjs _site/index.html _site/index.html "${GITHUB_SHA}"
-            node --input-type=module -e "import fs from 'node:fs'; const h=fs.readFileSync('_site/index.html','utf8'); const sha=process.env.GITHUB_SHA; if(!h.includes('FOCADO_BOOT_SLIM_V2')) throw new Error('BOOT_SLIM_MARKER_MISSING'); if(/<script\\b(?=[^>]*\\bsrc=[\"']assets\\/modules\\/)/i.test(h)) throw new Error('BOOT_JS_MODULE_FOUND'); if(/<link\\b(?=[^>]*\\bhref=[\"']assets\\/modules\\/)/i.test(h)) throw new Error('BOOT_CSS_MODULE_FOUND'); for(const a of ['assets/core/data-store.js','assets/core/auth-client.js','assets/core/module-loader.js','assets/app-shell.js','assets/design-system.css','assets/design-system.js']) if(!h.includes(a+'?v='+sha)) throw new Error('RUNTIME_VERSION_MISSING:'+a);"
+            node --input-type=module -e "import fs from 'node:fs'; const h=fs.readFileSync('_site/index.html','utf8'); const sha=process.env.GITHUB_SHA; if(!h.includes('FOCADO_BOOT_SLIM_V3')) throw new Error('BOOT_SLIM_MARKER_MISSING'); if(!h.includes('FOCADO_OPS_V6_DISABLED_IN_MODERN_BUILD')) throw new Error('LEGACY_OPS_DISABLE_MARKER_MISSING'); if(/FOCADO_OPS_V6_START|FOCADO_OPS_V6_END/.test(h)) throw new Error('LEGACY_OPS_BLOCK_STILL_PRESENT'); if(/<script\\b(?=[^>]*\\bsrc=[\"']assets\\/modules\\/)/i.test(h)) throw new Error('BOOT_JS_MODULE_FOUND'); if(/<link\\b(?=[^>]*\\bhref=[\"']assets\\/modules\\/)/i.test(h)) throw new Error('BOOT_CSS_MODULE_FOUND'); for(const a of ['assets/core/data-store.js','assets/core/auth-client.js','assets/core/module-loader.js','assets/app-shell.js','assets/design-system.css','assets/design-system.js']) if(!h.includes(a+'?v='+sha)) throw new Error('RUNTIME_VERSION_MISSING:'+a);"
           fi
 
       - name: Real browser PCP first-click gate
@@ -127,13 +127,13 @@ jobs:
               continue
             fi
             if [ "${GITHUB_REF_NAME}" = "focado/recuperacao-funcional-passo-a-passo" ]; then
-              if ! node --input-type=module -e "import fs from 'node:fs'; const h=fs.readFileSync('/tmp/focado-preview-index.html','utf8'); const sha=process.env.GITHUB_SHA; if(!h.includes('FOCADO_BOOT_SLIM_V2')) process.exit(2); if(/<script\\b(?=[^>]*\\bsrc=[\"']assets\\/modules\\/)/i.test(h)) process.exit(3); if(/<link\\b(?=[^>]*\\bhref=[\"']assets\\/modules\\/)/i.test(h)) process.exit(4); for(const a of ['assets/core/data-store.js','assets/core/auth-client.js','assets/core/module-loader.js','assets/app-shell.js','assets/design-system.css','assets/design-system.js']) if(!h.includes(a+'?v='+sha)) process.exit(5);"; then
+              if ! node --input-type=module -e "import fs from 'node:fs'; const h=fs.readFileSync('/tmp/focado-preview-index.html','utf8'); const sha=process.env.GITHUB_SHA; if(!h.includes('FOCADO_BOOT_SLIM_V3')) process.exit(2); if(!h.includes('FOCADO_OPS_V6_DISABLED_IN_MODERN_BUILD')) process.exit(6); if(/FOCADO_OPS_V6_START|FOCADO_OPS_V6_END/.test(h)) process.exit(7); if(/<script\\b(?=[^>]*\\bsrc=[\"']assets\\/modules\\/)/i.test(h)) process.exit(3); if(/<link\\b(?=[^>]*\\bhref=[\"']assets\\/modules\\/)/i.test(h)) process.exit(4); for(const a of ['assets/core/data-store.js','assets/core/auth-client.js','assets/core/module-loader.js','assets/app-shell.js','assets/design-system.css','assets/design-system.js']) if(!h.includes(a+'?v='+sha)) process.exit(5);"; then
                 echo "Preview alias ainda não aponta para o deploy ${GITHUB_SHA}; aguardando propagação."
                 sleep 5
                 continue
               fi
               curl -fsS --max-time 15 -H 'Cache-Control: no-cache' "$PREVIEW_URL/assets/core/module-loader.js?v=${GITHUB_SHA}" -o /tmp/focado-preview-loader.js
-              grep -q "20260904-recovery-boot-slim-v3" /tmp/focado-preview-loader.js
+              grep -q "20260905-recovery-boot-slim-v4" /tmp/focado-preview-loader.js
               grep -q "lazyIntelligenceActions" /tmp/focado-preview-loader.js
               if grep -Eq "ensureCompatibility|compatibilityOrder|ensureWithFallback" /tmp/focado-preview-loader.js; then
                 echo "Loader publicado ainda contém fallback geral"
@@ -147,7 +147,7 @@ jobs:
               grep -q "Pedidos ainda não enviados" /tmp/focado-preview-drafts.js
               curl -fsS --max-time 15 "$PREVIEW_URL/assets/modules/pcp-history.js" -o /tmp/focado-preview-pcp-history.js
               grep -q "Últimos 10 pedidos processados" /tmp/focado-preview-pcp-history.js
-              echo "Boot slim V2 + runtime por SHA + lazy loader estrito OK"
+              echo "Boot slim V3 + legado operacional fora do boot + runtime por SHA + lazy loader estrito OK"
             else
               curl -fsS --max-time 15 "$PREVIEW_URL/assets/core/module-loader.js" -o /tmp/focado-preview-loader.js
               grep -q "lazyIntelligenceActions" /tmp/focado-preview-loader.js
