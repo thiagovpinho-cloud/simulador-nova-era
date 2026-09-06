@@ -1,0 +1,46 @@
+name: Validate Focado Expedition
+
+on:
+  push:
+    branches:
+      - focado/recuperacao-funcional-passo-a-passo
+    paths:
+      - "assets/**"
+      - "scripts/browser-expedition-smoke.mjs"
+      - "scripts/slim-preview-index.mjs"
+      - "index.html"
+      - ".github/workflows/validate-focado-expedition.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  expedition-browser-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Build slim preview package
+        shell: bash
+        run: |
+          rm -rf _site
+          mkdir -p _site
+          cp index.html manifest.webmanifest focado-*.svg _site/
+          cp -R assets _site/assets
+          cp -R shared _site/shared
+          node scripts/slim-preview-index.mjs _site/index.html _site/index.html "${GITHUB_SHA}"
+      - name: Run Expedition in Chromium
+        shell: bash
+        run: |
+          npm install --no-save --no-package-lock playwright@1.57.0
+          npx playwright install --with-deps chromium
+          python3 -m http.server 4173 --directory _site >/tmp/focado-expedition-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then break; fi
+            sleep 1
+          done
+          node scripts/browser-expedition-smoke.mjs http://127.0.0.1:4173
