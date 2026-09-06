@@ -14,6 +14,8 @@ await page.addInitScript(()=>{
   sessionStorage.setItem('focado-auth-user-v1',JSON.stringify(u));
   sessionStorage.setItem('focado-auth-role-v1','ADMIN');
   sessionStorage.setItem('nova-era-role','admin');
+  sessionStorage.setItem('nova-era-role-label','E2E Admin');
+  sessionStorage.setItem('nova-era-login-time',String(Date.now()));
   localStorage.setItem('focado-operacoes-v2',JSON.stringify({version:3,orders:[],productCatalog:[],inventory:{},inputInventory:{},productionRequests:[],events:[]}));
 });
 try{
