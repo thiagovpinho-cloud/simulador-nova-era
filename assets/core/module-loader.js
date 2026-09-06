@@ -66,7 +66,29 @@
   function js(src){if(document.querySelector('script[data-focado-module="'+src+'"]'))return Promise.resolve();return new Promise((resolve,reject)=>{const el=document.createElement('script');el.src='assets/modules/'+src+'?v='+VERSION;el.defer=true;el.dataset.focadoModule=src;el.onload=resolve;el.onerror=err=>{el.remove?.();reject(err||new Error('MODULE_JS_LOAD_FAILED:'+src))};document.body.appendChild(el);});}
   function optional(name){Promise.resolve().then(()=>ensure(name)).catch(err=>console.warn('[FocadoModules] módulo opcional indisponível:',name,err));}
   function loadOrderComplements(){optional('order-drafts');optional('pcp-commercial-alerts');}
-  async function ensure(name){let def=defs[name];if(!def)return true;if(def.alias){await ensure(def.alias);verify(name);return true;}if(loaded.has(name))return loaded.get(name);const p=(async()=>{for(const dep of def.deps||[])await ensure(dep);const existing=contracts[name];if(existing&&existing()){if(def.css)await css(def.css);verify(name);if(name==='pedidos')loadOrderComplements();if(name==='pcp')optional('pcp-history');return true;}await Promise.all([def.css?css(def.css):null,def.js?js(def.js):null].filter(Boolean));verify(name);if(name==='pedidos')loadOrderComplements();if(name==='pcp')optional('pcp-history');return true;})();loaded.set(name,p);try{return await p}catch(err){loaded.delete(name);throw err}}
+  async function ensure(name){
+    let def=defs[name];if(!def)return true;
+    if(def.alias){await ensure(def.alias);verify(name);return true;}
+    if(loaded.has(name))return loaded.get(name);
+    const p=(async()=>{
+      for(const dep of def.deps||[])await ensure(dep);
+      const existing=contracts[name];
+      if(existing&&existing()){
+        if(def.css)await css(def.css);
+        verify(name);
+        if(name==='pedidos')loadOrderComplements();
+        if(name==='pcp')optional('pcp-history');
+        return true;
+      }
+      await Promise.all([def.css?css(def.css):null,def.js?js(def.js):null].filter(Boolean));
+      verify(name);
+      if(name==='pedidos')loadOrderComplements();
+      if(name==='pcp')optional('pcp-history');
+      return true;
+    })();
+    loaded.set(name,p);
+    try{return await p}catch(err){loaded.delete(name);throw err}
+  }
   const lazyIntelligenceActions={fpMRP:'renderMRP',fpurScore:'renderSuppliers',flScore:'renderCarriers'};
   if(typeof document.addEventListener==='function'){document.addEventListener('click',async event=>{const target=event.target?.closest?.('#fpMRP,#fpurScore,#flScore');if(!target)return;if(window.FocadoIntelligenceUI)return;const action=lazyIntelligenceActions[target.id];if(!action)return;event.preventDefault();event.stopImmediatePropagation();target.disabled=true;try{await ensure('cockpit');const fn=window.FocadoIntelligenceUI?.[action];if(typeof fn!=='function')throw new Error('INTELLIGENCE_ACTION_UNAVAILABLE:'+action);fn();}catch(err){console.error('[FocadoModules] inteligência sob demanda',err);alert('Não foi possível carregar esta análise agora. O módulo operacional continua disponível.');target.disabled=false;}},true);}
   window.FocadoModules=Object.freeze({ensure,version:VERSION,definitions:defs});
