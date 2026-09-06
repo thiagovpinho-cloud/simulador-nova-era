@@ -17,7 +17,7 @@ if(!spec)throw new Error('ROUTE_NOT_SUPPORTED:'+route);
 
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage();
-const diagnostics={pageErrors:[],consoleErrors:[],dialogs:[],failedModuleRequests:[],moduleRequests:[]};
+const diagnostics={pageErrors:[],consoleErrors:[],dialogs:[],failedModuleRequests:[],moduleRequests:[],finalContent:null};
 page.on('pageerror',err=>diagnostics.pageErrors.push(String(err?.stack||err?.message||err)));
 page.on('console',msg=>{if(msg.type()==='error')diagnostics.consoleErrors.push(msg.text())});
 page.on('dialog',async dialog=>{diagnostics.dialogs.push({type:dialog.type(),message:dialog.message()});await dialog.dismiss()});
@@ -34,19 +34,40 @@ await page.addInitScript(()=>{
   localStorage.setItem('focado-operacoes-v2',JSON.stringify({version:3,orders:[{id:'op_e2e_1',number:'PED-E2E-0001',status:'COMERCIAL',createdAt:Date.now(),client:'CLIENTE E2E',cnpj:'12345678000195',representative:'',brand:'Nova Era',orderDate:new Date().toISOString().slice(0,10),items:[{id:'i1',productId:'',code:'',name:'Item E2E',qty:1,price:10,reservedQty:0}],commercial:{completedAt:null,completedBy:null},pcp:{},logistics:{},events:[]}],productCatalog:[],representatives:[],productionRequests:[],inventory:{},inputInventory:{},productionBases:{},events:[]}));
 });
 
+async function snapshot(){
+  return page.evaluate(({selector})=>{
+    const root=document.querySelector(selector),content=document.getElementById('fxContent');
+    return {
+      exists:Boolean(root),
+      visible:Boolean(root&&root.getClientRects().length),
+      title:root?.querySelector('h1')?.textContent?.trim()||'',
+      body:root?.innerText||'',
+      contentText:content?.innerText?.slice(0,1200)||'',
+      contentHtml:content?.innerHTML?.slice(0,2000)||'',
+      shellHidden:document.getElementById('focadoShell')?.classList.contains('hidden')??null
+    };
+  },{selector:spec.selector});
+}
+
 try{
   await page.goto(base+'/',{waitUntil:'domcontentloaded',timeout:20000});
   await page.waitForFunction(()=>Boolean(window.FocadoShell?.navigate&&window.FocadoModules?.ensure),null,{timeout:15000});
   await page.evaluate(()=>window.FocadoShell.show());
   const result=await page.evaluate(async routeName=>{try{await window.FocadoShell.navigate(routeName);return {ok:true,loaderVersion:window.FocadoModules?.version||'',role:window.FocadoAuth?.getRole?.()||''}}catch(err){return {ok:false,error:String(err?.stack||err?.message||err),loaderVersion:window.FocadoModules?.version||''}}},route);
-  await page.waitForSelector(spec.selector,{state:'visible',timeout:10000});
-  await page.waitForTimeout(400);
-  const title=await page.locator(spec.selector+' h1').first().textContent();
-  const bodyText=await page.locator(spec.selector).innerText();
+  await page.waitForFunction(({selector,title})=>{
+    const root=document.querySelector(selector);
+    return Boolean(root&&root.getClientRects().length&&root.querySelector('h1')?.textContent?.trim()===title);
+  },{selector:spec.selector,title:spec.title},{timeout:10000});
+  await page.waitForTimeout(700);
+  const view=await snapshot();
+  diagnostics.finalContent=view;
   assert.equal(result.ok,true,'navigate('+route+') deve concluir sem exceção');
   assert.equal(result.role,'ADMIN','smoke deve operar como ADMIN');
-  assert.equal(String(title||'').trim(),spec.title,route+' precisa renderizar o título esperado');
-  assert.match(bodyText,spec.body,route+' precisa renderizar conteúdo operacional');
+  assert.equal(view.exists,true,route+' precisa permanecer renderizado após atualização em segundo plano');
+  assert.equal(view.visible,true,route+' precisa permanecer visível após atualização em segundo plano');
+  assert.equal(view.shellHidden,false,'shell não pode ser ocultado durante '+route);
+  assert.equal(view.title,spec.title,route+' precisa renderizar o título esperado');
+  assert.match(view.body,spec.body,route+' precisa renderizar conteúdo operacional');
   assert.deepEqual(diagnostics.failedModuleRequests,[],'nenhum asset de módulo pode falhar no primeiro clique de '+route);
   assert.deepEqual(diagnostics.pageErrors,[],'nenhum pageerror pode ocorrer ao abrir '+route);
   assert.equal(diagnostics.dialogs.length,0,route+' não pode disparar alertas durante abertura normal');
@@ -55,6 +76,7 @@ try{
   for(const forbidden of spec.forbidden)assert.doesNotMatch(requested,new RegExp('/assets/modules/'+forbidden.replace('.','\\.')),route+' não deve carregar '+forbidden+' no primeiro clique');
   console.log(JSON.stringify({event:'browser-operational-route-smoke',route,ok:true,loaderVersion:result.loaderVersion,moduleRequests:diagnostics.moduleRequests,consoleErrors:diagnostics.consoleErrors},null,2));
 }catch(err){
+  try{diagnostics.finalContent=await snapshot()}catch(_){/* diagnóstico best-effort */}
   console.error(JSON.stringify({event:'browser-operational-route-smoke',route,ok:false,error:String(err?.stack||err),diagnostics},null,2));
   process.exitCode=1;
 }finally{await browser.close();}
