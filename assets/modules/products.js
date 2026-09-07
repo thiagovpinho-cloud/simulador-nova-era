@@ -25,6 +25,12 @@
     localStorage.setItem(KEY,JSON.stringify(ops));
     return {ok:true,mode:'local'};
   };
+  const persist=async ops=>{
+    const result=await save(ops);
+    if(result?.ok)return true;
+    alert('Não foi possível salvar agora. Nenhuma alteração foi confirmada. Tente novamente.');
+    return false;
+  };
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const numberValue=v=>{
     const n=Number(String(v??'').replace(',','.'));
@@ -70,7 +76,7 @@
       const qq=q.value.trim().toLowerCase(),bb=brand.value;
       const rows=catalog.filter(p=>(bb==='TODAS'||p.brand===bb)&&(!qq||[p.code,p.name].some(v=>String(v||'').toLowerCase().includes(qq))));
       body.innerHTML=rows.map(p=>'<tr><td><b>'+esc(p.code)+'</b></td><td>'+esc(p.name)+'</td><td>'+esc(p.brand)+'</td><td>'+esc(p.unit||'CX')+'</td><td>'+fmtWeight(p.logistics?.grossWeightKg)+'</td><td>'+fmtCubage(p.logistics?.cubageM3)+'</td><td><span class="fp-status '+(p.active===false?'off':'on')+'">'+(p.active===false?'Inativo':'Ativo')+'</span></td><td><button class="fp-link" data-logistics="'+esc(p.id)+'">Logística</button>'+(p.source==='simulator'?'':' <button class="fp-link" data-toggle="'+esc(p.id)+'">'+(p.active===false?'Ativar':'Inativar')+'</button>')+'</td></tr>').join('')||'<tr><td colspan="8" class="fp-empty">Nenhum produto encontrado.</td></tr>';
-      body.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=async()=>{const p=catalog.find(x=>x.id===b.dataset.toggle);if(!p)return;p.active=p.active===false?true:false;await save(ops);paint()});
+      body.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=async()=>{const p=catalog.find(x=>x.id===b.dataset.toggle);if(!p)return;const previous=p.active;p.active=p.active===false?true:false;if(!(await persist(ops))){p.active=previous;return}paint()});
       body.querySelectorAll('[data-logistics]').forEach(b=>b.onclick=()=>openLogistics(b.dataset.logistics));
     }
     q.oninput=paint;brand.onchange=paint;paint();
@@ -81,9 +87,10 @@
       const code=document.getElementById('fpCode').value.trim(),name=document.getElementById('fpName').value.trim(),b=document.getElementById('fpProductBrand').value,unit=document.getElementById('fpUnit').value;
       if(!code||!name){alert('Informe código e nome do produto.');return}
       if(catalog.some(p=>p.active!==false&&p.code===code&&p.brand===b)){alert('Já existe um produto ativo com este código para esta marca.');return}
-      catalog.push({id:'manual_'+Date.now(),simulatorId:'',code,name,brand:b,unit,source:'manual',active:true,createdAt:Date.now()});
-      ops.productCatalog=catalog;
-      await save(ops);modal.classList.add('hidden');render();
+      const created={id:'manual_'+Date.now(),simulatorId:'',code,name,brand:b,unit,source:'manual',active:true,createdAt:Date.now()};
+      catalog.push(created);ops.productCatalog=catalog;
+      if(!(await persist(ops))){catalog.splice(catalog.indexOf(created),1);ops.productCatalog=catalog;return}
+      modal.classList.add('hidden');render();
     };
     const logModal=document.getElementById('fpLogModal');
     const gross=document.getElementById('fpGrossWeight'),units=document.getElementById('fpUnitsPerBox'),length=document.getElementById('fpLength'),width=document.getElementById('fpWidth'),height=document.getElementById('fpHeight'),cube=document.getElementById('fpCubage');
@@ -105,6 +112,7 @@
     document.getElementById('fpLogCancel').onclick=()=>{logEditingId='';logModal.classList.add('hidden')};
     document.getElementById('fpLogSave').onclick=async()=>{
       const p=catalog.find(x=>x.id===logEditingId);if(!p)return;
+      const previous=structuredClone(p.logistics||{});
       const lengthCm=numberValue(length.value),widthCm=numberValue(width.value),heightCm=numberValue(height.value);
       p.logistics={
         grossWeightKg:numberValue(gross.value),
@@ -118,7 +126,7 @@
         updatedAt:Date.now()
       };
       ops.productCatalog=catalog;
-      await save(ops);
+      if(!(await persist(ops))){p.logistics=previous;ops.productCatalog=catalog;return}
       logEditingId='';logModal.classList.add('hidden');paint();
     };
   }
