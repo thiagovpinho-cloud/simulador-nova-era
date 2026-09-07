@@ -6,7 +6,7 @@
     'recipes-entry':{js:'recipes-entry.js'},
     'recipe-master-data':{js:'recipe-master-data.js'},
     receitas:{css:'recipes.css',js:'recipes.js',deps:['recipe-master-data','simulator-master-data']},
-    produtos:{css:'products.css',js:'products.js',deps:['recipes-entry']},
+    produtos:{css:'products.css',js:'products.js'},
     fichas:{css:'technical-sheets.css',js:'technical-sheets.js'},
     bases:{css:'bases.css',js:'bases.js'},
     representantes:{css:'representatives.css',js:'representatives.js'},
@@ -72,6 +72,7 @@
   function js(src){if(document.querySelector('script[data-focado-module="'+src+'"]'))return Promise.resolve();return new Promise((resolve,reject)=>{const el=document.createElement('script');el.src='assets/modules/'+src+'?v='+VERSION;el.defer=true;el.dataset.focadoModule=src;el.onload=resolve;el.onerror=err=>{el.remove?.();reject(err||new Error('MODULE_JS_LOAD_FAILED:'+src))};document.body.appendChild(el);});}
   function optional(name){Promise.resolve().then(()=>ensure(name)).catch(err=>console.warn('[FocadoModules] módulo opcional indisponível:',name,err));}
   function loadOrderComplements(){optional('order-drafts');optional('pcp-commercial-alerts');}
+  function loadProductComplements(){optional('recipes-entry');}
   async function ensure(name){
     let def=defs[name];if(!def)return true;
     if(def.alias){await ensure(def.alias);verify(name);return true;}
@@ -82,12 +83,14 @@
       if(existing&&existing()){
         if(def.css)await css(def.css);
         verify(name);
+        if(name==='produtos')loadProductComplements();
         if(name==='pedidos')loadOrderComplements();
         if(name==='pcp')optional('pcp-history');
         return true;
       }
       await Promise.all([def.css?css(def.css):null,def.js?js(def.js):null].filter(Boolean));
       verify(name);
+      if(name==='produtos')loadProductComplements();
       if(name==='pedidos')loadOrderComplements();
       if(name==='pcp')optional('pcp-history');
       return true;
