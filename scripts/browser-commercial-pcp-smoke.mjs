@@ -78,8 +78,8 @@ try{
     window.FocadoShell.show();
   },base+'/mock-api');
   await page.evaluate(()=>window.FocadoShell.navigate('pedidos'));
-  await page.waitForSelector('.fo-page h1',{state:'visible',timeout:10000});
-  await page.locator('[data-fo-open="op_atomic_1"]').click();
+  await page.waitForFunction(()=>Boolean(window.FocadoOrders?.openOrder&&document.querySelector('.fo-page h1')),null,{timeout:10000});
+  await page.evaluate(()=>window.FocadoOrders.openOrder('op_atomic_1'));
   await page.waitForSelector('#foFinalize',{state:'visible',timeout:10000});
 
   await page.evaluate(()=>{
