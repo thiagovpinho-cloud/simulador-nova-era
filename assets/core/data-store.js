@@ -65,8 +65,6 @@
       const remoteState=body?.payload||{};
       const localState=readLocal();
 
-      // Migração única: se o workspace remoto acabou de nascer vazio,
-      // preserva o histórico local existente e o envia ao backend.
       if(Number(body?.revision||0)===0 && Object.keys(remoteState).length===0 && hasMeaningfulLocalState(localState)){
         const migrated=await remoteRequest('/api/state',{
           method:'PUT',
@@ -129,6 +127,25 @@
         return {mode:'conflict',ok:false,error:String(err.message),currentRevision:err.body?.currentRevision};
       }
       throw err;
+    }
+  }
+
+  async function finalizeCommercial(orderId,changes,idempotencyKey){
+    const current=readLocal();
+    if(!isRemoteReady())return {mode:'blocked',ok:false,error:'API_REQUIRED',payload:current};
+    try{
+      const body=await remoteRequest('/api/commercial-finalize',{
+        method:'POST',
+        body:JSON.stringify({orderId,changes,idempotencyKey})
+      });
+      if(body?.payload)writeLocal(body.payload);
+      return {mode:'remote',ok:true,...body,payload:body?.payload};
+    }catch(err){
+      if(err.status===409){
+        emit({source:'remote-conflict',error:err});
+        return {mode:'conflict',ok:false,error:String(err.message),code:err.code,currentStatus:err.body?.currentStatus,currentRevision:err.body?.currentRevision};
+      }
+      return {mode:'remote',ok:false,error:String(err.message),status:err.status,code:err.code};
     }
   }
 
@@ -205,7 +222,7 @@
   async function hydrateLocalCache(){const state=await load();writeLocal(state);return state}
 
   window.FocadoDataStore={
-    readLocal,writeLocal,load,save,saveDomain,transitionOrder,getDomainV2,refreshDomainV2,getV2Consistency,getSecurityHealth,subscribe,getConfig,setConfig,setSessionToken,getSessionToken,isRemoteReady,hydrateLocalCache,
+    readLocal,writeLocal,load,save,saveDomain,finalizeCommercial,transitionOrder,getDomainV2,refreshDomainV2,getV2Consistency,getSecurityHealth,subscribe,getConfig,setConfig,setSessionToken,getSessionToken,isRemoteReady,hydrateLocalCache,
     get mode(){return isRemoteReady()?'api':'local'},
     get revision(){return revision}
   };
