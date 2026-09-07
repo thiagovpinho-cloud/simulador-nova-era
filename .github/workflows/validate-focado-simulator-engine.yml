@@ -1,0 +1,26 @@
+name: Validate Focado Simulator Engine
+
+on:
+  push:
+    branches:
+      - focado/passo-4-simulador
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  simulator-engine-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax check Simulator Engine
+        run: |
+          node --check assets/modules/simulator-engine.js
+          node --check tests/simulator-engine.test.mjs
+      - name: Run Simulator Engine Reference Tests
+        run: node tests/simulator-engine.test.mjs
