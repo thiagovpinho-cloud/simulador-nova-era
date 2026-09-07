@@ -3,7 +3,10 @@
   const VERSION='20260905-recovery-boot-slim-v4';
   const loaded=new Map();
   const defs={
-    produtos:{css:'products.css',js:'products.js'},
+    'recipes-entry':{js:'recipes-entry.js'},
+    'recipe-master-data':{js:'recipe-master-data.js'},
+    receitas:{css:'recipes.css',js:'recipes.js',deps:['recipe-master-data','simulator-master-data']},
+    produtos:{css:'products.css',js:'products.js',deps:['recipes-entry']},
     fichas:{css:'technical-sheets.css',js:'technical-sheets.js'},
     bases:{css:'bases.css',js:'bases.js'},
     representantes:{css:'representatives.css',js:'representatives.js'},
@@ -34,6 +37,9 @@
     financeiro:{css:'finance.css',js:'finance.js'}
   };
   const contracts={
+    'recipes-entry':()=>typeof window.FocadoRecipesEntry?.attach==='function',
+    'recipe-master-data':()=>Array.isArray(window.FocadoRecipeMasterData?.recipes),
+    receitas:()=>typeof window.FocadoRecipes?.render==='function'&&Array.isArray(window.FocadoRecipeMasterData?.recipes),
     produtos:()=>typeof window.FocadoProducts?.render==='function',
     fichas:()=>typeof window.FocadoTechnicalSheets?.render==='function',
     bases:()=>typeof window.FocadoBases?.render==='function',
