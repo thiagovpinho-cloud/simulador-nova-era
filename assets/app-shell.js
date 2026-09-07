@@ -39,7 +39,6 @@
   syncBrandLogo();
   window.addEventListener('load',syncBrandLogo);
 
-
   function loadOps(){try{return JSON.parse(localStorage.getItem(OPS_KEY)||'{}')||{}}catch(_){return {}}}
   function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
   function stageLabel(s){return ({COMERCIAL:'Comercial',PCP:'PCP',LOGISTICA:'Logística',ENTREGUE:'Entrega'})[s]||s||'—'}
@@ -170,7 +169,11 @@
       return
     }
     if(id==='fichas'){open(()=>window.FocadoTechnicalSheets?.render());return}
-    if(id==='produtos'){open(()=>window.FocadoProducts?.render());return}
+    if(id==='produtos'){
+      open(()=>window.FocadoProducts?.render());
+      Promise.resolve(window.FocadoModules?.ensure?.('recipes-entry')).catch(err=>console.warn('[FocadoModules] Receitas opcional indisponível em Produtos',err));
+      return
+    }
     if(id==='pcp'){open(()=>window.FocadoPCP?.render());return}
     if(id==='production'){
       open(()=>window.FocadoProduction?.render());
