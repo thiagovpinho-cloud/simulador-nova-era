@@ -3,6 +3,7 @@ import { requireSession } from './_lib/auth.js';
 import { readWorkspace, writeWorkspace } from './_lib/store.js';
 import { db } from './_lib/db.js';
 import { DOMAIN_PERMISSION, applyDomain } from '../shared/domain-rules.js';
+import {enrichPcpProductionRequest,assertNoDuplicatePcpProductionRequest} from '../shared/production-traceability.js';
 
 const WORKSPACE='default';
 
@@ -26,6 +27,12 @@ export default async function handler(req,res){
       return res.status(409).json({error:'REVISION_CONFLICT',currentRevision:revision});
     }
 
+    if(domain==='SOLICITACAO_PRODUCAO'&&body.changes?.request){
+      const request=enrichPcpProductionRequest(state,body.changes.request);
+      assertNoDuplicatePcpProductionRequest(state,request);
+      body.changes={...body.changes,request};
+    }
+
     applyDomain(domain,state,body);
     const saved=await writeWorkspace(WORKSPACE,state,revision);
 
@@ -45,7 +52,7 @@ export default async function handler(req,res){
     return res.status(200).json({ok:true,revision:saved.revision,payload:saved.payload});
   }catch(err){
     if(err.code==='REVISION_CONFLICT')return res.status(409).json({error:err.code,currentRevision:err.currentRevision});
-    if(err.status)return res.status(err.status).json({error:String(err.message)});
+    if(err.status)return res.status(err.status).json({error:String(err.message),existingId:err.existingId,existingNumber:err.existingNumber,currentStatus:err.currentStatus});
     console.error('[domain-write]',err);
     return res.status(500).json({error:'INTERNAL_ERROR'});
   }
