@@ -27,6 +27,7 @@ jobs:
           node --check assets/core/module-loader.js
           node --check tests/pcp-production-inventory-atomic.test.mjs
           node --check scripts/browser-pcp-finalize-smoke.mjs
+          node --check scripts/browser-production-inventory-smoke.mjs
 
       - name: Run atomic PCP Production Inventory tests
         run: node tests/pcp-production-inventory-atomic.test.mjs
@@ -47,7 +48,7 @@ jobs:
           cp -R shared _site/shared
           node scripts/slim-preview-index.mjs _site/index.html _site/index.html "${GITHUB_SHA}"
 
-      - name: Run atomic PCP release in Chromium
+      - name: Run PCP and Production Inventory in Chromium
         shell: bash
         run: |
           npm install --no-save --no-package-lock playwright@1.57.0
@@ -60,3 +61,4 @@ jobs:
             sleep 1
           done
           node scripts/browser-pcp-finalize-smoke.mjs http://127.0.0.1:4173
+          node scripts/browser-production-inventory-smoke.mjs http://127.0.0.1:4173
