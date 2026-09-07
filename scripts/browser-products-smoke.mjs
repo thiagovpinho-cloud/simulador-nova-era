@@ -24,7 +24,11 @@ await page.addInitScript(()=>{
 
 try{
   await page.goto(base+'/',{waitUntil:'domcontentloaded',timeout:20000});
-  await page.waitForFunction(()=>Boolean(window.FocadoModules?.ensure&&window.FocadoShell?.show),null,{timeout:15000});
+  await page.waitForFunction(()=>Boolean(window.FocadoModules?.ensure&&window.FocadoShell?.show&&window.FocadoDataStore?.writeLocal),null,{timeout:15000});
+  await page.evaluate(()=>{
+    const ds=window.FocadoDataStore;
+    ds.save=async state=>{ds.writeLocal(structuredClone(state));return {ok:true,mode:'test-remote',revision:1};};
+  });
   await page.evaluate(()=>window.FocadoShell.show());
   await page.evaluate(async()=>{await window.FocadoModules.ensure('produtos');window.FocadoProducts.render();});
   await page.waitForSelector('.fp-page',{state:'visible',timeout:10000});
