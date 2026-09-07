@@ -15,6 +15,7 @@ export default async function handler(req,res){
     const body=typeof req.body==='string'?JSON.parse(req.body||'{}'):(req.body||{});
     const orderId=String(body.orderId||'').trim();
     const idempotencyKey=String(body.idempotencyKey||'').trim();
+    const changes=body.changes||{};
     if(!orderId)return res.status(422).json({error:'ORDER_ID_REQUIRED'});
     if(!idempotencyKey)return res.status(422).json({error:'IDEMPOTENCY_KEY_REQUIRED'});
 
@@ -23,24 +24,27 @@ export default async function handler(req,res){
     const revision=row?.revision||0;
     const state=structuredClone(row?.payload||{});
     let order=getOrder(state,orderId);
-    if(!order)return res.status(404).json({error:'ORDER_NOT_FOUND'});
 
     // Retry seguro: a mesma finalização já concluída retorna o estado atual sem novo evento/gravação.
-    if(order.status==='PCP' && String(order.commercial?.finalizationKey||'')===idempotencyKey){
+    if(order?.status==='PCP' && String(order.commercial?.finalizationKey||'')===idempotencyKey){
       res.setHeader('ETag','"'+revision+'"');
       return res.status(200).json({ok:true,idempotent:true,orderId,from:'COMERCIAL',to:'PCP',revision,payload:state});
     }
 
-    if(order.status!=='COMERCIAL'){
-      return res.status(409).json({error:'STATUS_CONFLICT',currentStatus:order.status});
+    // Pedido novo: criação e avanço para PCP acontecem na mesma cópia e na mesma writeWorkspace.
+    if(!order){
+      if(!changes.createOrder||typeof changes.createOrder!=='object')return res.status(404).json({error:'ORDER_NOT_FOUND'});
+      applyDomain('COMERCIAL',state,{changes:{createOrder:changes.createOrder}});
+      order=getOrder(state,orderId);
+      if(!order)return res.status(422).json({error:'ORDER_CREATE_FAILED'});
+    }else{
+      if(order.status!=='COMERCIAL')return res.status(409).json({error:'STATUS_CONFLICT',currentStatus:order.status});
+      applyDomain('COMERCIAL',state,{orderId,changes});
+      order=getOrder(state,orderId);
     }
 
-    // Aplica os dados do Comercial na cópia em memória. Nada é persistido se a validação/transição falhar.
-    applyDomain('COMERCIAL',state,{orderId,changes:body.changes||{}});
-    order=getOrder(state,orderId);
     const rule=transitionRule(order.status);
     if(!rule || rule.to!=='PCP')return res.status(409).json({error:'INVALID_COMMERCIAL_TRANSITION'});
-
     const problem=validateTransition(order);
     if(problem)return res.status(422).json({error:'TRANSITION_BLOCKED',message:problem});
 
@@ -49,18 +53,15 @@ export default async function handler(req,res){
     applyTransitionSideEffects(order,'COMERCIAL');
     order.status='PCP';
     order.events=Array.isArray(order.events)?order.events:[];
+    // Remove eventual mensagem de criação/finalização trazida pelo payload e grava um único evento canônico.
+    order.events=order.events.filter(e=>String(e?.idempotencyKey||'')!==idempotencyKey && e?.type!=='STATUS_TRANSITION');
     order.events.unshift({
-      at:now,
-      type:'STATUS_TRANSITION',
-      text:'Comercial finalizado · pedido enviado ao PCP',
-      from:'COMERCIAL',to:'PCP',
-      user:session.name||session.email,
-      idempotencyKey
+      at:now,type:'STATUS_TRANSITION',text:'Comercial finalizado · pedido enviado ao PCP',
+      from:'COMERCIAL',to:'PCP',user:session.name||session.email,idempotencyKey
     });
     order.events=order.events.slice(0,100);
 
     const saved=await writeWorkspace(WORKSPACE,state,revision);
-
     const sql=db();
     await sql`
       insert into public.focado_audit_events(user_id,action,entity_type,entity_id,metadata)
