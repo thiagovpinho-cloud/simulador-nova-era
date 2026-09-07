@@ -5,6 +5,7 @@
   const CONFIG_KEY='focado-data-config-v2';
   const TOKEN_KEY='focado-api-session-token';
   const listeners=new Set();
+  const pcpFinalizePending=new Map();
   let revision=null;
 
   function readLocal(){
@@ -149,6 +150,33 @@
     }
   }
 
+  function finalizePCP(orderId,changes,idempotencyKey){
+    const current=readLocal();
+    if(!isRemoteReady())return Promise.resolve({mode:'blocked',ok:false,error:'API_REQUIRED',payload:current});
+    const pendingKey=String(orderId||'');
+    if(pcpFinalizePending.has(pendingKey))return pcpFinalizePending.get(pendingKey);
+    const task=(async()=>{
+      try{
+        const body=await remoteRequest('/api/pcp-finalize',{
+          method:'POST',
+          body:JSON.stringify({orderId,changes,idempotencyKey})
+        });
+        if(body?.payload)writeLocal(body.payload);
+        return {mode:'remote',ok:true,...body,payload:body?.payload};
+      }catch(err){
+        if(err.status===409){
+          emit({source:'remote-conflict',error:err});
+          return {mode:'conflict',ok:false,error:String(err.message),code:err.code,currentStatus:err.body?.currentStatus,currentRevision:err.body?.currentRevision};
+        }
+        return {mode:'remote',ok:false,error:String(err.message),status:err.status,code:err.code};
+      }finally{
+        pcpFinalizePending.delete(pendingKey);
+      }
+    })();
+    pcpFinalizePending.set(pendingKey,task);
+    return task;
+  }
+
   async function transitionOrder(orderId){
     if(!isRemoteReady()) return {mode:'local',ok:false,error:'API_REQUIRED'};
     try{
@@ -222,7 +250,7 @@
   async function hydrateLocalCache(){const state=await load();writeLocal(state);return state}
 
   window.FocadoDataStore={
-    readLocal,writeLocal,load,save,saveDomain,finalizeCommercial,transitionOrder,getDomainV2,refreshDomainV2,getV2Consistency,getSecurityHealth,subscribe,getConfig,setConfig,setSessionToken,getSessionToken,isRemoteReady,hydrateLocalCache,
+    readLocal,writeLocal,load,save,saveDomain,finalizeCommercial,finalizePCP,transitionOrder,getDomainV2,refreshDomainV2,getV2Consistency,getSecurityHealth,subscribe,getConfig,setConfig,setSessionToken,getSessionToken,isRemoteReady,hydrateLocalCache,
     get mode(){return isRemoteReady()?'api':'local'},
     get revision(){return revision}
   };
