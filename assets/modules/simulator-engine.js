@@ -42,7 +42,8 @@
     const H=G*ICMS;
     const I=G*pisCofins;
     const K=G*ipi;
-    const stZero=String(global?.state??global?.estado||'').toUpperCase()==='SP';
+    const state=global?.state??global?.estado??'';
+    const stZero=String(state).toUpperCase()==='SP';
     const M=G*(stZero?0:icmsst);
     const O=G+K+M;
     const N=C?O/C:0;
