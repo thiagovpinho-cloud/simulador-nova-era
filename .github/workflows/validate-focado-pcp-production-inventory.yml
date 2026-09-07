@@ -1,0 +1,62 @@
+name: Validate Focado PCP Production Inventory
+
+on:
+  push:
+    branches:
+      - focado/pcp-producao-estoque
+  workflow_dispatch:
+
+jobs:
+  pcp-production-inventory-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Syntax check PCP Production Inventory
+        run: |
+          node --check shared/pcp-finalize.js
+          node --check shared/production-traceability.js
+          node --check api/pcp-finalize.js
+          node --check api/domain.js
+          node --check assets/core/data-store.js
+          node --check assets/modules/pcp-finalize-bridge.js
+          node --check assets/core/module-loader.js
+          node --check tests/pcp-production-inventory-atomic.test.mjs
+          node --check scripts/browser-pcp-finalize-smoke.mjs
+
+      - name: Run atomic PCP Production Inventory tests
+        run: node tests/pcp-production-inventory-atomic.test.mjs
+
+      - name: Run existing domain regression tests
+        run: |
+          node tests/domain-rules.test.mjs
+          node tests/critical-flows.test.mjs
+          node tests/regression-guards.test.mjs
+
+      - name: Build slim preview package
+        shell: bash
+        run: |
+          rm -rf _site
+          mkdir -p _site
+          cp index.html manifest.webmanifest focado-*.svg _site/
+          cp -R assets _site/assets
+          cp -R shared _site/shared
+          node scripts/slim-preview-index.mjs _site/index.html _site/index.html "${GITHUB_SHA}"
+
+      - name: Run atomic PCP release in Chromium
+        shell: bash
+        run: |
+          npm install --no-save --no-package-lock playwright@1.57.0
+          npx playwright install --with-deps chromium
+          python3 -m http.server 4173 --directory _site >/tmp/focado-pcp-production-inventory-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then break; fi
+            sleep 1
+          done
+          node scripts/browser-pcp-finalize-smoke.mjs http://127.0.0.1:4173
