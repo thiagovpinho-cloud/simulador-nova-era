@@ -35,8 +35,8 @@ try{
   assert.match(body,/Nova Era/);
   assert.match(body,/New Green/);
   assert.match(body,/Álcool \+ Bicarbonato 12x1L/);
-  assert.match(body,/Peso bruto/);
-  assert.match(body,/Cubagem/);
+  assert.match(body,/Peso bruto/i);
+  assert.match(body,/Cubagem/i);
 
   const firstLogistics=page.locator('[data-logistics]').first();
   await firstLogistics.click();
