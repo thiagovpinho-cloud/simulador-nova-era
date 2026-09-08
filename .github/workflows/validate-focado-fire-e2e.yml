@@ -1,0 +1,75 @@
+name: Validate Focado Fire E2E
+
+on:
+  push:
+    branches:
+      - focado/passo-8-teste-de-fogo-e2e
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fire-e2e-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Syntax check Fire E2E
+        run: |
+          node --check tests/fire-e2e-full-flow.test.mjs
+          node --check shared/commercial-finalize.js
+          node --check shared/pcp-finalize.js
+          node --check shared/production-traceability.js
+          node --check shared/freight-quote.js
+          node --check shared/delivery-finalize.js
+          node --check shared/domain-rules.js
+          node --check scripts/browser-commercial-pcp-smoke.mjs
+          node --check scripts/browser-pcp-finalize-smoke.mjs
+          node --check scripts/browser-production-inventory-smoke.mjs
+          node --check scripts/browser-logistics-expedition-delivery-smoke.mjs
+          node --check scripts/browser-permissions-history-smoke.mjs
+
+      - name: Run continuous same-order Fire E2E
+        run: node tests/fire-e2e-full-flow.test.mjs
+
+      - name: Run critical domain regressions
+        run: |
+          node tests/commercial-pcp-atomic.test.mjs
+          node tests/pcp-production-inventory-atomic.test.mjs
+          node tests/logistics-expedition-delivery.test.mjs
+          node tests/domain-rules.test.mjs
+          node tests/critical-flows.test.mjs
+          node tests/regression-guards.test.mjs
+
+      - name: Build slim preview package
+        shell: bash
+        run: |
+          rm -rf _site
+          mkdir -p _site
+          cp index.html manifest.webmanifest focado-*.svg _site/
+          cp -R assets _site/assets
+          cp -R shared _site/shared
+          node scripts/slim-preview-index.mjs _site/index.html _site/index.html "${GITHUB_SHA}"
+
+      - name: Run full operational Chromium fire suite
+        shell: bash
+        run: |
+          npm install --no-save --no-package-lock playwright@1.57.0
+          npx playwright install --with-deps chromium
+          python3 -m http.server 4173 --directory _site >/tmp/focado-fire-e2e-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then break; fi
+            sleep 1
+          done
+          node scripts/browser-commercial-pcp-smoke.mjs http://127.0.0.1:4173
+          node scripts/browser-pcp-finalize-smoke.mjs http://127.0.0.1:4173
+          node scripts/browser-production-inventory-smoke.mjs http://127.0.0.1:4173
+          node scripts/browser-logistics-expedition-delivery-smoke.mjs http://127.0.0.1:4173
+          node scripts/browser-permissions-history-smoke.mjs http://127.0.0.1:4173
