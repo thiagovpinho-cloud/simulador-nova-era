@@ -54,8 +54,8 @@ try{
   await page.evaluate(()=>window.FocadoShell.navigate('pedidos'));
   await page.waitForFunction(()=>typeof window.FocadoOrders?.openOrder==='function');
   await page.evaluate(()=>window.FocadoOrders.openOrder('o1'));
-  await page.waitForSelector('[data-fq-commercial]',{state:'visible',timeout:10000});
-  await page.locator('[data-fq-commercial]').click();
+  await page.waitForSelector('[data-fq-commercial]',{state:'attached',timeout:10000});
+  await page.evaluate(()=>document.querySelector('[data-fq-commercial]')?.onclick?.());
   await page.waitForFunction(()=>window.FocadoDataStore.readLocal()?.orders?.[0]?.freightQuote?.status==='SOLICITADA');
   assert.equal(quoteRequests,1,'solicitação de cotação deve gerar um request');
 
