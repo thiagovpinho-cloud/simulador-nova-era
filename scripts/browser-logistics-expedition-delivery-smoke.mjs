@@ -89,10 +89,16 @@ try{
   await page.waitForSelector('[data-exp="o1"]',{state:'attached',timeout:10000});
   await page.evaluate(()=>document.querySelector('[data-exp="o1"]')?.onclick?.());
   await page.waitForSelector('#feSepDate',{state:'attached',timeout:10000});
-  await page.fill('#feSepDate','2026-09-12');
-  await page.fill('#feConfDate','2026-09-12');
-  await page.locator('[data-conferred]').fill('10');
-  await page.evaluate(async()=>{const fn=document.querySelector('#feRelease')?.onclick;if(fn)await fn()});
+  await page.evaluate(()=>{
+    const sep=document.querySelector('#feSepDate');
+    const conf=document.querySelector('#feConfDate');
+    const conferred=document.querySelector('[data-conferred]');
+    if(!sep||!conf||!conferred)throw new Error('EXPEDITION_FIELDS_MISSING');
+    sep.value='2026-09-12';
+    conf.value='2026-09-12';
+    conferred.value='10';
+  });
+  await page.evaluate(async()=>{const fn=document.querySelector('#feRelease')?.onclick;if(!fn)throw new Error('EXPEDITION_RELEASE_HANDLER_MISSING');await fn()});
   await page.waitForFunction(()=>window.FocadoDataStore.readLocal()?.orders?.[0]?.expedition?.stockReleasedAt>0);
   assert.equal(expeditionWrites,1);assert.equal(serverState.inventory['001'].physical,0);assert.equal(serverState.inventory['001'].reserved,0);
 
