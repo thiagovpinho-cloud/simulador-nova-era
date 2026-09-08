@@ -20,6 +20,7 @@
     'commercial-finalize-bridge':{js:'commercial-finalize-bridge.js'},
     'pcp-finalize-bridge':{js:'pcp-finalize-bridge.js'},
     'delivery-finalize-bridge':{js:'delivery-finalize-bridge.js'},
+    'freight-quote-ui':{js:'freight-quote-ui.js'},
     pedidos:{css:'orders.css',js:'orders.js',deps:['produtos','commercial-finalize-bridge']},
     pcp:{css:'pcp.css',js:'pcp.js',deps:['produtos','production','pcp-finalize-bridge']},
     production:{css:'production.css',js:'production.js',deps:['produtos']},
@@ -53,6 +54,7 @@
     'pcp-history':()=>typeof window.FocadoPCPHistory?.attach==='function',
     'pcp-finalize-bridge':()=>typeof window.FocadoPCPFinalizeBridge?.collectChanges==='function',
     'delivery-finalize-bridge':()=>window.FocadoDeliveryFinalizeBridge?.active===true,
+    'freight-quote-ui':()=>window.FocadoFreightQuoteUI?.active===true,
     pedidos:()=>typeof window.FocadoOrders?.render==='function'&&typeof window.FocadoOrders?.openOrder==='function',
     pcp:()=>typeof window.FocadoPCP?.render==='function',
     production:()=>typeof window.FocadoProduction?.render==='function',
@@ -76,7 +78,7 @@
   function css(href){const selector='link[data-focado-module="'+href+'"]',preloaded=document.querySelector('link[href*="assets/modules/'+href+'"]');if(preloaded&&preloaded.sheet)return Promise.resolve();const existing=document.querySelector(selector);if(existing){if(existing.dataset.loaded==='1'||existing.sheet)return Promise.resolve();existing.remove();}return new Promise((resolve,reject)=>{const el=document.createElement('link');el.rel='stylesheet';el.href='assets/modules/'+href+'?v='+VERSION;el.dataset.focadoModule=href;el.onload=()=>{el.dataset.loaded='1';resolve()};el.onerror=err=>{el.remove?.();reject(err||new Error('MODULE_CSS_LOAD_FAILED:'+href))};const ds=document.querySelector('link[href*="assets/design-system.css"]');if(ds&&ds.parentNode===document.head)document.head.insertBefore(el,ds);else document.head.appendChild(el);});}
   function js(src){if(document.querySelector('script[data-focado-module="'+src+'"]'))return Promise.resolve();return new Promise((resolve,reject)=>{const el=document.createElement('script');el.src='assets/modules/'+src+'?v='+VERSION;el.defer=true;el.dataset.focadoModule=src;el.onload=resolve;el.onerror=err=>{el.remove?.();reject(err||new Error('MODULE_JS_LOAD_FAILED:'+src))};document.body.appendChild(el);});}
   function optional(name){Promise.resolve().then(()=>ensure(name)).catch(err=>console.warn('[FocadoModules] módulo opcional indisponível:',name,err));}
-  function loadOrderComplements(){optional('order-drafts');optional('pcp-commercial-alerts');}
+  function loadOrderComplements(){optional('order-drafts');optional('pcp-commercial-alerts');optional('freight-quote-ui');}
   async function ensure(name){
     let def=defs[name];if(!def)return true;
     if(def.alias){await ensure(def.alias);verify(name);return true;}
@@ -89,12 +91,14 @@
         verify(name);
         if(name==='pedidos')loadOrderComplements();
         if(name==='pcp')optional('pcp-history');
+        if(name==='logistica')optional('freight-quote-ui');
         return true;
       }
       await Promise.all([def.css?css(def.css):null,def.js?js(def.js):null].filter(Boolean));
       verify(name);
       if(name==='pedidos')loadOrderComplements();
       if(name==='pcp')optional('pcp-history');
+      if(name==='logistica')optional('freight-quote-ui');
       return true;
     })();
     loaded.set(name,p);
