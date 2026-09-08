@@ -1,6 +1,7 @@
 (function(){
   'use strict';
-  const ds=window.FocadoDataStore;if(!ds||ds.__deliveryFinalizeBridge)return;
+  const ds=window.FocadoDataStore;if(!ds)return;
+  if(ds.__deliveryFinalizeBridge){window.FocadoDeliveryFinalizeBridge={active:true};return}
   const originalSaveDomain=ds.saveDomain.bind(ds),pending=new Map();
   const makeKey=orderId=>'delivery:'+String(orderId||'');
   async function atomicDelivery(changes,orderId){
@@ -35,4 +36,5 @@
     return originalSaveDomain(domain,changes,orderId);
   };
   ds.__deliveryFinalizeBridge=true;
+  window.FocadoDeliveryFinalizeBridge={active:true};
 })();
