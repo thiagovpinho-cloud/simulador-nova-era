@@ -1,0 +1,157 @@
+name: Apply Step 7 Permissions History
+
+on:
+  push:
+    branches: [focado/passo-7-permissoes-historico]
+    paths: [.github/workflows/apply-step7-permissions-history.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: focado/passo-7-permissoes-historico
+      - name: Apply narrow Step 7 patch
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          # Frontend auth: add Director without collapsing existing functional roles.
+          p=Path('assets/core/auth-client.js'); s=p.read_text()
+          s=s.replace("    ADMIN:'Administrador',\n", "    ADMIN:'Administrador',\n    DIRETOR:'Diretor',\n",1)
+          old="""  function can(route){
+    const role=getRole();
+    if(!role)return false;
+    const allowed=ROUTE_ACCESS[route];
+    return !allowed || allowed.includes(role);
+  }
+"""
+          new="""  function can(route){
+    const role=getRole();
+    if(!role)return false;
+    if(role==='DIRETOR'){
+      const blocked=new Set(['cockpit','corpo-auditor','bi-config','system-health','config']);
+      return !blocked.has(route);
+    }
+    const allowed=ROUTE_ACCESS[route];
+    return !allowed || allowed.includes(role);
+  }
+"""
+          assert old in s, 'auth can() anchor missing'
+          s=s.replace(old,new,1); p.write_text(s)
+
+          # Users UI: Admin manages accounts; Director sees immutable audit history only.
+          p=Path('assets/modules/users.js'); s=p.read_text()
+          s=s.replace("    ['ADMIN','Administrador','Acesso total, usuários, auditoria e configurações.'],\n", "    ['ADMIN','Administrador','Acesso total, usuários, auditoria e configurações.'],\n    ['DIRETOR','Diretor','Visão executiva transversal e leitura da auditoria, sem administrar credenciais.'],\n",1)
+          anchor="""  async function request(method,body){
+    const res=await fetch(apiBase()+'/api/users',{
+      method,
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+token()},
+      body:body?JSON.stringify(body):undefined,
+      cache:'no-store'
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok){const e=new Error(data.error||'REQUEST_FAILED');e.code=data.error||'REQUEST_FAILED';throw e}
+    return data;
+  }
+"""
+          add=anchor+"""
+  async function requestAudit(){
+    const res=await fetch(apiBase()+'/api/audit/changes?limit=100',{
+      headers:{Authorization:'Bearer '+token()},cache:'no-store'
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok){const e=new Error(data.error||'AUDIT_FAILED');e.code=data.error||'AUDIT_FAILED';throw e}
+    return data;
+  }
+"""
+          assert anchor in s, 'users request anchor missing'
+          s=s.replace(anchor,add,1)
+          pattern=r"  async function render\(\)\{.*?\n  \}\n\n  function draw\(users\)\{"
+          replacement="""  async function render(){
+    const root=$('#fxContent'); if(!root)return;
+    const role=window.FocadoAuth?.getRole?.()||'';
+    if(role==='DIRETOR'){
+      root.innerHTML='<div class="fx-titlebar"><div><span class="fx-eyebrow">GOVERNANÇA</span><h1>Histórico e Auditoria</h1><p>Consulta executiva das alterações operacionais registradas pelo Focado.</p></div></div><div class="fu-loading">Carregando histórico...</div>';
+      try{const audit=await requestAudit();drawDirectorAudit(audit.changes||[])}
+      catch(err){root.innerHTML+='<div class="fu-alert error">Não foi possível carregar o histórico de auditoria.</div>'}
+      return;
+    }
+    root.innerHTML='<div class="fx-titlebar"><div><span class="fx-eyebrow">CONFIGURAÇÕES</span><h1>Usuários e Perfis</h1><p>Cadastre pessoas, defina responsabilidades e controle acessos por área.</p></div></div><div class="fu-loading">Carregando usuários...</div>';
+    try{
+      const [data,audit]=await Promise.all([request('GET'),requestAudit()]);
+      draw(data.users||[],audit.changes||[]);
+    }catch(err){
+      root.innerHTML+='<div class="fu-alert error">'+esc(errorMessage(err.code))+'</div>';
+    }
+  }
+
+  function draw(users,changes=[]){"""
+          s,n=re.subn(pattern,replacement,s,count=1,flags=re.S); assert n==1,'users render block not replaced'
+          old="""    search.oninput=paint;
+    paint();
+  }
+
+  function renderUsers(users,q){
+"""
+          new="""    search.oninput=paint;
+    paint();
+    appendAudit(root,changes,users);
+  }
+
+  function actionLabel(action){
+    return ({DOMAIN_WRITE:'Gravação operacional',STATUS_TRANSITION:'Mudança de etapa',WORKSPACE_WRITE:'Atualização geral',USER_CREATED:'Usuário criado',USER_UPDATED:'Usuário atualizado',LOGIN:'Login',LOGOUT:'Logout',PASSWORD_RESET:'Senha redefinida'})[action]||String(action||'Evento');
+  }
+  function auditMarkup(changes,users=[]){
+    const names=new Map(users.map(u=>[String(u.id),u.name||u.email]));
+    const rows=(changes||[]).slice(0,100);
+    if(!rows.length)return '<div class="fu-empty">Nenhum evento de auditoria registrado.</div>';
+    return '<div class="fu-role-list">'+rows.map(c=>{
+      const at=c.occurredAt?new Date(c.occurredAt).toLocaleString('pt-BR'):'—';
+      const who=names.get(String(c.userId))||('Usuário '+esc(c.userId||'sistema'));
+      const entity=[c.entityType,c.entityId].filter(Boolean).join(' · ');
+      return '<div class="fu-role"><span class="fu-role-code">#'+esc(c.revision??c.id??'—')+'</span><div><b>'+esc(actionLabel(c.action))+'</b><p>'+esc(at)+' · '+esc(who)+(entity?' · '+esc(entity):'')+'</p></div></div>';
+    }).join('')+'</div>';
+  }
+  function appendAudit(root,changes,users){
+    const section=document.createElement('section');
+    section.className='fu-panel fu-audit';
+    section.innerHTML='<div class="fu-panel-head"><div><h2>Histórico e Auditoria</h2><p>Últimas alterações registradas. A trilha é imutável no banco.</p></div><span class="fu-count">'+(changes||[]).length+' eventos</span></div>'+auditMarkup(changes,users);
+    root.appendChild(section);
+  }
+  function drawDirectorAudit(changes){
+    const root=$('#fxContent');
+    root.innerHTML='<div class="fx-titlebar"><div><span class="fx-eyebrow">GOVERNANÇA</span><h1>Histórico e Auditoria</h1><p>Consulta executiva. Administração de usuários e credenciais permanece exclusiva do Administrador.</p></div><div class="fu-count">'+(changes||[]).length+' eventos</div></div><section class="fu-panel fu-audit"><div class="fu-panel-head"><div><h2>Últimas alterações</h2><p>Registros operacionais imutáveis e rastreáveis.</p></div></div>'+auditMarkup(changes,[])+'</section>';
+  }
+
+  function renderUsers(users,q){
+"""
+          assert old in s, 'users paint anchor missing'; s=s.replace(old,new,1); p.write_text(s)
+
+          # Worker: Director is a valid role, broad operational permissions, but no credential management.
+          p=Path('worker/src/index.js'); s=p.read_text()
+          old='const ROLES = new Set(["ADMIN","COMERCIAL","PCP","PRODUCAO","ESTOQUE","LOGISTICA","COMPRAS","FINANCEIRO"]);'
+          new='const ROLES = new Set(["ADMIN","DIRETOR","COMERCIAL","PCP","PRODUCAO","ESTOQUE","LOGISTICA","COMPRAS","FINANCEIRO"]);'
+          assert old in s, 'worker roles anchor missing'; s=s.replace(old,new,1)
+          old='''async function hasPermission(db,role,permission){\n  if(role==="ADMIN")return true;\n  const r=await db.query("select 1 from public.focado_role_permissions where role=$1 and permission=$2 limit 1",[role,permission]);\n  return r.rowCount>0;\n}'''
+          new='''async function hasPermission(db,role,permission){\n  if(role==="ADMIN")return true;\n  if(role==="DIRETOR")return permission!=="users.manage";\n  const r=await db.query("select 1 from public.focado_role_permissions where role=$1 and permission=$2 limit 1",[role,permission]);\n  return r.rowCount>0;\n}'''
+          assert old in s, 'worker permission anchor missing'; s=s.replace(old,new,1)
+          old='await requireSession(request,db,"users.manage");\n      const limit=Math.min(200,Math.max(1,Number(url.searchParams.get("limit")||50)));'
+          new='await requireSession(request,db,"audit.read");\n      const limit=Math.min(200,Math.max(1,Number(url.searchParams.get("limit")||50)));'
+          assert old in s, 'audit permission anchor missing'; s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+          node --check assets/core/auth-client.js
+          node --check assets/modules/users.js
+          node --check worker/src/index.js
+          git config user.name "Focado CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add assets/core/auth-client.js assets/modules/users.js worker/src/index.js
+          git commit -m "feat: add Director governance and immutable audit history"
+          git push origin HEAD:focado/passo-7-permissoes-historico
