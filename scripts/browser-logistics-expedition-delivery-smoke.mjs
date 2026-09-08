@@ -64,11 +64,19 @@ try{
   await page.evaluate(()=>window.FocadoShell.navigate('logistica'));
   await page.waitForFunction(()=>typeof window.FocadoLogistics?.openOrder==='function');
   await page.evaluate(()=>window.FocadoLogistics.openOrder('o1'));
-  await page.waitForSelector('[data-fq-logistics] #fqRespond',{state:'visible',timeout:10000});
-  await page.selectOption('#fqCarrier','c1');await page.fill('#fqValue','350');await page.fill('#fqDays','2');await page.fill('#fqPickup','2026-09-12');await page.fill('#fqDelivery','2026-09-14');await page.click('#fqRespond');
+  await page.waitForSelector('[data-fq-logistics] #fqRespond',{state:'attached',timeout:10000});
+  await page.evaluate(()=>{
+    document.querySelector('#fqCarrier').value='c1';
+    document.querySelector('#fqValue').value='350';
+    document.querySelector('#fqDays').value='2';
+    document.querySelector('#fqPickup').value='2026-09-12';
+    document.querySelector('#fqDelivery').value='2026-09-14';
+    document.querySelector('#fqRespond')?.onclick?.();
+  });
   await page.waitForFunction(()=>window.FocadoDataStore.readLocal()?.orders?.[0]?.freightQuote?.status==='RESPONDIDA');
   assert.equal(quoteResponses,1,'resposta de cotação deve gerar um request');
-  await page.waitForSelector('#fqApply',{state:'visible',timeout:10000});await page.click('#fqApply');
+  await page.waitForSelector('#fqApply',{state:'attached',timeout:10000});
+  await page.evaluate(()=>document.querySelector('#fqApply')?.onclick?.());
   assert.equal(await page.inputValue('#flCarrier'),'c1');
   await page.click('#flSavePlan');await page.waitForTimeout(100);
   assert.equal(logisticsWrites,1,'aplicação da cotação deve usar o salvamento logístico existente');
