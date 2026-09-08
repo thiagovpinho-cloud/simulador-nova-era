@@ -78,7 +78,9 @@ try{
   await page.waitForSelector('#fqApply',{state:'attached',timeout:10000});
   await page.evaluate(()=>document.querySelector('#fqApply')?.onclick?.());
   assert.equal(await page.inputValue('#flCarrier'),'c1');
-  await page.click('#flSavePlan');await page.waitForTimeout(100);
+  await page.waitForSelector('#flSavePlan',{state:'attached',timeout:10000});
+  await page.evaluate(()=>document.querySelector('#flSavePlan')?.onclick?.());
+  await page.waitForFunction(()=>window.FocadoDataStore.readLocal()?.orders?.[0]?.logistics?.carrierId==='c1');
   assert.equal(logisticsWrites,1,'aplicação da cotação deve usar o salvamento logístico existente');
   assert.equal(serverState.orders[0].logistics.carrierId,'c1');
   assert.equal(Number(serverState.orders[0].logistics.freightValue),350);
