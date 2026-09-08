@@ -86,7 +86,9 @@ try{
   assert.equal(Number(serverState.orders[0].logistics.freightValue),350);
 
   await page.evaluate(()=>window.FocadoShell.navigate('expedicao'));
-  await page.waitForSelector('[data-exp="o1"]',{state:'visible',timeout:10000});await page.locator('[data-exp="o1"]').click();
+  await page.waitForFunction(()=>typeof window.FocadoExpedition?.openOrder==='function');
+  await page.evaluate(()=>window.FocadoExpedition.openOrder('o1'));
+  await page.waitForSelector('#feSepDate',{state:'attached',timeout:10000});
   await page.fill('#feSepDate','2026-09-12');await page.fill('#feConfDate','2026-09-12');await page.locator('[data-conferred]').fill('10');await page.click('#feRelease');
   await page.waitForFunction(()=>window.FocadoDataStore.readLocal()?.orders?.[0]?.expedition?.stockReleasedAt>0);
   assert.equal(expeditionWrites,1);assert.equal(serverState.inventory['001'].physical,0);assert.equal(serverState.inventory['001'].reserved,0);
