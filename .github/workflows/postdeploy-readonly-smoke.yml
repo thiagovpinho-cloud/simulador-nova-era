@@ -1,0 +1,39 @@
+name: Post-deploy read-only smoke
+
+on:
+  push:
+    branches:
+      - ops/postdeploy-smoke-20260908-37eb30c
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Smoke Pages (GET only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://focado.pages.dev/"
+          code=$(curl -L -sS -o /tmp/pages-body -w '%{http_code}' --max-time 20 "$url")
+          bytes=$(wc -c < /tmp/pages-body)
+          echo "pages_http=$code"
+          echo "pages_bytes=$bytes"
+          test "$code" = "200"
+          test "$bytes" -gt 100
+
+      - name: Smoke API health (GET only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://focado-api.thiagovpinho.workers.dev/health"
+          code=$(curl -L -sS -o /tmp/health-body -w '%{http_code}' --max-time 20 "$url")
+          bytes=$(wc -c < /tmp/health-body)
+          echo "health_http=$code"
+          echo "health_bytes=$bytes"
+          echo "health_body=$(tr '\n' ' ' < /tmp/health-body | head -c 500)"
+          test "$code" = "200"
+          test "$bytes" -gt 1
