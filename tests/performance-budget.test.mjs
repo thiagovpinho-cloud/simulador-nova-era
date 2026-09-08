@@ -19,9 +19,14 @@ for(const route of ['pedidos','pcp','production','inventory','inputs','purchases
 assert.ok(loader.includes('insertBefore(el,ds)'),'CSS lazy deve ser inserido antes do Design System');
 
 // Regra de estabilidade: inteligência pesada nunca participa da abertura operacional.
-assert.ok(loader.includes("pcp:{css:'pcp.css',js:'pcp.js',deps:['produtos','production']}"),'PCP deve carregar sem Cockpit');
+const pcpDef=loader.match(/pcp:\{css:'pcp\.css',js:'pcp\.js',deps:\[([^\]]*)\]\}/)?.[1]||'';
+const logisticsDef=loader.match(/logistica:\{css:'logistics\.css',js:'logistics\.js'(?:,deps:\[([^\]]*)\])?\}/)?.[1]||'';
+assert.ok(pcpDef.includes("'produtos'")&&pcpDef.includes("'production'"),'PCP deve manter dependências operacionais esperadas');
+assert.ok(pcpDef.includes("'pcp-finalize-bridge'"),'PCP deve carregar sua ponte atômica leve');
+assert.ok(!pcpDef.includes("'cockpit'"),'PCP deve carregar sem Cockpit');
 assert.ok(loader.includes("purchases:{css:'purchases.css',js:'purchases.js'}"),'Compras deve carregar sem Cockpit');
-assert.ok(loader.includes("logistica:{css:'logistics.css',js:'logistics.js'}"),'Logística deve carregar sem Cockpit');
+assert.ok(logisticsDef.includes("'delivery-finalize-bridge'"),'Logística deve carregar sua ponte atômica leve');
+assert.ok(!logisticsDef.includes("'cockpit'"),'Logística deve carregar sem Cockpit');
 assert.ok(!loader.includes("deps:['produtos','production','cockpit']"),'Cockpit não pode voltar ao boot do PCP');
 assert.ok(!loader.includes("purchases:{css:'purchases.css',js:'purchases.js',deps:['cockpit']}"),'Cockpit não pode voltar ao boot de Compras');
 assert.ok(!loader.includes("logistica:{css:'logistics.css',js:'logistics.js',deps:['cockpit']}"),'Cockpit não pode voltar ao boot de Logística');
