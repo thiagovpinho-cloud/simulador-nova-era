@@ -6,6 +6,7 @@
 
   const ROLE_LABELS={
     ADMIN:'Administrador',
+    DIRETOR:'Diretor',
     COMERCIAL:'Comercial',
     PCP:'PCP',
     PRODUCAO:'Produção',
@@ -78,6 +79,10 @@
   function can(route){
     const role=getRole();
     if(!role)return false;
+    if(role==='DIRETOR'){
+      const blocked=new Set(['cockpit','corpo-auditor','bi-config','system-health','config']);
+      return !blocked.has(route);
+    }
     const allowed=ROUTE_ACCESS[route];
     return !allowed || allowed.includes(role);
   }

@@ -5,7 +5,7 @@ import { ensurePlatformV2, syncPlatformV2, appendChange, loginThrottle, auditSna
 const { Client } = pg;
 
 const WORKSPACE = "default";
-const ROLES = new Set(["ADMIN","COMERCIAL","PCP","PRODUCAO","ESTOQUE","LOGISTICA","COMPRAS","FINANCEIRO"]);
+const ROLES = new Set(["ADMIN","DIRETOR","COMERCIAL","PCP","PRODUCAO","ESTOQUE","LOGISTICA","COMPRAS","FINANCEIRO"]);
 const ADMIN_RESET_TOKEN_HASH = "080227d3e4f54694a2fe7f1d4344edfcd815f0b144c013c5f6f13ba942489515";
 const ADMIN_RESET_KEY = "ADMIN_PASSWORD_RESET_080227D3";
 
@@ -117,6 +117,7 @@ async function sessionFrom(request,db){
 }
 async function hasPermission(db,role,permission){
   if(role==="ADMIN")return true;
+  if(role==="DIRETOR")return permission!=="users.manage";
   const r=await db.query("select 1 from public.focado_role_permissions where role=$1 and permission=$2 limit 1",[role,permission]);
   return r.rowCount>0;
 }
@@ -430,7 +431,7 @@ async function route(request,env){
     }
 
     if(path==="/audit/changes"&&request.method==="GET"){
-      await requireSession(request,db,"users.manage");
+      await requireSession(request,db,"audit.read");
       const limit=Math.min(200,Math.max(1,Number(url.searchParams.get("limit")||50)));
       const r=await db.query(`select id,occurred_at as "occurredAt",user_id as "userId",action,entity_type as "entityType",entity_id as "entityId",revision,reason,metadata from public.focado_v2_change_log order by id desc limit $1`,[limit]);
       return json({changes:r.rows});

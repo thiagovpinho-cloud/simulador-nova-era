@@ -3,6 +3,7 @@
 
   const ROLES=[
     ['ADMIN','Administrador','Acesso total, usuários, auditoria e configurações.'],
+    ['DIRETOR','Diretor','Visão executiva transversal e leitura da auditoria, sem administrar credenciais.'],
     ['COMERCIAL','Comercial','Clientes, representantes, pedidos e produtos.'],
     ['PCP','PCP','Planejamento, produção, bases e fichas técnicas.'],
     ['PRODUCAO','Produção','Produção, bases, produtos e fichas técnicas.'],
@@ -31,6 +32,15 @@
     return data;
   }
 
+  async function requestAudit(){
+    const res=await fetch(apiBase()+'/api/audit/changes?limit=100',{
+      headers:{Authorization:'Bearer '+token()},cache:'no-store'
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok){const e=new Error(data.error||'AUDIT_FAILED');e.code=data.error||'AUDIT_FAILED';throw e}
+    return data;
+  }
+
   function errorMessage(code){
     return ({
       USER_EXISTS:'Já existe um usuário com este e-mail.',
@@ -45,16 +55,23 @@
 
   async function render(){
     const root=$('#fxContent'); if(!root)return;
+    const role=window.FocadoAuth?.getRole?.()||'';
+    if(role==='DIRETOR'){
+      root.innerHTML='<div class="fx-titlebar"><div><span class="fx-eyebrow">GOVERNANÇA</span><h1>Histórico e Auditoria</h1><p>Consulta executiva das alterações operacionais registradas pelo Focado.</p></div></div><div class="fu-loading">Carregando histórico...</div>';
+      try{const audit=await requestAudit();drawDirectorAudit(audit.changes||[])}
+      catch(err){root.innerHTML+='<div class="fu-alert error">Não foi possível carregar o histórico de auditoria.</div>'}
+      return;
+    }
     root.innerHTML='<div class="fx-titlebar"><div><span class="fx-eyebrow">CONFIGURAÇÕES</span><h1>Usuários e Perfis</h1><p>Cadastre pessoas, defina responsabilidades e controle acessos por área.</p></div></div><div class="fu-loading">Carregando usuários...</div>';
     try{
-      const data=await request('GET');
-      draw(data.users||[]);
+      const [data,audit]=await Promise.all([request('GET'),requestAudit()]);
+      draw(data.users||[],audit.changes||[]);
     }catch(err){
       root.innerHTML+='<div class="fu-alert error">'+esc(errorMessage(err.code))+'</div>';
     }
   }
 
-  function draw(users){
+  function draw(users,changes=[]){
     const root=$('#fxContent');
     root.innerHTML=
       '<div class="fx-titlebar"><div><span class="fx-eyebrow">CONFIGURAÇÕES</span><h1>Usuários e Perfis</h1><p>Cadastre pessoas, defina responsabilidades e controle acessos por área.</p></div><div class="fu-count">'+users.filter(u=>u.active).length+' ativos</div></div>'+
@@ -98,6 +115,32 @@
     const paint=()=>renderUsers(users,search.value);
     search.oninput=paint;
     paint();
+    appendAudit(root,changes,users);
+  }
+
+  function actionLabel(action){
+    return ({DOMAIN_WRITE:'Gravação operacional',STATUS_TRANSITION:'Mudança de etapa',WORKSPACE_WRITE:'Atualização geral',USER_CREATED:'Usuário criado',USER_UPDATED:'Usuário atualizado',LOGIN:'Login',LOGOUT:'Logout',PASSWORD_RESET:'Senha redefinida'})[action]||String(action||'Evento');
+  }
+  function auditMarkup(changes,users=[]){
+    const names=new Map(users.map(u=>[String(u.id),u.name||u.email]));
+    const rows=(changes||[]).slice(0,100);
+    if(!rows.length)return '<div class="fu-empty">Nenhum evento de auditoria registrado.</div>';
+    return '<div class="fu-role-list">'+rows.map(c=>{
+      const at=c.occurredAt?new Date(c.occurredAt).toLocaleString('pt-BR'):'—';
+      const who=names.get(String(c.userId))||('Usuário '+esc(c.userId||'sistema'));
+      const entity=[c.entityType,c.entityId].filter(Boolean).join(' · ');
+      return '<div class="fu-role"><span class="fu-role-code">#'+esc(c.revision??c.id??'—')+'</span><div><b>'+esc(actionLabel(c.action))+'</b><p>'+esc(at)+' · '+esc(who)+(entity?' · '+esc(entity):'')+'</p></div></div>';
+    }).join('')+'</div>';
+  }
+  function appendAudit(root,changes,users){
+    const section=document.createElement('section');
+    section.className='fu-panel fu-audit';
+    section.innerHTML='<div class="fu-panel-head"><div><h2>Histórico e Auditoria</h2><p>Últimas alterações registradas. A trilha é imutável no banco.</p></div><span class="fu-count">'+(changes||[]).length+' eventos</span></div>'+auditMarkup(changes,users);
+    root.appendChild(section);
+  }
+  function drawDirectorAudit(changes){
+    const root=$('#fxContent');
+    root.innerHTML='<div class="fx-titlebar"><div><span class="fx-eyebrow">GOVERNANÇA</span><h1>Histórico e Auditoria</h1><p>Consulta executiva. Administração de usuários e credenciais permanece exclusiva do Administrador.</p></div><div class="fu-count">'+(changes||[]).length+' eventos</div></div><section class="fu-panel fu-audit"><div class="fu-panel-head"><div><h2>Últimas alterações</h2><p>Registros operacionais imutáveis e rastreáveis.</p></div></div>'+auditMarkup(changes,[])+'</section>';
   }
 
   function renderUsers(users,q){
