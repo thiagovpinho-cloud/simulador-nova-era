@@ -44,6 +44,7 @@ function createHarness({failCssOnce=false}={}){
         if(src.includes('indicators.js'))context.window.FocadoIndicators={render(){}};
         if(src.includes('products.js'))context.window.FocadoProducts={render(){},getCatalog(){return[]}};
         if(src.includes('production.js'))context.window.FocadoProduction={render(){}};
+        if(src.includes('pcp-finalize-bridge.js'))context.window.FocadoPCPFinalizeBridge={collectChanges(){return{}}};
         if(src.includes('pcp.js'))context.window.FocadoPCP={render(){},openOrder(){}};
         if(src.includes('pcp-history.js'))context.window.FocadoPCPHistory={attach(){}};
         el.onload?.();
@@ -92,8 +93,8 @@ function createHarness({failCssOnce=false}={}){
   await Promise.resolve();
   await Promise.resolve();
   const names=h.scripts.map(x=>String(x.src||'').split('/').pop().split('?')[0]);
-  for(const required of ['products.js','production.js','pcp.js'])assert.ok(names.includes(required),'PCP deve carregar '+required);
-  const allowed=new Set(['products.js','production.js','pcp.js','pcp-history.js']);
+  for(const required of ['products.js','production.js','pcp-finalize-bridge.js','pcp.js'])assert.ok(names.includes(required),'PCP deve carregar '+required);
+  const allowed=new Set(['products.js','production.js','pcp-finalize-bridge.js','pcp.js','pcp-history.js']);
   assert.ok(names.every(x=>allowed.has(x)),'PCP não pode carregar módulos operacionais alheios: '+names.join(', '));
   assert.ok(!names.includes('intelligence.js')&&!names.includes('intelligence-core.js'),'PCP comum não pode carregar inteligência');
 }
