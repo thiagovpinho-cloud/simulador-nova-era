@@ -10,7 +10,10 @@ const orders=read('assets/modules/orders.js');
 const index=read('index.html');
 
 assert.match(loader,/'order-drafts':\{css:'order-drafts\.css',js:'order-drafts\.js'\}/);
-assert.match(loader,/pedidos:\{css:'orders\.css',js:'orders\.js',deps:\['produtos'\]\}/,'Pedidos não pode depender do complemento de rascunhos para abrir');
+const pedidosDeps=loader.match(/pedidos:\{css:'orders\.css',js:'orders\.js',deps:\[([^\]]*)\]\}/)?.[1]||'';
+assert.ok(pedidosDeps.includes("'produtos'"),'Pedidos deve manter Produtos como dependência operacional');
+assert.ok(pedidosDeps.includes("'commercial-finalize-bridge'"),'Pedidos deve carregar a ponte atômica leve de finalização comercial');
+assert.ok(!pedidosDeps.includes("'order-drafts'")&&!pedidosDeps.includes("'pcp-commercial-alerts'")&&!pedidosDeps.includes("'freight-quote-ui'"),'Complementos opcionais não podem ser dependências críticas de Pedidos');
 assert.doesNotMatch(loader,/pedidos:\{[^\n]+order-drafts/,'Rascunhos jamais podem voltar a ser dependência crítica de Pedidos');
 assert.match(loader,/function loadOrderComplements\(\)[\s\S]*optional\('order-drafts'\)/,'Rascunhos devem carregar apenas como complemento tolerante a falha');
 assert.match(loader,/if\(name==='pedidos'\)loadOrderComplements\(\)/,'Complementos devem iniciar somente após Pedidos estar disponível');
