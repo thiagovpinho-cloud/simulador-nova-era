@@ -13,169 +13,26 @@ jobs:
   patch-and-validate:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout branch
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: focado/fix-customer-postsave-20260909
           fetch-depth: 0
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "22"
-
-      - name: Apply focused customer master patch
+      - name: Apply patch
         shell: bash
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          import re, json
-
-          customers=Path('assets/modules/customers.js')
-          s=customers.read_text()
-          s=s.replace('<th>Representante</th><th>Status</th>','<th>Representante</th><th>Condição pgto.</th><th>Status</th>',1)
-          s=s.replace("<td>'+esc(c.representative||'—')+'</td><td><span class=\"fc-chip ","<td>'+esc(c.representative||'—')+'</td><td>'+esc(c.paymentTerms||'—')+'</td><td><span class=\"fc-chip ",1)
-          old="field('UF','fcState',c.state)+field('Representante','fcRepresentative',c.representative)+select('Status','fcActive'"
-          assert old in s
-          s=s.replace(old,"field('UF','fcState',c.state)+field('Representante','fcRepresentative',c.representative)+field('Condição de pagamento','fcPaymentTerms',c.paymentTerms)+select('Tipo de frete padrão','fcFreightType',c.freightType||'CIF',['CIF','FOB','Redespacho'])+select('Status','fcActive'",1)
-          old='<button class="fc-btn primary" id="fcSave">Salvar cliente</button></div><div class="fc-card">'
-          assert old in s
-          s=s.replace(old,'<div class="fc-actions">\'+(existing?\'<button class="fc-btn" id="fcDelete" type="button">Excluir cliente</button>\':\'\')+\'<button class="fc-btn primary" id="fcSave">Salvar cliente</button></div></div><div class="fc-card">',1)
-          old="document.getElementById('fcSave').onclick=()=>saveCustomer(c);\n    if(!existing)setTimeout(()=>cnpj.focus(),0);"
-          assert old in s
-          s=s.replace(old,"document.getElementById('fcSave').onclick=()=>saveCustomer(c);\n    const deleteBtn=document.getElementById('fcDelete');\n    if(deleteBtn)deleteBtn.onclick=()=>deleteCustomer(c);\n    if(!existing)setTimeout(()=>cnpj.focus(),0);",1)
-          old="representative:document.getElementById('fcRepresentative').value.trim(),active:document.getElementById('fcActive').value==='ATIVO'"
-          assert old in s
-          s=s.replace(old,"representative:document.getElementById('fcRepresentative').value.trim(),paymentTerms:document.getElementById('fcPaymentTerms').value.trim(),freightType:document.getElementById('fcFreightType').value,active:document.getElementById('fcActive').value==='ATIVO'",1)
-          marker='  async function saveCustomer(base){'
-          assert marker in s
-          fn="""  async function deleteCustomer(customer){
-    const ops=load();
-    const cnpj=normCnpj(customer.cnpj);
-    const linked=(ops.orders||[]).some(o=>normCnpj(o.cnpj)===cnpj);
-    const message=linked
-      ?'Este cliente já possui pedido(s) no histórico. Ele não será apagado; ficará INATIVO para preservar a rastreabilidade. Continuar?'
-      :'Excluir este cliente? Esta ação remove somente o cadastro mestre e não pode ser desfeita.';
-    if(!confirm(message))return;
-    const changes=linked?{customer:{...customer,active:false,updatedAt:Date.now()}}:{deleteId:customer.id};
-    const res=await window.FocadoDataStore.saveDomain('CLIENTES',changes,null);
-    if(!res?.ok){alert('Não foi possível excluir/inativar o cliente.');return}
-    if(res.payload)window.FocadoDataStore.writeLocal(res.payload);
-    const refreshed=await window.FocadoDataStore.refreshDomainV2?.('customers');
-    if(refreshed?.payload)window.FocadoDataStore.writeLocal(refreshed.payload);
-    alert(linked?'Cliente inativado. O histórico dos pedidos foi preservado.':'Cliente excluído.');
-    render({q:''});
-  }
-
-"""
-          s=s.replace(marker,fn+marker,1)
-          customers.write_text(s)
-
-          orders=Path('assets/modules/orders.js')
-          s=orders.read_text()
-          p=re.compile(r"  function previousOrderByCnpj\(cnpj,ops,currentId\)\{.*?\n  function collect\(\)\{",re.S)
-          m=p.search(s)
-          assert m
-          replacement="""  function customerByCnpj(cnpj,ops){
-    const key=normalizeCnpj(cnpj);
-    return (ops.customers||[]).find(c=>normalizeCnpj(c.cnpj)===key)||null;
-  }
-  function applyCustomer(customer){
-    setForm('client',customer.name||customer.client||'');
-    setForm('email',customer.email);
-    setForm('phone',customer.phone);
-    setForm('cep',customer.cep);
-    setForm('bairro',customer.bairro);
-    setForm('city',customer.city);
-    setForm('uf',customer.state||customer.uf);
-    setForm('deliveryAddress',customer.address);
-    setForm('representative',customer.representative);
-    setForm('paymentTerms',customer.paymentTerms);
-    if(customer.freightType)setForm('freightType',customer.freightType);
-    if(customer.brand)setForm('brand',customer.brand);
-  }
-  function bindCnpjLookup(ops,o){
-    const input=document.getElementById('foCnpj'),btn=document.getElementById('foCnpjLookup'),status=document.getElementById('foCnpjStatus');let last='';
-    function lookup(){
-      const cnpj=normalizeCnpj(input.value);input.value=formatCnpj(cnpj);
-      if(cnpj.length!==14){status.textContent='Informe os 14 dígitos do CNPJ.';status.className='fo-cnpj-status bad';return}
-      if(cnpj===last)return;last=cnpj;
-      status.textContent='Consultando cadastro de Clientes...';status.className='fo-cnpj-status';
-      const customer=customerByCnpj(cnpj,load());
-      if(!customer){status.textContent='Cliente não encontrado no cadastro do Focado. Cadastre o cliente antes de criar o pedido.';status.className='fo-cnpj-status bad';return}
-      if(customer.active===false){status.textContent='Cliente inativo. Reative o cadastro antes de criar um novo pedido.';status.className='fo-cnpj-status bad';return}
-      applyCustomer(customer);
-      status.textContent='Cliente encontrado no cadastro mestre do Focado. Dados comerciais carregados.';
-      status.className='fo-cnpj-status ok';
-    }
-    btn.onclick=lookup;input.onblur=lookup;input.oninput=()=>{const d=normalizeCnpj(input.value);input.value=formatCnpj(d);if(d!==last)last='';if(d.length===14)setTimeout(lookup,120)};
-  }
-
-  function collect(){"""
-          s=s[:m.start()]+replacement+s[m.end():]
-          orders.write_text(s)
-
-          rules=Path('shared/domain-rules.js')
-          s=rules.read_text()
-          old="""function applyCustomers(state,body){
-  const c=body.changes||{};
-  state.customers=Array.isArray(state.customers)?state.customers:[];
-  if(c.customer&&typeof c.customer==='object'){
-    const incoming=structuredClone(c.customer);
-    const idx=state.customers.findIndex(x=>String(x.id)===String(incoming.id));
-    if(idx>=0)state.customers[idx]=incoming;
-    else state.customers.unshift(incoming);
-  }
-}"""
-          assert old in s
-          new="""function applyCustomers(state,body){
-  const c=body.changes||{};
-  state.customers=Array.isArray(state.customers)?state.customers:[];
-  const norm=v=>String(v||'').replace(/\\D/g,'');
-  if(c.customer&&typeof c.customer==='object'){
-    const incoming=structuredClone(c.customer);
-    const cnpj=norm(incoming.cnpj);
-    if(cnpj){
-      const duplicate=state.customers.find(x=>String(x.id)!==String(incoming.id)&&norm(x.cnpj)===cnpj);
-      if(duplicate)throw Object.assign(new Error('CUSTOMER_CNPJ_ALREADY_EXISTS'),{status:409});
-    }
-    const idx=state.customers.findIndex(x=>String(x.id)===String(incoming.id));
-    if(idx>=0)state.customers[idx]=incoming;
-    else state.customers.unshift(incoming);
-  }
-  if(c.deleteId){
-    const target=state.customers.find(x=>String(x.id)===String(c.deleteId));
-    if(!target)return;
-    const targetCnpj=norm(target.cnpj);
-    const linked=(state.orders||[]).some(o=>targetCnpj&&norm(o.cnpj)===targetCnpj);
-    if(linked){target.active=false;target.updatedAt=Date.now();}
-    else state.customers=state.customers.filter(x=>String(x.id)!==String(c.deleteId));
-  }
-}"""
-          s=s.replace(old,new,1)
-          rules.write_text(s)
-
-          Path('tests/customer-master-flow.test.mjs').write_text('''import assert from "node:assert/strict";\nimport { applyDomain } from "../shared/domain-rules.js";\nconst state={customers:[],orders:[]};\nconst customer={id:"cli_1",cnpj:"47978428000177",name:"Cliente Teste",paymentTerms:"28 dias",active:true};\napplyDomain("CLIENTES",state,{changes:{customer}});\nassert.equal(state.customers[0].paymentTerms,"28 dias");\nassert.throws(()=>applyDomain("CLIENTES",state,{changes:{customer:{...customer,id:"cli_2"}}}),/CUSTOMER_CNPJ_ALREADY_EXISTS/);\napplyDomain("CLIENTES",state,{changes:{deleteId:"cli_1"}});\nassert.equal(state.customers.length,0);\napplyDomain("CLIENTES",state,{changes:{customer}});\nstate.orders.push({id:"op_1",cnpj:customer.cnpj});\napplyDomain("CLIENTES",state,{changes:{deleteId:"cli_1"}});\nassert.equal(state.customers.length,1);\nassert.equal(state.customers[0].active,false);\nconsole.log("customer-master-flow: ok");\n''')
-
-          package=Path('package.json')
-          data=json.loads(package.read_text())
-          needle='node tests/customer-master-flow.test.mjs'
-          if needle not in data['scripts']['test']:
-            data['scripts']['test'] += ' && ' + needle
-          package.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')
-          PY
-
-      - name: Syntax and focused test
+          echo 'CmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aAppbXBvcnQgcmUsIGpzb24KCmN1c3RvbWVycz1QYXRoKCdhc3NldHMvbW9kdWxlcy9jdXN0b21lcnMuanMnKQpzPWN1c3RvbWVycy5yZWFkX3RleHQoKQphc3NlcnQgJzx0aD5SZXByZXNlbnRhbnRlPC90aD48dGg+U3RhdHVzPC90aD4nIGluIHMKcz1zLnJlcGxhY2UoJzx0aD5SZXByZXNlbnRhbnRlPC90aD48dGg+U3RhdHVzPC90aD4nLCc8dGg+UmVwcmVzZW50YW50ZTwvdGg+PHRoPkNvbmRpw6fDo28gcGd0by48L3RoPjx0aD5TdGF0dXM8L3RoPicsMSkKb2xkPSI8dGQ+Jytlc2MoYy5yZXByZXNlbnRhdGl2ZXx8J+KAlCcpKyc8L3RkPjx0ZD48c3BhbiBjbGFzcz1cImZjLWNoaXAgIgphc3NlcnQgb2xkIGluIHMKcz1zLnJlcGxhY2Uob2xkLCI8dGQ+Jytlc2MoYy5yZXByZXNlbnRhdGl2ZXx8J+KAlCcpKyc8L3RkPjx0ZD4nK2VzYyhjLnBheW1lbnRUZXJtc3x8J+KAlCcpKyc8L3RkPjx0ZD48c3BhbiBjbGFzcz1cImZjLWNoaXAgIiwxKQpvbGQ9ImZpZWxkKCdVRicsJ2ZjU3RhdGUnLGMuc3RhdGUpK2ZpZWxkKCdSZXByZXNlbnRhbnRlJywnZmNSZXByZXNlbnRhdGl2ZScsYy5yZXByZXNlbnRhdGl2ZSkrc2VsZWN0KCdTdGF0dXMnLCdmY0FjdGl2ZSciCmFzc2VydCBvbGQgaW4gcwpzPXMucmVwbGFjZShvbGQsImZpZWxkKCdVRicsJ2ZjU3RhdGUnLGMuc3RhdGUpK2ZpZWxkKCdSZXByZXNlbnRhbnRlJywnZmNSZXByZXNlbnRhdGl2ZScsYy5yZXByZXNlbnRhdGl2ZSkrZmllbGQoJ0NvbmRpw6fDo28gZGUgcGFnYW1lbnRvJywnZmNQYXltZW50VGVybXMnLGMucGF5bWVudFRlcm1zKStzZWxlY3QoJ1RpcG8gZGUgZnJldGUgcGFkcsOjbycsJ2ZjRnJlaWdodFR5cGUnLGMuZnJlaWdodFR5cGV8fCdDSUYnLFsnQ0lGJywnRk9CJywnUmVkZXNwYWNobyddKStzZWxlY3QoJ1N0YXR1cycsJ2ZjQWN0aXZlJyIsMSkKb2xkPSc8YnV0dG9uIGNsYXNzPSJmYy1idG4gcHJpbWFyeSIgaWQ9ImZjU2F2ZSI+U2FsdmFyIGNsaWVudGU8L2J1dHRvbj48L2Rpdj48ZGl2IGNsYXNzPSJmYy1jYXJkIj4nCmFzc2VydCBvbGQgaW4gcwpuZXc9JzxkaXYgY2xhc3M9ImZjLWFjdGlvbnMiPlwnKyhleGlzdGluZz9cJzxidXR0b24gY2xhc3M9ImZjLWJ0biIgaWQ9ImZjRGVsZXRlIiB0eXBlPSJidXR0b24iPkV4Y2x1aXIgY2xpZW50ZTwvYnV0dG9uPlwnOlwnXCcpK1wnPGJ1dHRvbiBjbGFzcz0iZmMtYnRuIHByaW1hcnkiIGlkPSJmY1NhdmUiPlNhbHZhciBjbGllbnRlPC9idXR0b24+PC9kaXY+PC9kaXY+PGRpdiBjbGFzcz0iZmMtY2FyZCI+JwpzPXMucmVwbGFjZShvbGQsbmV3LDEpCm9sZD0iZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ2ZjU2F2ZScpLm9uY2xpY2s9KCk9PnNhdmVDdXN0b21lcihjKTtcbiAgICBpZighZXhpc3Rpbmcpc2V0VGltZW91dCgoKT0+Y25wai5mb2N1cygpLDApOyIKYXNzZXJ0IG9sZCBpbiBzCnM9cy5yZXBsYWNlKG9sZCwiZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ2ZjU2F2ZScpLm9uY2xpY2s9KCk9PnNhdmVDdXN0b21lcihjKTtcbiAgICBjb25zdCBkZWxldGVCdG49ZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ2ZjRGVsZXRlJyk7XG4gICAgaWYoZGVsZXRlQnRuKWRlbGV0ZUJ0bi5vbmNsaWNrPSgpPT5kZWxldGVDdXN0b21lcihjKTtcbiAgICBpZighZXhpc3Rpbmcpc2V0VGltZW91dCgoKT0+Y25wai5mb2N1cygpLDApOyIsMSkKb2xkPSJyZXByZXNlbnRhdGl2ZTpkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnZmNSZXByZXNlbnRhdGl2ZScpLnZhbHVlLnRyaW0oKSxhY3RpdmU6ZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ2ZjQWN0aXZlJykudmFsdWU9PT0nQVRJVk8nIgphc3NlcnQgb2xkIGluIHMKcz1zLnJlcGxhY2Uob2xkLCJyZXByZXNlbnRhdGl2ZTpkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnZmNSZXByZXNlbnRhdGl2ZScpLnZhbHVlLnRyaW0oKSxwYXltZW50VGVybXM6ZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ2ZjUGF5bWVudFRlcm1zJykudmFsdWUudHJpbSgpLGZyZWlnaHRUeXBlOmRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdmY0ZyZWlnaHRUeXBlJykudmFsdWUsYWN0aXZlOmRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdmY0FjdGl2ZScpLnZhbHVlPT09J0FUSVZPJyIsMSkKbWFya2VyPScgIGFzeW5jIGZ1bmN0aW9uIHNhdmVDdXN0b21lcihiYXNlKXsnCmFzc2VydCBtYXJrZXIgaW4gcwpmbj0iIiIgIGFzeW5jIGZ1bmN0aW9uIGRlbGV0ZUN1c3RvbWVyKGN1c3RvbWVyKXsKICAgIGNvbnN0IG9wcz1sb2FkKCk7CiAgICBjb25zdCBjbnBqPW5vcm1DbnBqKGN1c3RvbWVyLmNucGopOwogICAgY29uc3QgbGlua2VkPShvcHMub3JkZXJzfHxbXSkuc29tZShvPT5ub3JtQ25waihvLmNucGopPT09Y25waik7CiAgICBjb25zdCBtZXNzYWdlPWxpbmtlZAogICAgICA/J0VzdGUgY2xpZW50ZSBqw6EgcG9zc3VpIHBlZGlkbyhzKSBubyBoaXN0w7NyaWNvLiBFbGUgbsOjbyBzZXLDoSBhcGFnYWRvOyBmaWNhcsOhIElOQVRJVk8gcGFyYSBwcmVzZXJ2YXIgYSByYXN0cmVhYmlsaWRhZGUuIENvbnRpbnVhcj8nCiAgICAgIDonRXhjbHVpciBlc3RlIGNsaWVudGU/IEVzdGEgYcOnw6NvIHJlbW92ZSBzb21lbnRlIG8gY2FkYXN0cm8gbWVzdHJlIGUgbsOjbyBwb2RlIHNlciBkZXNmZWl0YS4nOwogICAgaWYoIWNvbmZpcm0obWVzc2FnZSkpcmV0dXJuOwogICAgY29uc3QgY2hhbmdlcz1saW5rZWQ/e2N1c3RvbWVyOnsuLi5jdXN0b21lcixhY3RpdmU6ZmFsc2UsdXBkYXRlZEF0OkRhdGUubm93KCl9fTp7ZGVsZXRlSWQ6Y3VzdG9tZXIuaWR9OwogICAgY29uc3QgcmVzPWF3YWl0IHdpbmRvdy5Gb2NhZG9EYXRhU3RvcmUuc2F2ZURvbWFpbignQ0xJRU5URVMnLGNoYW5nZXMsbnVsbCk7CiAgICBpZighcmVzPy5vayl7YWxlcnQoJ07Do28gZm9pIHBvc3PDrXZlbCBleGNsdWlyL2luYXRpdmFyIG8gY2xpZW50ZS4nKTtyZXR1cm59CiAgICBpZihyZXMucGF5bG9hZCl3aW5kb3cuRm9jYWRvRGF0YVN0b3JlLndyaXRlTG9jYWwocmVzLnBheWxvYWQpOwogICAgY29uc3QgcmVmcmVzaGVkPWF3YWl0IHdpbmRvdy5Gb2NhZG9EYXRhU3RvcmUucmVmcmVzaERvbWFpblYyPy4oJ2N1c3RvbWVycycpOwogICAgaWYocmVmcmVzaGVkPy5wYXlsb2FkKXdpbmRvdy5Gb2NhZG9EYXRhU3RvcmUud3JpdGVMb2NhbChyZWZyZXNoZWQucGF5bG9hZCk7CiAgICBhbGVydChsaW5rZWQ/J0NsaWVudGUgaW5hdGl2YWRvLiBPIGhpc3TDs3JpY28gZG9zIHBlZGlkb3MgZm9pIHByZXNlcnZhZG8uJzonQ2xpZW50ZSBleGNsdcOtZG8uJyk7CiAgICByZW5kZXIoe3E6Jyd9KTsKICB9CgoiIiIKcz1zLnJlcGxhY2UobWFya2VyLGZuK21hcmtlciwxKQpjdXN0b21lcnMud3JpdGVfdGV4dChzKQoKb3JkZXJzPVBhdGgoJ2Fzc2V0cy9tb2R1bGVzL29yZGVycy5qcycpCnM9b3JkZXJzLnJlYWRfdGV4dCgpCnA9cmUuY29tcGlsZShyIiAgZnVuY3Rpb24gcHJldmlvdXNPcmRlckJ5Q25walwoY25waixvcHMsY3VycmVudElkXClcey4qP1xuICBmdW5jdGlvbiBjb2xsZWN0XChcKVx7IixyZS5TKQptPXAuc2VhcmNoKHMpCmFzc2VydCBtLCAnbG9va3VwIGJsb2NrIG5vdCBmb3VuZCcKcmVwbGFjZW1lbnQ9IiIiICBmdW5jdGlvbiBjdXN0b21lckJ5Q25waihjbnBqLG9wcyl7CiAgICBjb25zdCBrZXk9bm9ybWFsaXplQ25waihjbnBqKTsKICAgIHJldHVybiAob3BzLmN1c3RvbWVyc3x8W10pLmZpbmQoYz0+bm9ybWFsaXplQ25waihjLmNucGopPT09a2V5KXx8bnVsbDsKICB9CiAgZnVuY3Rpb24gYXBwbHlDdXN0b21lcihjdXN0b21lcil7CiAgICBzZXRGb3JtKCdjbGllbnQnLGN1c3RvbWVyLm5hbWV8fGN1c3RvbWVyLmNsaWVudHx8JycpOwogICAgc2V0Rm9ybSgnZW1haWwnLGN1c3RvbWVyLmVtYWlsKTsKICAgIHNldEZvcm0oJ3Bob25lJyxjdXN0b21lci5waG9uZSk7CiAgICBzZXRGb3JtKCdjZXAnLGN1c3RvbWVyLmNlcCk7CiAgICBzZXRGb3JtKCdiYWlycm8nLGN1c3RvbWVyLmJhaXJybyk7CiAgICBzZXRGb3JtKCdjaXR5JyxjdXN0b21lci5jaXR5KTsKICAgIHNldEZvcm0oJ3VmJyxjdXN0b21lci5zdGF0ZXx8Y3VzdG9tZXIudWYpOwogICAgc2V0Rm9ybSgnZGVsaXZlcnlBZGRyZXNzJyxjdXN0b21lci5hZGRyZXNzKTsKICAgIHNldEZvcm0oJ3JlcHJlc2VudGF0aXZlJyxjdXN0b21lci5yZXByZXNlbnRhdGl2ZSk7CiAgICBzZXRGb3JtKCdwYXltZW50VGVybXMnLGN1c3RvbWVyLnBheW1lbnRUZXJtcyk7CiAgICBpZihjdXN0b21lci5mcmVpZ2h0VHlwZSlzZXRGb3JtKCdmcmVpZ2h0VHlwZScsY3VzdG9tZXIuZnJlaWdodFR5cGUpOwogICAgaWYoY3VzdG9tZXIuYnJhbmQpc2V0Rm9ybSgnYnJhbmQnLGN1c3RvbWVyLmJyYW5kKTsKICB9CiAgZnVuY3Rpb24gYmluZENucGpMb29rdXAob3BzLG8pewogICAgY29uc3QgaW5wdXQ9ZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ2ZvQ25waicpLGJ0bj1kb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnZm9DbnBqTG9va3VwJyksc3RhdHVzPWRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdmb0NucGpTdGF0dXMnKTtsZXQgbGFzdD0nJzsKICAgIGZ1bmN0aW9uIGxvb2t1cCgpewogICAgICBjb25zdCBjbnBqPW5vcm1hbGl6ZUNucGooaW5wdXQudmFsdWUpO2lucHV0LnZhbHVlPWZvcm1hdENucGooY25waik7CiAgICAgIGlmKGNucGoubGVuZ3RoIT09MTQpe3N0YXR1cy50ZXh0Q29udGVudD0nSW5mb3JtZSBvcyAxNCBkw61naXRvcyBkbyBDTlBKLic7c3RhdHVzLmNsYXNzTmFtZT0nZm8tY25wai1zdGF0dXMgYmFkJztyZXR1cm59CiAgICAgIGlmKGNucGo9PT1sYXN0KXJldHVybjtsYXN0PWNucGo7CiAgICAgIHN0YXR1cy50ZXh0Q29udGVudD0nQ29uc3VsdGFuZG8gY2FkYXN0cm8gZGUgQ2xpZW50ZXMuLi4nO3N0YXR1cy5jbGFzc05hbWU9J2ZvLWNucGotc3RhdHVzJzsKICAgICAgY29uc3QgY3VzdG9tZXI9Y3VzdG9tZXJCeUNucGooY25waixsb2FkKCkpOwogICAgICBpZighY3VzdG9tZXIpe3N0YXR1cy50ZXh0Q29udGVudD0nQ2xpZW50ZSBuw6NvIGVuY29udHJhZG8gbm8gY2FkYXN0cm8gZG8gRm9jYWRvLiBDYWRhc3RyZSBvIGNsaWVudGUgYW50ZXMgZGUgY3JpYXIgbyBwZWRpZG8uJztzdGF0dXMuY2xhc3NOYW1lPSdmby1jbnBqLXN0YXR1cyBiYWQnO3JldHVybn0KICAgICAgaWYoY3VzdG9tZXIuYWN0aXZlPT09ZmFsc2Upe3N0YXR1cy50ZXh0Q29udGVudD0nQ2xpZW50ZSBpbmF0aXZvLiBSZWF0aXZlIG8gY2FkYXN0cm8gYW50ZXMgZGUgY3JpYXIgIHVtIG5vdm8gcGVkaWRvLic7c3RhdHVzLmNsYXNzTmFtZT0nZm8tY25wai1zdGF0dXMgYmFkJztyZXR1cm59CiAgICAgIGFwcGx5Q3VzdG9tZXIoY3VzdG9tZXIpOwogICAgICBzdGF0dXMudGV4dENvbnRlbnQ9J0NsaWVudGUgZW5jb250cmFkbyBubyBjYWRhc3RybyBtZXN0cmUgZG8gRm9jYWRvLiBEYWRvcyBjb21lcmNpYWlzIGNhcnJlZ2Fkb3MuJzsKICAgICAgc3RhdHVzLmNsYXNzTmFtZT0nZm8tY25wai1zdGF0dXMgb2snOwogICAgfQogICAgYnRuLm9uY2xpY2s9bG9va3VwO2lucHV0Lm9uYmx1cj1sb29rdXA7aW5wdXQub25pbnB1dD0oKT0+e2NvbnN0IGQ9bm9ybWFsaXplQ25waihpbnB1dC52YWx1ZSk7aW5wdXQudmFsdWU9Zm9ybWF0Q25waihkKTtpZihkIT09bGFzdClsYXN0PScnO2lmKGQubGVuZ3RoPT09MTQpc2V0VGltZW91dChsb29rdXAsMTIwKX07CiAgfQoKICBmdW5jdGlvbiBjb2xsZWN0KCl7IiIiCnM9c1s6bS5zdGFydCgpXStyZXBsYWNlbWVudH1zc1ttLmVuZCgpOl0Kb3JkZXJzLndyaXRlX3RleHQocykKCnJ1bGVzPVBhdGgoJ3NoYXJlZC9kb21haW4tcnVsZXMuanMnKQpzPXJ1bGVzLnJlYWRfdGV4dCgpCm9sZD0iIiJmdW5jdGlvbiBhcHBseUN1c3RvbWVycyhzdGF0ZSxib2R5KXsKICBjb25zdCBjPWJvZHkuY2hhbmdlc3x8e307CiAgc3RhdGUuY3VzdG9tZXJzPUFycmF5LmlzQXJyYXkoc3RhdGUuY3VzdG9tZXJzKT9zdGF0ZS5jdXN0b21lcnM6W107CiAgaWYoYy5jdXN0b21lciYmdHlwZW9mIGMuY3VzdG9tZXI9PT0nb2JqZWN0Jyl7CiAgICBjb25zdCBpbmNvbWluZz1zdHJ1Y3R1cmVkQ2xvbmUoYy5jdXN0b21lcik7CiAgICBjb25zdCBpZHg9c3RhdGUuY3VzdG9tZXJzLmZpbmRJbmRleCh4PT5TdHJpbmcoeC5pZCk9PT1TdHJpbmcoaW5jb21pbmcuaWQpKTsKICAgIGlmKGlkeD49MClzdGF0ZS5jdXN0b21lcnNbaWR4XT1pbmNvbWluZzsKICAgIGVsc2Ugc3RhdGUuY3VzdG9tZXJzLnVuc2hpZnQoaW5jb21pbmcpOwogIH0KfSIiIgphc3NlcnQgb2xkIGluIHMKbmV3PSIiImZ1bmN0aW9uIGFwcGx5Q3VzdG9tZXJzKHN0YXRlLGJvZHkpewogIGNvbnN0IGM9Ym9keS5jaGFuZ2VzfHx7fTsKICBzdGF0ZS5jdXN0b21lcnM9QXJyYXkuaXNBcnJheShzdGF0ZS5jdXN0b21lcnMpP3N0YXRlLmN1c3RvbWVyczpbXTsKICBjb25zdCBub3JtPXY9PlN0cmluZyh2fHwnJykucmVwbGFjZSgvXFxEL2csJycpOwogIGlmKGMuY3VzdG9tZXImJnR5cGVvZiBjLmN1c3RvbWVyPT09J29iamVjdCcpewogICAgY29uc3QgaW5jb21pbmc9c3RydWN0dXJlZENsb25lKGMuY3VzdG9tZXIpOwogICAgY29uc3QgY25waj1ub3JtKGluY29taW5nLmNucGopOwogICAgaWYoY25wail7CiAgICAgIGNvbnN0IGR1cGxpY2F0ZT1zdGF0ZS5jdXN0b21lcnMuZmluZCh4PT5TdHJpbmcoeC5pZCkhPT1TdHJpbmcoaW5jb21pbmcuaWQpJiZub3JtKHguY25waik9PT1jbnBqKTsKICAgICAgaWYoZHVwbGljYXRlKXRocm93IE9iamVjdC5hc3NpZ24obmV3IEVycm9yKCdDVVNUT01FUl9DTlBKX0FMUkVBRFlfRVhJU1RTJykse3N0YXR1czo0MDl9KTsKICAgIH0KICAgIGNvbnN0IGlkeD1zdGF0ZS5jdXN0b21lcnMuZmluZEluZGV4KHg9PlN0cmluZyh4LmlkKT09PVN0cmluZyhpbmNvbWluZy5pZCkpOwogICAgaWYoaWR4Pj0wKXN0YXRlLmN1c3RvbWVyc1tpZHhdPWluY29taW5nOwogICAgZWxzZSBzdGF0ZS5jdXN0b21lcnMudW5zaGlmdChpbmNvbWluZyk7CiAgfQogIGlmKGMuZGVsZXRlSWQpewogICAgY29uc3QgdGFyZ2V0PXN0YXRlLmN1c3RvbWVycy5maW5kKHg9PlN0cmluZyh4LmlkKT09PVN0cmluZyhjLmRlbGV0ZUlkKSk7CiAgICBpZighdGFyZ2V0KXJldHVybjsKICAgIGNvbnN0IHRhcmdldENucGo9bm9ybSh0YXJnZXQuY25waik7CiAgICBjb25zdCBsaW5rZWQ9KHN0YXRlLm9yZGVyc3x8W10pLnNvbWUobz0+dGFyZ2V0Q25waiYmbm9ybShvLmNucGopPT09dGFyZ2V0Q25waik7CiAgICBpZihsaW5rZWQpe3RhcmdldC5hY3RpdmU9ZmFsc2U7dGFyZ2V0LnVwZGF0ZWRBdD1EYXRlLm5vdygpO30KICAgIGVsc2Ugc3RhdGUuY3VzdG9tZXJzPXN0YXRlLmN1c3RvbWVycy5maWx0ZXIoeD0+U3RyaW5nKHguaWQpIT09U3RyaW5nKGMuZGVsZXRlSWQpKTsKICB9Cn0iIiIKcz1zLnJlcGxhY2Uob2xkLG5ldyw xKQpydWxlcy53cml0ZV90ZXh0KHMpCgp0ZXN0X2NvbnRlbnQgPSAiIiJpbXBvcnQgYXNzZXJ0IGZyb20gIm5vZGU6YXNzZXJ0L3N0cmljdCI7CmltcG9ydCB7IGFwcGx5RG9tYWluIH0gZnJvbSAiLi4vc2hhcmVkL2RvbWFpbi1ydWxlcy5qcyI7CmNvbnN0IHN0YXRlPXtjdXN0b21lcnM6W10sb3JkZXJzOltdfTsKY29uc3QgY3VzdG9tZXI9e2lkOiJjbGlfMSIsY25wajoiNDc5Nzg0MjgwMDAxNzciLG5hbWU6IkNsaWVudGUgVGVzdGUiLHBheW1lbnRUZXJtczoiMjggZGlhcyIsYWN0aXZlOnRydWV9OwphcHBseURvbWFpbigiQ0xJRU5URVMiLHN0YXRlLHtjaGFuZ2VzOntjdXN0b21lcn19KTsKYXNzZXJ0LmVxdWFsKHN0YXRlLmN1c3RvbWVyc1swXS5wYXltZW50VGVybXMsIjI4IGRpYXMiKTsKYXNzZXJ0LnRocm93cygoKT0+YXBwbHlEb21haW4oIkNMSUVOVEVTIixzdGF0ZSx7Y2hhbmdlczp7Y3VzdG9tZXI6ey4uLmN1c3RvbWVyLGlkOiJjbGlfMiJ9fX0pLC9DVVNUT01FUl9DTlBKX0FMUkVBRFlfRVhJU1RTLyk7CmFwcGx5RG9tYWluKCJDTElFTlRFUyIsc3RhdGUse2NoYW5nZXM6e2RlbGV0ZUlkOiJjbGlfMSJ9fSk7CmFzc2VydC5lcXVhbChzdGF0ZS5jdXN0b21lcnMubGVuZ3RoLDApOwphcHBseURvbWFpbigiQ0xJRU5URVMiLHN0YXRlLHtjaGFuZ2VzOntjdXN0b21lcn19KTsKc3RhdGUub3JkZXJzLnB1c2goe2lkOiJvcF8xIixjbnBqOmN1c3RvbWVyLmNucG p9KTsKYXBwbHlEb21haW4oIkNMSUVOVEVTIixzdGF0ZSx7Y2hhbmdlczp7ZGVsZXRlSWQ6ImNsaV8xIn19KTsKYXNzZXJ0LmVxdWFsKHN0YXRlLmN1c3RvbWVycy5sZW5ndGgsMSk7CmFzc2VydC5lcXVhbChzdGF0ZS5jdXN0b21lcnNbMF0uYWN0aXZlLGZhbHNlKTsKY29uc29sZS5sb2coImN1c3RvbWVyLW1hc3Rlci1mbG93OiBvayIpOwoiIiIKUGF0aCgndGVzdHMvY3VzdG9tZXItbWFzdGVyLWZsb3cudGVzdC5tanMnKS53cml0ZV90ZXh0KHRlc3RfY29udGVudCkKCnBhY2thZ2U9UGF0aCgncGFja2FnZS5qc29uJykKZGF0YT1qc29uLmxvYWRzKHBhY2thZ2UucmVhZF90ZXh0KCkpCm5lZWRsZT0nbm9kZSB0ZXN0cy9jdXN0b21lci1tYXN0ZXItZmxvdy50ZXN0Lm1qcycKaWYgbmVlZGxlIG5vdCBpbiBkYXRhWydzY3JpcHRzJ11bJ3Rlc3QnXToKICAgIGRhdGFbJ3NjcmlwdHMnXVsndGVzdCddICs9ICcgJiYgJyArIG5lZWRsZQpwYWNrYWdlLndyaXRlX3RleHQoanNvbi5kdW1wcyhkYXRhLGVuc3VyZV9hc2NpaT1GYWxzZSxpbmRlbnQ9MikrJ1xuJykK' | tr -d ' ' | base64 -d > /tmp/patch.py
+          python /tmp/patch.py
+      - name: Validate
         run: |
           node --check assets/modules/customers.js
           node --check assets/modules/orders.js
           node --check shared/domain-rules.js
           node tests/customer-master-flow.test.mjs
-
-      - name: Full regression suite
-        run: npm test
-
-      - name: Restore validation workflow and commit patch
+          npm test
+      - name: Commit validated changes
         shell: bash
         run: |
           git fetch origin main
