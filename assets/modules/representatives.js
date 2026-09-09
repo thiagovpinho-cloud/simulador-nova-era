@@ -3,10 +3,30 @@
   const content=()=>document.getElementById('fxContent');
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const load=()=>window.FocadoDataStore?.readLocal?.()||{};
-  const save=async ops=>window.FocadoDataStore?.save?.(ops)||{ok:true,mode:'local'};
   const digits=v=>String(v||'').replace(/\D/g,'');
   const apiBase=()=>String(window.FocadoDataStore?.getConfig?.().apiBaseUrl||'').replace(/\/$/,'');
   const token=()=>window.FocadoDataStore?.getSessionToken?.()||'';
+
+  async function persistRepresentativeChange(mutator){
+    const store=window.FocadoDataStore;
+    if(!store?.load||!store?.save)return {ok:false,error:'DATA_STORE_UNAVAILABLE'};
+    for(let attempt=0;attempt<2;attempt++){
+      const latest=await store.load();
+      const next=structuredClone(latest||{});
+      next.representatives=Array.isArray(next.representatives)?next.representatives:[];
+      const expectedId=await mutator(next.representatives,next);
+      if(!expectedId)return {ok:false,error:'REPRESENTATIVE_CHANGE_INVALID'};
+      const res=await store.save(next);
+      if(res?.ok){
+        const confirmed=store.readLocal?.()||{};
+        const exists=(confirmed.representatives||[]).some(r=>String(r.id)===String(expectedId));
+        if(exists)return {ok:true,payload:confirmed,id:expectedId};
+        return {ok:false,error:'REPRESENTATIVE_NOT_CONFIRMED'};
+      }
+      if(res?.mode!=='conflict')return res||{ok:false,error:'REPRESENTATIVE_SAVE_FAILED'};
+    }
+    return {ok:false,error:'REPRESENTATIVE_SAVE_CONFLICT'};
+  }
 
   function validCPF(value){
     const cpf=digits(value);
@@ -98,7 +118,19 @@
       });
       body.innerHTML=rows.map(r=>'<tr><td><b>'+esc(r.name)+'</b></td><td>'+esc(r.document||'—')+'</td><td>'+esc(r.phone||'—')+'</td><td>'+esc(r.email||'—')+'</td><td>'+esc([r.city,r.uf].filter(Boolean).join('/'))+'</td><td>'+((Number(r.commission)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}))+'%</td><td><span class="fr-status '+(r.active===false?'off':'on')+'">'+(r.active===false?'Inativo':'Ativo')+'</span></td><td><div class="fr-row-actions"><button data-edit="'+esc(r.id)+'">Editar</button><button data-toggle="'+esc(r.id)+'">'+(r.active===false?'Ativar':'Inativar')+'</button></div></td></tr>').join('')||'<tr><td colspan="8" class="fr-empty">Nenhum representante encontrado.</td></tr>';
       body.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openModal(reps.find(r=>r.id===b.dataset.edit)));
-      body.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=async()=>{const r=reps.find(x=>x.id===b.dataset.toggle);if(!r)return;r.active=r.active===false?true:false;await save(ops);render()});
+      body.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=async()=>{
+        const r=reps.find(x=>x.id===b.dataset.toggle);if(!r)return;
+        const nextActive=r.active===false?true:false;
+        b.disabled=true;
+        const res=await persistRepresentativeChange(remote=>{
+          const target=remote.find(x=>String(x.id)===String(r.id));
+          if(!target)return null;
+          target.active=nextActive;target.updatedAt=Date.now();return target.id;
+        });
+        b.disabled=false;
+        if(!res?.ok){alert('Não foi possível atualizar o representante. Nenhuma alteração foi confirmada.');return}
+        render();
+      });
     }
     q.oninput=paint;status.onchange=paint;paint();
 
@@ -173,6 +205,7 @@
     };
     document.getElementById('frCancel').onclick=()=>modal.classList.add('hidden');
     document.getElementById('frSave').onclick=async()=>{
+      const saveBtn=document.getElementById('frSave');
       const docValidation=await runDocumentValidation();
       if(!docValidation.ok){alert('Corrija o CPF/CNPJ do representante antes de salvar.');return}
       const name=document.getElementById('frName').value.trim();
@@ -192,10 +225,22 @@
         commission,
         notes:document.getElementById('frNotes').value.trim()
       };
-      if(editing)Object.assign(editing,data,{updatedAt:Date.now()});
-      else reps.push({id:'rep_'+Date.now(),...data,active:true,createdAt:Date.now()});
-      ops.representatives=reps;
-      await save(ops);
+      const id=editing?.id||('rep_'+Date.now());
+      saveBtn.disabled=true;saveBtn.textContent='Salvando...';
+      const res=await persistRepresentativeChange(remote=>{
+        const duplicate=remote.find(r=>String(r.document||'')===String(data.document||'')&&String(r.id)!==String(id));
+        if(data.document&&duplicate)throw new Error('REPRESENTATIVE_DOCUMENT_ALREADY_EXISTS');
+        const idx=remote.findIndex(r=>String(r.id)===String(id));
+        const now=Date.now();
+        const record=idx>=0?{...remote[idx],...data,updatedAt:now}:{id,...data,active:true,createdAt:now,updatedAt:now};
+        if(idx>=0)remote[idx]=record;else remote.push(record);
+        return id;
+      }).catch(err=>({ok:false,error:String(err?.message||err)}));
+      saveBtn.disabled=false;saveBtn.textContent='Salvar representante';
+      if(!res?.ok){
+        alert(res?.error?.includes('REPRESENTATIVE_DOCUMENT_ALREADY_EXISTS')?'Já existe um representante com este CPF/CNPJ.':'Não foi possível salvar o representante. Nenhuma alteração foi confirmada; tente novamente.');
+        return;
+      }
       modal.classList.add('hidden');
       render();
     };
