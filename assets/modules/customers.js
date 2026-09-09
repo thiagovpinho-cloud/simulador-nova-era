@@ -153,7 +153,9 @@
     if(customer.email&&!/^\S+@\S+\.\S+$/.test(customer.email)){alert('Informe um e-mail válido.');return}
     const res=await window.FocadoDataStore.saveDomain('CLIENTES',{customer},null);
     if(!res?.ok){alert('Não foi possível salvar o cliente.');return}
-    await window.FocadoDataStore.load();
+    if(res?.payload)window.FocadoDataStore.writeLocal(res.payload);
+    const refreshed=await window.FocadoDataStore.refreshDomainV2('customers');
+    if(!refreshed?.ok&&res?.payload)window.FocadoDataStore.writeLocal(res.payload);
     render(state);
   }
 
