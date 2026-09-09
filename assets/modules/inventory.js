@@ -140,6 +140,7 @@
         '<label class="fi-field"><span>Data de recebimento</span><input id="fiMovDate" type="date" value="'+today()+'"></label>'+
         '<label class="fi-field"><span>Base / fábrica de origem</span><select id="fiMovBase">'+bases(ops).map(b=>'<option>'+esc(b)+'</option>').join('')+'</select></label>'+
         '<label class="fi-field fi-span-2"><span>Produto</span><select id="fiMovProduct"><option value="">Selecione o produto</option>'+products.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.code+' · '+p.name+' · '+p.brand)+'</option>').join('')+'</select></label>'+
+        '<label class="fi-field"><span>Número do lote</span><input id="fiMovLot" type="text" maxlength="60" autocomplete="off" placeholder="Informe o lote de fabricação"></label>'+
         '<label class="fi-field"><span>Volume</span><input id="fiMovQty" type="number" min="1" step="1" placeholder="0"></label>'+
         '<label class="fi-field"><span>Medida</span><select id="fiMovUnit"><option value="CX">Caixas</option><option value="UN">Unidades</option></select></label>'+
         '<label class="fi-field"><span>Condição do produto</span><select id="fiMovCondition"><option value="OK">OK / Conforme</option><option value="AVARIA">Com avaria</option><option value="BLOQUEADO">Bloqueado</option><option value="RESSALVA">Recebido com ressalva</option></select></label>'+
@@ -147,7 +148,7 @@
         '<label class="fi-field"><span>Caixas por palete</span><input id="fiMovBoxes" type="number" min="0" step="1" placeholder="0"></label>'+
         '<label class="fi-field"><span>Chapatex?</span><select id="fiMovChapatex"><option value="NAO">Não</option><option value="SIM">Sim</option></select></label>'+
         '<label class="fi-field"><span>Paletes calculados</span><input id="fiMovPallets" readonly value="—"></label>'+
-        '<label class="fi-field fi-span-2"><span>Observações</span><textarea id="fiMovNote" placeholder="Condições do recebimento, avarias, ressalvas, lote, veículo ou qualquer informação relevante"></textarea></label>'+
+        '<label class="fi-field fi-span-2"><span>Observações</span><textarea id="fiMovNote" placeholder="Condições do recebimento, avarias, ressalvas, veículo ou qualquer informação relevante"></textarea></label>'+
       '</div></div>'+
       '<div class="fi-panel"><h2>Últimas entradas</h2>'+movementHistory(history)+'</div></div>';
     bindBack();
@@ -159,14 +160,15 @@
 
   function movementHistory(rows){
     if(!rows.length)return '<div class="fi-empty">Nenhuma entrada de produção registrada.</div>';
-    return '<div class="fi-table-wrap"><table class="fi-table"><thead><tr><th>Data</th><th>Base</th><th>Produto</th><th>Volume</th><th>Condição</th><th>Paletização</th><th>Observação</th></tr></thead><tbody>'+rows.map(m=>'<tr><td>'+new Date(m.at||0).toLocaleDateString('pt-BR')+'</td><td>'+esc(m.base||m.warehouse||'—')+'</td><td><b>'+esc(m.name||'—')+'</b><div class="fi-muted">'+esc(m.code||'')+'</div></td><td>'+fmt(m.qty)+' '+esc(m.unit||'')+'</td><td>'+esc(m.condition||'OK')+'</td><td>'+(m.palletized?'Sim · '+fmt(m.boxesPerPallet)+' cx/pal · '+fmt(m.pallets)+' pal':'Não')+(m.chapatex?' · Chapatex':'')+'</td><td>'+esc(m.note||'—')+'</td></tr>').join('')+'</tbody></table></div>';
+    return '<div class="fi-table-wrap"><table class="fi-table"><thead><tr><th>Data</th><th>Base</th><th>Produto</th><th>Lote</th><th>Volume</th><th>Condição</th><th>Paletização</th><th>Observação</th></tr></thead><tbody>'+rows.map(m=>'<tr><td>'+new Date(m.at||0).toLocaleDateString('pt-BR')+'</td><td>'+esc(m.base||m.warehouse||'—')+'</td><td><b>'+esc(m.name||'—')+'</b><div class="fi-muted">'+esc(m.code||'')+'</div></td><td><b>'+esc(m.lot||'—')+'</b></td><td>'+fmt(m.qty)+' '+esc(m.unit||'')+'</td><td>'+esc(m.condition||'OK')+'</td><td>'+(m.palletized?'Sim · '+fmt(m.boxesPerPallet)+' cx/pal · '+fmt(m.pallets)+' pal':'Não')+(m.chapatex?' · Chapatex':'')+'</td><td>'+esc(m.note||'—')+'</td></tr>').join('')+'</tbody></table></div>';
   }
 
   async function saveMovement(products){
     const p=products.find(x=>x.id===document.getElementById('fiMovProduct').value);
-    const date=document.getElementById('fiMovDate').value,base=document.getElementById('fiMovBase').value,qty=Math.max(0,Number(document.getElementById('fiMovQty').value)||0),unit=document.getElementById('fiMovUnit').value;
+    const date=document.getElementById('fiMovDate').value,base=document.getElementById('fiMovBase').value,lot=document.getElementById('fiMovLot').value.trim(),qty=Math.max(0,Number(document.getElementById('fiMovQty').value)||0),unit=document.getElementById('fiMovUnit').value;
     const condition=document.getElementById('fiMovCondition').value,palletized=document.getElementById('fiMovPalletized').value==='SIM',boxesPerPallet=Math.max(0,Number(document.getElementById('fiMovBoxes').value)||0),chapatex=document.getElementById('fiMovChapatex').value==='SIM',note=document.getElementById('fiMovNote').value.trim();
     if(!date||!p||!(qty>0)){alert('Informe data, produto e volume recebido.');return}
+    if(!lot){alert('Informe o número do lote.');return}
     if(palletized&&!(boxesPerPallet>0)){alert('Informe quantas caixas há por palete.');return}
     const pallets=palletized?Math.ceil(qty/boxesPerPallet):0,user=window.FocadoAuth?.getUser?.()?.name||'Estoque';
     const key=productKey(p);
@@ -174,7 +176,7 @@
       id:'mov_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
       at:new Date(date+'T12:00:00').getTime(),kind:'finished',key,code:p.code,name:p.name,brand:p.brand,unit,
       type:'ENTRADA_PRODUCAO',qty,deltaPhysical:qty,deltaBlocked:condition==='BLOQUEADO'?qty:0,base,warehouse:base,
-      condition,palletized,boxesPerPallet,pallets,chapatex,note,reason:'Recebimento de produção',user
+      lot,condition,palletized,boxesPerPallet,pallets,chapatex,note,reason:'Recebimento de produção',user
     }});
     if(!result?.ok){alert('Não foi possível registrar a entrada. Nenhuma alteração foi confirmada.');return}
     if(result?.payload)window.FocadoDataStore?.writeLocal?.(result.payload);
@@ -214,7 +216,7 @@
   }
   function movementHistoryFull(rows){
     if(!rows.length)return '<div class="fi-empty">Nenhuma movimentação registrada para este produto.</div>';
-    return '<div class="fi-table-wrap"><table class="fi-table"><thead><tr><th>Data</th><th>Tipo</th><th>Base</th><th>Quantidade</th><th>Motivo</th><th>Usuário</th></tr></thead><tbody>'+rows.map(m=>'<tr><td>'+new Date(m.at||0).toLocaleString('pt-BR')+'</td><td><span class="fi-chip '+(m.type==='QUEBRA'?'block':'ok')+'">'+esc(m.type||'—')+'</span></td><td>'+esc(m.base||m.warehouse||'—')+'</td><td>'+fmt(m.qty)+' '+esc(m.unit||'')+'</td><td>'+esc(m.reason||'—')+'</td><td>'+esc(m.user||'—')+'</td></tr>').join('')+'</tbody></table></div>';
+    return '<div class="fi-table-wrap"><table class="fi-table"><thead><tr><th>Data</th><th>Tipo</th><th>Base</th><th>Lote</th><th>Quantidade</th><th>Motivo</th><th>Usuário</th></tr></thead><tbody>'+rows.map(m=>'<tr><td>'+new Date(m.at||0).toLocaleString('pt-BR')+'</td><td><span class="fi-chip '+(m.type==='QUEBRA'?'block':'ok')+'">'+esc(m.type||'—')+'</span></td><td>'+esc(m.base||m.warehouse||'—')+'</td><td>'+esc(m.lot||'—')+'</td><td>'+fmt(m.qty)+' '+esc(m.unit||'')+'</td><td>'+esc(m.reason||'—')+'</td><td>'+esc(m.user||'—')+'</td></tr>').join('')+'</tbody></table></div>';
   }
 
   function renderMovements(){renderMovementEntry()}
