@@ -1,0 +1,47 @@
+name: Teste 360 Bloco 2
+
+on:
+  push:
+    branches:
+      - focado/teste-360-bloco2-20260909
+
+permissions:
+  contents: read
+
+jobs:
+  bloco2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validar fluxo de domínio do mesmo pedido
+        run: |
+          node tests/block2-same-order-resilience.test.mjs
+          node tests/pcp-production-inventory-atomic.test.mjs
+          node tests/fire-e2e-full-flow.test.mjs
+      - name: Montar preview leve
+        shell: bash
+        run: |
+          rm -rf _site
+          mkdir -p _site
+          cp index.html manifest.webmanifest focado-*.svg _site/
+          cp -R assets _site/assets
+          cp -R shared _site/shared
+          node scripts/slim-preview-index.mjs _site/index.html _site/index.html "${GITHUB_SHA}"
+      - name: Validar telas PCP, Produção e Estoque no Chromium
+        shell: bash
+        run: |
+          npm install --no-save --no-package-lock playwright@1.57.0
+          npx playwright install --with-deps chromium
+          python3 -m http.server 4173 --directory _site >/tmp/focado-bloco2-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then break; fi
+            sleep 1
+          done
+          node scripts/browser-pcp-finalize-smoke.mjs http://127.0.0.1:4173
+          node scripts/browser-production-inventory-smoke.mjs http://127.0.0.1:4173
