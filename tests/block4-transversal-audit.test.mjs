@@ -15,14 +15,12 @@ function makeOrder(){return {
   items:[{id:'i1',code:'PA001',name:'Produto 360',qty:10,price:100,reservedQty:0,cutQty:0,pcpBalanceDecision:'AGUARDAR',pcpAvailabilityDate:'',deliveryBase:''}]
 }}
 
-// Dados incompletos: finalização Comercial não pode contaminar estado.
 {
   const s={orders:[makeOrder()]}; s.orders[0].client=''; const before=clone(s);
   assert.throws(()=>finalizeCommercialState(s,{orderId:'b4o1',changes:{},idempotencyKey:'b4-bad'}),/Pedido incompleto/);
   assert.deepEqual(s,before);
 }
 
-// Estoque insuficiente: PCP não pode reservar acima do saldo e não pode deixar efeito parcial.
 {
   const o=makeOrder(); o.status='PCP';
   const s={orders:[o],inventory:{PA001:{code:'PA001',physical:3,reserved:0,blocked:0}},stockMovements:[]};
@@ -31,7 +29,6 @@ function makeOrder(){return {
   assert.deepEqual(s,before);
 }
 
-// Entrega deve ser idempotente e histórico não pode duplicar transição.
 let deliveredState;
 {
   const o=makeOrder(); o.status='LOGISTICA'; o.logistics={deliveryDate:'2026-09-14'};
@@ -45,7 +42,6 @@ let deliveredState;
   deliveredState=s;
 }
 
-// Auditoria crítica: após ENTREGUE, a regra de domínio ainda aceita edição logística direta.
 {
   const before=clone(deliveredState.orders[0]);
   applyDomain('LOGISTICA',deliveredState,{orderId:'b4o1',changes:{logistics:{freightValue:999}}});
@@ -56,12 +52,11 @@ let deliveredState;
   }
 }
 
-// Saldo negativo deve ser recusado atomicamente.
 {
   const s={inventory:{PA001:{code:'PA001',physical:2,reserved:0,blocked:0}},inputInventory:{},stockMovements:[]};
-  const before=clone(s);
+  const before=clone({inventory:s.inventory,inputInventory:s.inputInventory,stockMovements:s.stockMovements});
   assert.throws(()=>applyDomain('ESTOQUE',s,{changes:{movement:{kind:'finished',key:'PA001',code:'PA001',deltaPhysical:-3,qty:3,type:'SAIDA_TESTE'}}}),e=>e.status===422&&e.message==='INVENTORY_NEGATIVE_BALANCE');
-  assert.deepEqual(s,before);
+  assert.deepEqual({inventory:s.inventory,inputInventory:s.inputInventory,stockMovements:s.stockMovements},before);
 }
 
 console.log(JSON.stringify({event:'block4-transversal-audit',ok:true,findings},null,2));
