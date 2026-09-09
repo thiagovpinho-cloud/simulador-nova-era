@@ -55,12 +55,22 @@
   }
 
   function findCustomer(ops,id){return aggregate(ops).find(c=>String(c.id)===String(id))}
+  function representativeSelect(ops,current){
+    const reps=(Array.isArray(ops.representatives)?ops.representatives:[])
+      .filter(r=>r&&r.active!==false&&String(r.name||'').trim())
+      .slice()
+      .sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'pt-BR'));
+    const selected=String(current||'').trim();
+    const options=['<option value="">Selecione um representante</option>']
+      .concat(reps.map(r=>'<option value="'+esc(String(r.name||'').trim())+'" '+(String(r.name||'').trim()===selected?'selected':'')+'>'+esc(String(r.name||'').trim())+'</option>'));
+    return '<label class="fc-field"><span>Representante</span><select id="fcRepresentative">'+options.join('')+'</select><small class="fc-muted">Lista vinculada ao cadastro de Representantes ativos.</small></label>';
+  }
 
   function openForm(id){
     const ops=load(),existing=id?findCustomer(ops,id):null;
     const c=existing||{id:'cli_'+Date.now(),active:true,createdAt:Date.now()};
     lastCnpjConsulted=normCnpj(c.cnpj);
-    content().innerHTML='<div class="fc-page"><div class="fc-head"><div><button class="fc-btn primary" id="fcBack">← Clientes</button><h1>'+(existing?'Editar cliente':'Cadastrar cliente')+'</h1><p>Dados comerciais e de contato do cliente</p></div><div class="fc-actions">'+(existing?'<button class="fc-btn" id="fcDelete" type="button">Excluir cliente</button>':'')+'<button class="fc-btn primary" id="fcSave">Salvar cliente</button></div></div><div class="fc-card"><div class="fc-grid">'+cnpjField(c.cnpj,!!existing)+field('Cliente / Razão social','fcName',c.name,'text','wide')+field('E-mail','fcEmail',c.email,'email')+field('Telefone','fcPhone',c.phone)+field('CEP','fcCep',c.cep)+field('Bairro','fcBairro',c.bairro)+field('Cidade','fcCity',c.city)+field('UF','fcState',c.state)+field('Representante','fcRepresentative',c.representative)+field('Condição de pagamento','fcPaymentTerms',c.paymentTerms)+select('Tipo de frete padrão','fcFreightType',c.freightType||'CIF',['CIF','FOB','Redespacho'])+select('Status','fcActive',c.active!==false?'ATIVO':'INATIVO',['ATIVO','INATIVO'])+'<label class="fc-field wide"><span>Endereço / Local de entrega</span><textarea id="fcAddress">'+esc(c.address||'')+'</textarea></label><label class="fc-field wide"><span>Observações</span><textarea id="fcNotes">'+esc(c.notes||'')+'</textarea></label></div></div></div>';
+    content().innerHTML='<div class="fc-page"><div class="fc-head"><div><button class="fc-btn primary" id="fcBack">← Clientes</button><h1>'+(existing?'Editar cliente':'Cadastrar cliente')+'</h1><p>Dados comerciais e de contato do cliente</p></div><div class="fc-actions">'+(existing?'<button class="fc-btn" id="fcDelete" type="button">Excluir cliente</button>':'')+'<button class="fc-btn primary" id="fcSave">Salvar cliente</button></div></div><div class="fc-card"><div class="fc-grid">'+cnpjField(c.cnpj,!!existing)+field('Cliente / Razão social','fcName',c.name,'text','wide')+field('E-mail','fcEmail',c.email,'email')+field('Telefone','fcPhone',c.phone)+field('CEP','fcCep',c.cep)+field('Bairro','fcBairro',c.bairro)+field('Cidade','fcCity',c.city)+field('UF','fcState',c.state)+representativeSelect(ops,c.representative)+field('Condição de pagamento','fcPaymentTerms',c.paymentTerms)+select('Tipo de frete padrão','fcFreightType',c.freightType||'CIF',['CIF','FOB','Redespacho'])+select('Status','fcActive',c.active!==false?'ATIVO':'INATIVO',['ATIVO','INATIVO'])+'<label class="fc-field wide"><span>Endereço / Local de entrega</span><textarea id="fcAddress">'+esc(c.address||'')+'</textarea></label><label class="fc-field wide"><span>Observações</span><textarea id="fcNotes">'+esc(c.notes||'')+'</textarea></label></div></div></div>';
     document.getElementById('fcBack').onclick=()=>render(state);
     const cnpj=document.getElementById('fcCnpj');
     const updateBtn=document.getElementById('fcCnpjUpdate');
@@ -170,6 +180,7 @@
     if(!customer.cnpj){alert('Informe o CNPJ do cliente.');return}
     if(!isValidCnpj(customer.cnpj)){alert('Informe um CNPJ válido.');return}
     if(!customer.name){alert('Informe o nome do cliente.');return}
+    if(!customer.representative){alert('Selecione um representante cadastrado para o cliente.');return}
     if(customer.email&&!/^\S+@\S+\.\S+$/.test(customer.email)){alert('Informe um e-mail válido.');return}
     const res=await window.FocadoDataStore.saveDomain('CLIENTES',{customer},null);
     if(!res?.ok){alert('Não foi possível salvar o cliente.');return}
