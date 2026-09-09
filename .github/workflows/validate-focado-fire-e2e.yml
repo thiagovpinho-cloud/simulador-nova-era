@@ -60,7 +60,7 @@ jobs:
         shell: bash
         run: |
           npm install --no-save --no-package-lock playwright@1.57.0
-          npx playwright install --with-deps chromium
+          npx playwright install chromium
           python3 -m http.server 4173 --directory _site >/tmp/focado-fire-e2e-http.log 2>&1 &
           SERVER_PID=$!
           trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
