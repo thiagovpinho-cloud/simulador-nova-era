@@ -8,6 +8,8 @@
   const fmtCnpj=v=>{const d=normCnpj(v).slice(0,14);return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2}).*/,'$1.$2.$3/$4-$5')};
   const today=()=>new Date().toISOString().slice(0,10);
   let state={q:''};
+  let lastCnpjConsulted='';
+  let cnpjRequestSeq=0;
 
   function aggregate(ops){
     const map=new Map();
@@ -65,11 +67,12 @@
   function openForm(id){
     const ops=load(),existing=id?findCustomer(ops,id):null;
     const c=existing||{id:'cli_'+Date.now(),active:true,createdAt:Date.now()};
+    lastCnpjConsulted=normCnpj(c.cnpj);
     content().innerHTML='<div class="fc-page">'+
       '<div class="fc-head"><div><button class="fc-btn primary" id="fcBack">← Clientes</button><h1>'+(existing?'Editar cliente':'Cadastrar cliente')+'</h1><p>Dados comerciais e de contato do cliente</p></div><button class="fc-btn primary" id="fcSave">Salvar cliente</button></div>'+
       '<div class="fc-card"><div class="fc-grid">'+
+        cnpjField(c.cnpj)+
         field('Cliente / Razão social','fcName',c.name,'text','wide')+
-        field('CNPJ','fcCnpj',fmtCnpj(c.cnpj))+
         field('E-mail','fcEmail',c.email,'email')+
         field('Telefone','fcPhone',c.phone)+
         field('CEP','fcCep',c.cep)+
@@ -83,8 +86,22 @@
       '</div></div></div>';
     document.getElementById('fcBack').onclick=()=>render(state);
     const cnpj=document.getElementById('fcCnpj');
-    cnpj.oninput=()=>{cnpj.value=fmtCnpj(cnpj.value)};
+    cnpj.oninput=()=>{
+      cnpj.value=fmtCnpj(cnpj.value);
+      const digits=normCnpj(cnpj.value);
+      if(digits.length===14&&digits!==lastCnpjConsulted)consultCnpj(digits);
+      if(digits.length<14)setCnpjStatus('', '');
+    };
+    cnpj.onblur=()=>{
+      const digits=normCnpj(cnpj.value);
+      if(digits.length===14&&digits!==lastCnpjConsulted)consultCnpj(digits);
+    };
     document.getElementById('fcSave').onclick=()=>saveCustomer(c);
+    if(!existing)setTimeout(()=>cnpj.focus(),0);
+  }
+
+  function cnpjField(val){
+    return '<label class="fc-field wide"><span>CNPJ</span><input id="fcCnpj" inputmode="numeric" autocomplete="off" placeholder="00.000.000/0000-00" value="'+esc(fmtCnpj(val))+'"><small id="fcCnpjStatus" class="fc-muted" aria-live="polite"></small></label>';
   }
 
   function field(label,id,val,type='text',cls=''){
@@ -92,6 +109,56 @@
   }
   function select(label,id,val,opts){
     return '<label class="fc-field"><span>'+label+'</span><select id="'+id+'">'+opts.map(x=>'<option '+(x===val?'selected':'')+'>'+x+'</option>').join('')+'</select></label>';
+  }
+
+  function setCnpjStatus(message,type){
+    const el=document.getElementById('fcCnpjStatus');
+    if(!el)return;
+    el.textContent=message||'';
+    el.style.color=type==='error'?'#b42318':type==='ok'?'#027a48':'';
+  }
+
+  function setValue(id,value){
+    if(value===undefined||value===null||value==='')return;
+    const el=document.getElementById(id);
+    if(el)el.value=String(value).trim();
+  }
+
+  function buildAddress(data){
+    const street=[data.descricao_tipo_de_logradouro,data.logradouro].filter(Boolean).join(' ').trim();
+    return [street,data.numero,data.complemento].filter(Boolean).join(', ');
+  }
+
+  async function consultCnpj(cnpj){
+    const digits=normCnpj(cnpj);
+    if(digits.length!==14)return;
+    const requestId=++cnpjRequestSeq;
+    setCnpjStatus('Consultando CNPJ na BrasilAPI…','');
+    try{
+      const res=await fetch('https://brasilapi.com.br/api/cnpj/v1/'+digits,{headers:{'Accept':'application/json'}});
+      if(requestId!==cnpjRequestSeq)return;
+      if(!res.ok){
+        lastCnpjConsulted='';
+        setCnpjStatus(res.status===404?'CNPJ não encontrado. Preencha os dados manualmente.':'Não foi possível consultar o CNPJ agora. Preencha os dados manualmente.','error');
+        return;
+      }
+      const data=await res.json();
+      if(requestId!==cnpjRequestSeq)return;
+      lastCnpjConsulted=digits;
+      setValue('fcName',data.razao_social||data.nome_fantasia);
+      setValue('fcEmail',data.email);
+      setValue('fcPhone',data.ddd_telefone_1||data.ddd_telefone_2);
+      setValue('fcCep',String(data.cep||'').replace(/\D/g,''));
+      setValue('fcBairro',data.bairro);
+      setValue('fcCity',data.municipio);
+      setValue('fcState',data.uf);
+      setValue('fcAddress',buildAddress(data));
+      setCnpjStatus('Dados encontrados e preenchidos automaticamente pela BrasilAPI. Revise antes de salvar.','ok');
+    }catch(_){
+      if(requestId!==cnpjRequestSeq)return;
+      lastCnpjConsulted='';
+      setCnpjStatus('Consulta indisponível no momento. Você pode continuar o cadastro manualmente.','error');
+    }
   }
 
   async function saveCustomer(base){
@@ -112,8 +179,9 @@
       notes:document.getElementById('fcNotes').value.trim(),
       updatedAt:Date.now()
     };
+    if(!customer.cnpj){alert('Informe o CNPJ do cliente.');return}
+    if(customer.cnpj.length!==14){alert('Informe um CNPJ válido com 14 dígitos.');return}
     if(!customer.name){alert('Informe o nome do cliente.');return}
-    if(customer.cnpj&&customer.cnpj.length!==14){alert('Informe um CNPJ válido com 14 dígitos.');return}
     if(customer.email&&!/^\S+@\S+\.\S+$/.test(customer.email)){alert('Informe um e-mail válido.');return}
     const res=await window.FocadoDataStore.saveDomain('CLIENTES',{customer},null);
     if(!res?.ok){alert('Não foi possível salvar o cliente.');return}
