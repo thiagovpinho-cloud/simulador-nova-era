@@ -416,11 +416,25 @@ function applyFinance(state,body){
 function applyCustomers(state,body){
   const c=body.changes||{};
   state.customers=Array.isArray(state.customers)?state.customers:[];
+  const norm=v=>String(v||'').replace(/\D/g,'');
   if(c.customer&&typeof c.customer==='object'){
     const incoming=structuredClone(c.customer);
+    const cnpj=norm(incoming.cnpj);
+    if(cnpj){
+      const duplicate=state.customers.find(x=>String(x.id)!==String(incoming.id)&&norm(x.cnpj)===cnpj);
+      if(duplicate)throw Object.assign(new Error('CUSTOMER_CNPJ_ALREADY_EXISTS'),{status:409});
+    }
     const idx=state.customers.findIndex(x=>String(x.id)===String(incoming.id));
     if(idx>=0)state.customers[idx]=incoming;
     else state.customers.unshift(incoming);
+  }
+  if(c.deleteId){
+    const target=state.customers.find(x=>String(x.id)===String(c.deleteId));
+    if(!target)return;
+    const targetCnpj=norm(target.cnpj);
+    const linked=(state.orders||[]).some(o=>targetCnpj&&norm(o.cnpj)===targetCnpj);
+    if(linked){target.active=false;target.updatedAt=Date.now();}
+    else state.customers=state.customers.filter(x=>String(x.id)!==String(c.deleteId));
   }
 }
 

@@ -310,55 +310,54 @@
   }
 
   function setForm(name,value){const el=document.querySelector('[name="'+name+'"]');if(el&&value!=null&&String(value)!=='')el.value=value}
-  function previousOrderByCnpj(cnpj,ops,currentId){
+  function customerByCnpj(cnpj,ops){
     const key=normalizeCnpj(cnpj);
-    return (ops.orders||[]).filter(o=>o.id!==currentId&&normalizeCnpj(o.cnpj)===key).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))[0]||null;
+    return (ops.customers||[]).find(c=>normalizeCnpj(c.cnpj)===key)||null;
   }
-  function applyPrevious(prev){
-    if(!prev)return false;
-    ['representative','salesChannel','brand','freightType','paymentTerms','deliveryAddress','city','uf','cep','bairro','email','phone'].forEach(k=>setForm(k,prev[k]));
-    return true;
-  }
-  async function fetchCnpj(cnpj){
-    const base=apiBase(),headers={'accept':'application/json'};if(token())headers.Authorization='Bearer '+token();
-    if(base){
-      const r=await fetch(base+'/api/cnpj/'+encodeURIComponent(cnpj),{headers,cache:'no-store'});
-      if(r.ok)return r.json();
-      if(r.status!==503&&r.status!==502)throw Object.assign(new Error('CNPJ_LOOKUP_FAILED'),{status:r.status});
-    }
-    const r=await fetch('https://brasilapi.com.br/api/cnpj/v1/'+encodeURIComponent(cnpj),{headers:{accept:'application/json'},cache:'no-store'});
-    if(!r.ok)throw Object.assign(new Error('CNPJ_LOOKUP_FAILED'),{status:r.status});
-    const b=await r.json();
-    return {cnpj:b.cnpj,razaoSocial:b.razao_social,nomeFantasia:b.nome_fantasia,cep:b.cep,logradouro:b.logradouro,numero:b.numero,complemento:b.complemento,bairro:b.bairro,municipio:b.municipio,uf:b.uf,dddTelefone1:b.ddd_telefone_1,email:b.email};
+  function applyCustomer(customer){
+    setForm('client',customer.name||customer.client||'');
+    setForm('email',customer.email);
+    setForm('phone',customer.phone);
+    setForm('cep',customer.cep);
+    setForm('bairro',customer.bairro);
+    setForm('city',customer.city);
+    setForm('uf',customer.state||customer.uf);
+    setForm('deliveryAddress',customer.address);
+    setForm('representative',customer.representative);
+    setForm('paymentTerms',customer.paymentTerms);
+    if(customer.freightType)setForm('freightType',customer.freightType);
+    if(customer.brand)setForm('brand',customer.brand);
   }
   function bindCnpjLookup(ops,o){
-    const input=document.getElementById('foCnpj'),btn=document.getElementById('foCnpjLookup'),status=document.getElementById('foCnpjStatus');let busy=false,last='';
-    async function lookup(){
+    const input=document.getElementById('foCnpj'),btn=document.getElementById('foCnpjLookup'),status=document.getElementById('foCnpjStatus');let last='';
+    function lookup(){
       const cnpj=normalizeCnpj(input.value);input.value=formatCnpj(cnpj);
       if(cnpj.length!==14){status.textContent='Informe os 14 dígitos do CNPJ.';status.className='fo-cnpj-status bad';return}
-      if(busy||cnpj===last)return;busy=true;last=cnpj;btn.disabled=true;status.textContent='Consultando CNPJ...';status.className='fo-cnpj-status';
-      const prev=previousOrderByCnpj(cnpj,ops,o.id);
-      try{
-        const b=await fetchCnpj(cnpj);
-        setForm('client',b.razaoSocial||b.nomeFantasia);
-        setForm('cep',b.cep);
-        setForm('bairro',b.bairro);
-        setForm('city',b.municipio);
-        setForm('uf',b.uf);
-        setForm('email',b.email);
-        setForm('phone',b.dddTelefone1);
-        const address=[b.logradouro,b.numero,b.complemento,b.bairro].filter(Boolean).join(', ');
-        setForm('deliveryAddress',address);
-        const reused=applyPrevious(prev);
-        status.textContent=(reused?'Cliente recorrente: dados comerciais e de entrega do último pedido reaproveitados. ':'')+'Dados cadastrais consultados pela BrasilAPI.';
-        status.className='fo-cnpj-status ok';
-      }catch(err){
-        const reused=applyPrevious(prev);
-        if(reused){status.textContent='Cliente recorrente: dados do último pedido reaproveitados. A consulta cadastral externa não respondeu.';status.className='fo-cnpj-status warn'}
-        else{status.textContent=err.status===404?'CNPJ não encontrado.':'Não foi possível consultar o CNPJ agora.';status.className='fo-cnpj-status bad'}
-      }finally{busy=false;btn.disabled=false}
+      if(cnpj===last)return;last=cnpj;
+      status.textContent='Consultando cadastro de Clientes...';status.className='fo-cnpj-status';
+      const customer=customerByCnpj(cnpj,load());
+      if(!customer){
+        status.textContent='Cliente não encontrado no cadastro do Focado. Cadastre o cliente antes de criar o pedido.';
+        status.className='fo-cnpj-status bad';
+        return;
+      }
+      if(customer.active===false){
+        status.textContent='Cliente inativo. Reative o cadastro antes de criar um novo pedido.';
+        status.className='fo-cnpj-status bad';
+        return;
+      }
+      applyCustomer(customer);
+      status.textContent='Cliente encontrado no cadastro mestre do Focado. Dados comerciais carregados.';
+      status.className='fo-cnpj-status ok';
     }
-    btn.onclick=lookup;input.onblur=lookup;input.oninput=()=>{const d=normalizeCnpj(input.value);input.value=formatCnpj(d);if(d.length===14)setTimeout(lookup,120)};
+    btn.onclick=lookup;
+    input.onblur=lookup;
+    input.oninput=()=>{
+      const d=normalizeCnpj(input.value);
+      input.value=formatCnpj(d);
+      if(d!==last)last='';
+      if(d.length===14)setTimeout(lookup,120);
+    };
   }
 
   function collect(){

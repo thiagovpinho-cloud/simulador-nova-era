@@ -51,7 +51,7 @@
 
   function table(rows){
     if(!rows.length)return '<div class="fc-empty">Nenhum cliente encontrado.</div>';
-    return '<table class="fc-table"><thead><tr><th>Cliente</th><th>CNPJ</th><th>E-mail</th><th>Telefone</th><th>Cidade / UF</th><th>Endereço</th><th>Representante</th><th>Status</th><th></th></tr></thead><tbody>'+rows.map(c=>'<tr><td><b>'+esc(c.name||'—')+'</b></td><td>'+esc(fmtCnpj(c.cnpj)||'—')+'</td><td>'+esc(c.email||'—')+'</td><td>'+esc(c.phone||'—')+'</td><td>'+esc([c.city,c.state].filter(Boolean).join(' / ')||'—')+'</td><td>'+esc(c.address||'—')+'</td><td>'+esc(c.representative||'—')+'</td><td><span class="fc-chip '+(c.active!==false?'ok':'off')+'">'+(c.active!==false?'Ativo':'Inativo')+'</span></td><td><button class="fc-btn primary small" data-fc-open="'+esc(c.id)+'">Abrir</button></td></tr>').join('')+'</tbody></table>';
+    return '<table class="fc-table"><thead><tr><th>Cliente</th><th>CNPJ</th><th>E-mail</th><th>Telefone</th><th>Cidade / UF</th><th>Endereço</th><th>Representante</th><th>Condição pgto.</th><th>Status</th><th></th></tr></thead><tbody>'+rows.map(c=>'<tr><td><b>'+esc(c.name||'—')+'</b></td><td>'+esc(fmtCnpj(c.cnpj)||'—')+'</td><td>'+esc(c.email||'—')+'</td><td>'+esc(c.phone||'—')+'</td><td>'+esc([c.city,c.state].filter(Boolean).join(' / ')||'—')+'</td><td>'+esc(c.address||'—')+'</td><td>'+esc(c.representative||'—')+'</td><td>'+esc(c.paymentTerms||'—')+'</td><td><span class="fc-chip '+(c.active!==false?'ok':'off')+'">'+(c.active!==false?'Ativo':'Inativo')+'</span></td><td><button class="fc-btn primary small" data-fc-open="'+esc(c.id)+'">Abrir</button></td></tr>').join('')+'</tbody></table>';
   }
 
   function findCustomer(ops,id){return aggregate(ops).find(c=>String(c.id)===String(id))}
@@ -60,7 +60,7 @@
     const ops=load(),existing=id?findCustomer(ops,id):null;
     const c=existing||{id:'cli_'+Date.now(),active:true,createdAt:Date.now()};
     lastCnpjConsulted=normCnpj(c.cnpj);
-    content().innerHTML='<div class="fc-page"><div class="fc-head"><div><button class="fc-btn primary" id="fcBack">← Clientes</button><h1>'+(existing?'Editar cliente':'Cadastrar cliente')+'</h1><p>Dados comerciais e de contato do cliente</p></div><button class="fc-btn primary" id="fcSave">Salvar cliente</button></div><div class="fc-card"><div class="fc-grid">'+cnpjField(c.cnpj,!!existing)+field('Cliente / Razão social','fcName',c.name,'text','wide')+field('E-mail','fcEmail',c.email,'email')+field('Telefone','fcPhone',c.phone)+field('CEP','fcCep',c.cep)+field('Bairro','fcBairro',c.bairro)+field('Cidade','fcCity',c.city)+field('UF','fcState',c.state)+field('Representante','fcRepresentative',c.representative)+select('Status','fcActive',c.active!==false?'ATIVO':'INATIVO',['ATIVO','INATIVO'])+'<label class="fc-field wide"><span>Endereço / Local de entrega</span><textarea id="fcAddress">'+esc(c.address||'')+'</textarea></label><label class="fc-field wide"><span>Observações</span><textarea id="fcNotes">'+esc(c.notes||'')+'</textarea></label></div></div></div>';
+    content().innerHTML='<div class="fc-page"><div class="fc-head"><div><button class="fc-btn primary" id="fcBack">← Clientes</button><h1>'+(existing?'Editar cliente':'Cadastrar cliente')+'</h1><p>Dados comerciais e de contato do cliente</p></div><div class="fc-actions">'+(existing?'<button class="fc-btn" id="fcDelete" type="button">Excluir cliente</button>':'')+'<button class="fc-btn primary" id="fcSave">Salvar cliente</button></div></div><div class="fc-card"><div class="fc-grid">'+cnpjField(c.cnpj,!!existing)+field('Cliente / Razão social','fcName',c.name,'text','wide')+field('E-mail','fcEmail',c.email,'email')+field('Telefone','fcPhone',c.phone)+field('CEP','fcCep',c.cep)+field('Bairro','fcBairro',c.bairro)+field('Cidade','fcCity',c.city)+field('UF','fcState',c.state)+field('Representante','fcRepresentative',c.representative)+field('Condição de pagamento','fcPaymentTerms',c.paymentTerms)+select('Tipo de frete padrão','fcFreightType',c.freightType||'CIF',['CIF','FOB','Redespacho'])+select('Status','fcActive',c.active!==false?'ATIVO':'INATIVO',['ATIVO','INATIVO'])+'<label class="fc-field wide"><span>Endereço / Local de entrega</span><textarea id="fcAddress">'+esc(c.address||'')+'</textarea></label><label class="fc-field wide"><span>Observações</span><textarea id="fcNotes">'+esc(c.notes||'')+'</textarea></label></div></div></div>';
     document.getElementById('fcBack').onclick=()=>render(state);
     const cnpj=document.getElementById('fcCnpj');
     const updateBtn=document.getElementById('fcCnpjUpdate');
@@ -83,6 +83,8 @@
       consultCnpj(digits,{overwrite:true});
     };
     document.getElementById('fcSave').onclick=()=>saveCustomer(c);
+    const deleteBtn=document.getElementById('fcDelete');
+    if(deleteBtn)deleteBtn.onclick=()=>deleteCustomer(c);
     if(!existing)setTimeout(()=>cnpj.focus(),0);
   }
 
@@ -145,15 +147,35 @@
     }
   }
 
+  async function deleteCustomer(customer){
+    const ops=load();
+    const cnpj=normCnpj(customer.cnpj);
+    const linked=(ops.orders||[]).some(o=>normCnpj(o.cnpj)===cnpj);
+    const message=linked
+      ?'Este cliente já possui pedido(s) no histórico. Ele não será apagado; ficará INATIVO para preservar a rastreabilidade. Continuar?'
+      :'Excluir este cliente? Esta ação remove somente o cadastro mestre e não pode ser desfeita.';
+    if(!confirm(message))return;
+    const changes=linked?{customer:{...customer,active:false,updatedAt:Date.now()}}:{deleteId:customer.id};
+    const res=await window.FocadoDataStore.saveDomain('CLIENTES',changes,null);
+    if(!res?.ok){alert('Não foi possível excluir/inativar o cliente.');return}
+    if(res.payload)window.FocadoDataStore.writeLocal(res.payload);
+    const refreshed=await window.FocadoDataStore.refreshDomainV2?.('customers');
+    if(refreshed?.payload)window.FocadoDataStore.writeLocal(refreshed.payload);
+    alert(linked?'Cliente inativado. O histórico dos pedidos foi preservado.':'Cliente excluído.');
+    render({q:''});
+  }
+
   async function saveCustomer(base){
-    const customer={...base,id:base.id||'cli_'+Date.now(),name:document.getElementById('fcName').value.trim(),cnpj:normCnpj(document.getElementById('fcCnpj').value),email:document.getElementById('fcEmail').value.trim(),phone:document.getElementById('fcPhone').value.trim(),cep:document.getElementById('fcCep').value.trim(),bairro:document.getElementById('fcBairro').value.trim(),city:document.getElementById('fcCity').value.trim(),state:document.getElementById('fcState').value.trim().toUpperCase().slice(0,2),representative:document.getElementById('fcRepresentative').value.trim(),active:document.getElementById('fcActive').value==='ATIVO',address:document.getElementById('fcAddress').value.trim(),notes:document.getElementById('fcNotes').value.trim(),updatedAt:Date.now()};
+    const customer={...base,id:base.id||'cli_'+Date.now(),name:document.getElementById('fcName').value.trim(),cnpj:normCnpj(document.getElementById('fcCnpj').value),email:document.getElementById('fcEmail').value.trim(),phone:document.getElementById('fcPhone').value.trim(),cep:document.getElementById('fcCep').value.trim(),bairro:document.getElementById('fcBairro').value.trim(),city:document.getElementById('fcCity').value.trim(),state:document.getElementById('fcState').value.trim().toUpperCase().slice(0,2),representative:document.getElementById('fcRepresentative').value.trim(),paymentTerms:document.getElementById('fcPaymentTerms').value.trim(),freightType:document.getElementById('fcFreightType').value,active:document.getElementById('fcActive').value==='ATIVO',address:document.getElementById('fcAddress').value.trim(),notes:document.getElementById('fcNotes').value.trim(),updatedAt:Date.now()};
     if(!customer.cnpj){alert('Informe o CNPJ do cliente.');return}
     if(!isValidCnpj(customer.cnpj)){alert('Informe um CNPJ válido.');return}
     if(!customer.name){alert('Informe o nome do cliente.');return}
     if(customer.email&&!/^\S+@\S+\.\S+$/.test(customer.email)){alert('Informe um e-mail válido.');return}
     const res=await window.FocadoDataStore.saveDomain('CLIENTES',{customer},null);
     if(!res?.ok){alert('Não foi possível salvar o cliente.');return}
-    await window.FocadoDataStore.load();
+    if(res?.payload)window.FocadoDataStore.writeLocal(res.payload);
+    const refreshed=await window.FocadoDataStore.refreshDomainV2('customers');
+    if(!refreshed?.ok&&res?.payload)window.FocadoDataStore.writeLocal(res.payload);
     render(state);
   }
 
