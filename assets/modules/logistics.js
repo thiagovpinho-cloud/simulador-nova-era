@@ -178,8 +178,8 @@
     renderDeliveries();
   }
 
-  function renderCarriers(){
-    const ops=load(),rows=(ops.carriers||[]).slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+  function renderCarriers(confirmedState){
+    const ops=confirmedState&&typeof confirmedState==='object'?confirmedState:load(),rows=(ops.carriers||[]).slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
     content().innerHTML='<div class="fl-page"><div class="fl-head"><div><h1>Transportadoras</h1><p>Cadastro mestre utilizado na contratação de fretes</p></div><button class="fl-btn primary" id="fcNew">+ Nova transportadora</button></div>'+
       '<div class="fl-table-wrap">'+(rows.length?'<table class="fl-table"><thead><tr><th>Transportadora</th><th>CNPJ</th><th>Contato</th><th>Telefone</th><th>E-mail</th><th>Status</th><th></th></tr></thead><tbody>'+rows.map(c=>'<tr><td><b>'+esc(c.name)+'</b><div class="fl-muted">'+esc([c.city,c.state].filter(Boolean).join('/'))+'</div></td><td>'+esc(c.cnpj||'—')+'</td><td>'+esc(c.contact||'—')+'</td><td>'+esc(c.phone||'—')+'</td><td>'+esc(c.email||'—')+'</td><td><span class="fl-chip '+(c.active!==false?'ready':'bad')+'">'+(c.active!==false?'Ativa':'Inativa')+'</span></td><td><button class="fl-open" data-carrier="'+esc(c.id)+'">Editar</button></td></tr>').join('')+'</tbody></table>':'<div class="fl-empty">Nenhuma transportadora cadastrada.</div>')+'</div></div>';
     document.getElementById('fcNew').onclick=()=>openCarrier();
@@ -195,7 +195,7 @@
       if(!carrier.name){alert('Informe o nome da transportadora.');return}
       const res=await window.FocadoDataStore.saveDomain('TRANSPORTADORAS',{carrier},null);
       if(!res?.ok){alert('Não foi possível salvar a transportadora.');return}
-      await window.FocadoDataStore.load();renderCarriers();
+      renderCarriers(res.payload||window.FocadoDataStore.readLocal?.()||load());
     };
   }
 
